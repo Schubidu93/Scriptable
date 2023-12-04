@@ -24,15 +24,17 @@
         locationText.leftAlignText(); // Text linksbündig
         locationText.textColor = Color.white(); // Schwarzer Text
 
-        let snowHeightText = widget.addText(snowHeight.toString()); // Schneehöhe als Zahl ohne "cm"
-        snowHeightText.font = Font.regularSystemFont(44); // Mittlere Schriftgröße für die Schneehöhe
-        snowHeightText.leftAlignText(); // Text linksbündig
-        snowHeightText.textColor = Color.white(); // Schwarzer Text
+        let textStack = widget.addStack();
 
-        let cmText = widget.addText("cm"); // "cm" Text
-        cmText.font = Font.regularSystemFont(14); // Kleine Schriftgröße für "cm"
-        cmText.textColor = Color.white(); // Schwarzer Text
-        cmText.leftAlignText(); // Text linksbündig
+let snowHeightText = textStack.addText(snowHeight.toString()); // Schneehöhe als Zahl ohne "cm"
+snowHeightText.font = Font.regularSystemFont(44); // Mittlere Schriftgröße für die Schneehöhe
+snowHeightText.textColor = Color.white(); // Schwarzer Text
+
+let cmText = textStack.addText(" cm"); // "cm" Text
+cmText.font = Font.regularSystemFont(14); // Kleine Schriftgröße für "cm"
+cmText.textColor = Color.white(); // Schwarzer Text
+
+    
         
         widget.addSpacer(20); // Größerer Zeilenabstand
 
