@@ -69,7 +69,7 @@ async function fetchWaterTemperatureFeringasee() {
 
     // Hauptfunktion zur Erstellung des Widgets
     async function createWidget() {
-        const tempBadWaldsee = await fetchWaterTemperatureBadWaldsee();
+        const tempObersee = await fetchWaterTemperatureObersee();
         const tempMuenchen = await fetchWaterTemperatureMuenchen();
         const tempFeringasee = await fetchWaterTemperatureFeringasee();
         
@@ -88,7 +88,7 @@ async function fetchWaterTemperatureFeringasee() {
         let tempStack = widget.addStack();
         tempStack.layoutVertically();
         
-        createTemperatureDisplay('Stadtsee', tempBadWaldsee, tempStack);
+        createTemperatureDisplay('Obersee', tempObersee, tempStack);
         widget.addSpacer(2);
         createTemperatureDisplay('Eisbach', tempMuenchen, tempStack);
         widget.addSpacer(2);
