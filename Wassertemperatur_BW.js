@@ -2,7 +2,7 @@
     // URLs der Webseiten mit den Wassertemperaturen
     const urlObersee = 'https://www.wetteronline.de/wassertemperatur-badeseen/baden-wuerttemberg';
     const urlMuenchen = 'https://www.gkd.bayern.de/de/fluesse/wassertemperatur/kelheim/muenchen-himmelreichbruecke-16515005/messwerte';
-    const urlFeringasee = 'https://xn--wasserwacht-unterfhring-plc.de/feringasee/';
+    const urlFeringasee = 'https://wasserwacht-unterföhring.de/aktuelles-wetter/';
 
     // Funktion zum Laden und Parsen der Wassertemperatur von Obersee/Kißlegg
 async function fetchWaterTemperatureObersee() {
