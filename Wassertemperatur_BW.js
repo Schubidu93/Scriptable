@@ -1,23 +1,23 @@
 (async () => {
     // URLs der Webseiten mit den Wassertemperaturen
-    const urlBadWaldsee = 'https://www.wassertemperaturen.net/baden-wuerttemberg/stadtsee_bad_waldsee.html';
+    const urlObersee = 'https://www.wetteronline.de/wassertemperatur-badeseen/baden-wuerttemberg';
     const urlMuenchen = 'https://www.gkd.bayern.de/de/fluesse/wassertemperatur/kelheim/muenchen-himmelreichbruecke-16515005/messwerte';
     const urlFeringasee = 'https://xn--wasserwacht-unterfhring-plc.de/feringasee/';
 
-    // Funktion zum Laden und Parsen der Wassertemperatur von Bad Waldsee
-    async function fetchWaterTemperatureBadWaldsee() {
-        const req = new Request(urlBadWaldsee);
-        const html = await req.loadString();
-        
-        const regex = /<P CLASS="strandtemp">\s*(\d+)&deg;C\s*<\/P>/;
-        const match = html.match(regex);
+    // Funktion zum Laden und Parsen der Wassertemperatur von Obersee/Kißlegg
+async function fetchWaterTemperatureObersee() {
+    const req = new Request(urlObersee);
+    const html = await req.loadString();
 
-        if (match && match.length > 1) {
-            return parseFloat(match[1]);
-        } else {
-            return null;
-        }
+    const regex = /Obersee\/Kißlegg[\s\S]*?<td class="ttcol">\s*(\d+)\s*&deg;C/i;
+    const match = html.match(regex);
+
+    if (match && match[1]) {
+        return parseFloat(match[1]);
+    } else {
+        return null;
     }
+}
 
     // Funktion zum Laden und Parsen der Wassertemperatur von München Himmelreichbrücke
     async function fetchWaterTemperatureMuenchen() {
@@ -34,20 +34,20 @@
         }
     }
 
-    // Funktion zum Laden und Parsen der Wassertemperatur von Feringasee
-    async function fetchWaterTemperatureFeringasee() {
-        const req = new Request(urlFeringasee);
-        const html = await req.loadString();
-        
-        const regex = /Feringasee sind es nach dem Stand.*?<\/br><b>(\d+\.\d+)<\/b> Grad Celius im Wasser/;
-        const match = html.match(regex);
+   // Funktion zum Laden und Parsen der Wassertemperatur von Feringasee
+async function fetchWaterTemperatureFeringasee() {
+    const req = new Request(urlFeringasee);
+    const html = await req.loadString();
 
-        if (match && match.length > 1) {
-            return parseFloat(match[1]);
-        } else {
-            return null;
-        }
+    const regex = /<b>(\d+\.\d+)<\/b>\s*Grad Celius im Wasser/i;
+    const match = html.match(regex);
+
+    if (match && match[1]) {
+        return Math.round(parseFloat(match[1]) * 10) / 10;
+    } else {
+        return null;
     }
+}
 
     // Funktion zur Erstellung der Temperaturanzeige
     function createTemperatureDisplay(location, temperature, stack) {
