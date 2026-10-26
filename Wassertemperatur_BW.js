@@ -1,108 +1,205 @@
-(async () => {
-    // URLs der Webseiten mit den Wassertemperaturen
-    const urlObersee = 'https://www.wetteronline.de/wassertemperatur-badeseen/baden-wuerttemberg';
-    const urlMuenchen = 'https://www.gkd.bayern.de/de/fluesse/wassertemperatur/kelheim/muenchen-himmelreichbruecke-16515005/messwerte';
-    const urlFeringasee = 'https://wasserwacht-unterföhring.de/aktuelles-wetter/';
+// Wassertemperaturen – Widget im Stil der iOS-Wetter-Widgets
+// Unterstützt: klein, mittel sowie Sperrbildschirm (rechteckig, inline)
 
-    // Funktion zum Laden und Parsen der Wassertemperatur von Obersee/Kißlegg
-async function fetchWaterTemperatureObersee() {
-    const req = new Request(urlObersee);
-    const html = await req.loadString();
+const SOURCES = [
+    {
+        name: "Obersee",
+        url: "https://www.wetteronline.de/wassertemperatur-badeseen/baden-wuerttemberg",
+        parse: html => {
+            let match = html.match(/Obersee\/Kißlegg[\s\S]*?<td class="ttcol">\s*(\d+)\s*&deg;C/i);
+            return match ? parseFloat(match[1]) : null;
+        },
+    },
+    {
+        name: "Eisbach",
+        url: "https://www.gkd.bayern.de/de/fluesse/wassertemperatur/kelheim/muenchen-himmelreichbruecke-16515005/messwerte",
+        parse: html => {
+            let match = html.match(/<td\s+class="center">(\d+,\d+)<\/td>/);
+            return match ? parseFloat(match[1].replace(",", ".")) : null;
+        },
+    },
+    {
+        name: "Feringasee",
+        url: "https://wasserwacht-unterföhring.de/aktuelles-wetter/",
+        parse: html => {
+            let match = html.match(/<b>(\d+\.\d+)<\/b>\s*Grad Celius im Wasser/i);
+            return match ? Math.round(parseFloat(match[1]) * 10) / 10 : null;
+        },
+    },
+];
 
-    const regex = /Obersee\/Kißlegg[\s\S]*?<td class="ttcol">\s*(\d+)\s*&deg;C/i;
-    const match = html.match(regex);
+const fm = FileManager.local();
+const cachePath = fm.joinPath(fm.cacheDirectory(), "wassertemperatur.json");
 
-    if (match && match[1]) {
-        return parseFloat(match[1]);
-    } else {
-        return null;
-    }
-}
-
-    // Funktion zum Laden und Parsen der Wassertemperatur von München Himmelreichbrücke
-    async function fetchWaterTemperatureMuenchen() {
-        const req = new Request(urlMuenchen);
-        const html = await req.loadString();
-        
-        const regex = /<td\s+class="center">(\d+,\d+)<\/td>/;
-        const match = html.match(regex);
-
-        if (match && match.length > 1) {
-            return parseFloat(match[1].replace(',', '.'));
-        } else {
-            return null;
+// Alle Quellen parallel laden – fällt eine aus, wird ihr letzter Wert verwendet
+async function loadTemperatures() {
+    let cache = fm.fileExists(cachePath) ? JSON.parse(fm.readString(cachePath)) : {};
+    let results = await Promise.all(SOURCES.map(async source => {
+        try {
+            let temp = source.parse(await new Request(source.url).loadString());
+            if (temp !== null) {
+                cache[source.name] = temp;
+                return { name: source.name, temp, stale: false };
+            }
+        } catch (e) {
+            console.log(`${source.name}: Abruf fehlgeschlagen: ${e}`);
         }
-    }
-
-   // Funktion zum Laden und Parsen der Wassertemperatur von Feringasee
-async function fetchWaterTemperatureFeringasee() {
-    const req = new Request(urlFeringasee);
-    const html = await req.loadString();
-
-    const regex = /<b>(\d+\.\d+)<\/b>\s*Grad Celius im Wasser/i;
-    const match = html.match(regex);
-
-    if (match && match[1]) {
-        return Math.round(parseFloat(match[1]) * 10) / 10;
-    } else {
-        return null;
-    }
+        let cached = cache[source.name];
+        return { name: source.name, temp: cached ?? null, stale: cached != null };
+    }));
+    fm.writeString(cachePath, JSON.stringify(cache));
+    return results;
 }
 
-    // Funktion zur Erstellung der Temperaturanzeige
-    function createTemperatureDisplay(location, temperature, stack) {
-        let row = stack.addStack();
-        row.layoutHorizontally();
-        
-        let locationText = row.addText(location);
-        locationText.textColor = Color.white();
-        locationText.font = Font.regularSystemFont(12); // Schriftgröße der Ortsnamen leicht reduzieren
-        locationText.leftAlignText();
-        
+function formatTemp(temp) {
+    return temp === null ? "–" : `${temp.toFixed(1).replace(".", ",")}°`;
+}
+
+function feeling(temp) {
+    if (temp === null) return "Keine Daten";
+    if (temp < 12) return "Eiskalt";
+    if (temp < 17) return "Frisch";
+    if (temp < 21) return "Erfrischend";
+    if (temp < 24) return "Angenehm";
+    return "Badewanne";
+}
+
+function addSymbol(stack, name, size, color) {
+    let sym = SFSymbol.named(name);
+    sym.applyFont(Font.systemFont(size));
+    let img = stack.addImage(sym.image);
+    img.imageSize = new Size(size, size);
+    img.tintColor = color;
+    img.resizable = false;
+    return img;
+}
+
+function addLabel(stack, text, font, color, opacity = 1) {
+    let t = stack.addText(text);
+    t.font = font;
+    t.textColor = color;
+    t.textOpacity = opacity;
+    t.lineLimit = 1;
+    t.minimumScaleFactor = 0.7;
+    return t;
+}
+
+function background(widget) {
+    let gradient = new LinearGradient();
+    gradient.colors = [new Color("#3FA9D6"), new Color("#1D6FA8")];
+    gradient.locations = [0, 1];
+    widget.backgroundGradient = gradient;
+}
+
+// Kopfzeile: "Wasser 💧"
+function addHeader(stack, white) {
+    let header = stack.addStack();
+    header.centerAlignContent();
+    addLabel(header, "Wasser", Font.semiboldSystemFont(15), white);
+    header.addSpacer(4);
+    addSymbol(header, "drop.fill", 11, white);
+    header.addSpacer();
+}
+
+function stamp(results) {
+    let time = new DateFormatter();
+    time.useNoDateStyle();
+    time.useShortTimeStyle();
+    let offline = results.some(r => r.stale) ? " · offline" : "";
+    return `Stand ${time.string(new Date())}${offline}`;
+}
+
+function buildSmall(widget, results) {
+    let white = Color.white();
+    addHeader(widget, white);
+    widget.addSpacer();
+
+    results.forEach((r, i) => {
+        if (i > 0) widget.addSpacer(6);
+        let row = widget.addStack();
+        row.centerAlignContent();
+        addLabel(row, r.name, Font.semiboldSystemFont(13), white, 0.85);
         row.addSpacer();
-        
-        let tempText = row.addText(temperature !== null ? `${temperature.toFixed(1)}°` : 'N/A');
-        tempText.textColor = Color.white();
-        tempText.font = Font.systemFont(20);
-        tempText.rightAlignText();
-    }
+        addLabel(row, formatTemp(r.temp), Font.mediumSystemFont(20), white);
+    });
 
-    // Hauptfunktion zur Erstellung des Widgets
-    async function createWidget() {
-        const tempObersee = await fetchWaterTemperatureObersee();
-        const tempMuenchen = await fetchWaterTemperatureMuenchen();
-        const tempFeringasee = await fetchWaterTemperatureFeringasee();
-        
-        let widget = new ListWidget();
-        widget.backgroundColor = new Color("#4682B4"); // Hintergrundfarbe setzen
-        
-        // Titel
-        let titleStack = widget.addStack();
-        let title = titleStack.addText('Wasser');
-        title.textColor = Color.white();
-        title.font = Font.regularSystemFont(14); // Schriftgröße des Titels auf 14 setzen
-        titleStack.addSpacer();
-        widget.addSpacer(4);
-        
-        // Temperaturen
-        let tempStack = widget.addStack();
-        tempStack.layoutVertically();
-        
-        createTemperatureDisplay('Obersee', tempObersee, tempStack);
-        widget.addSpacer(2);
-        createTemperatureDisplay('Eisbach', tempMuenchen, tempStack);
-        widget.addSpacer(2);
-        createTemperatureDisplay('Feringasee', tempFeringasee, tempStack);
-        
-        return widget;
-    }
+    widget.addSpacer();
+    addLabel(widget, stamp(results), Font.semiboldSystemFont(11), white, 0.7);
+}
 
-    // Widget erstellen und anzeigen
-    let widget = await createWidget();
-    if (config.runsInWidget) {
-        Script.setWidget(widget);
-    } else {
-        widget.presentSmall();
+function buildMedium(widget, results) {
+    let white = Color.white();
+    let top = widget.addStack();
+    top.centerAlignContent();
+    addHeader(top, white);
+    addLabel(top, stamp(results), Font.semiboldSystemFont(11), white, 0.7);
+
+    widget.addSpacer();
+
+    let row = widget.addStack();
+    results.forEach((r, i) => {
+        if (i > 0) row.addSpacer();
+        let col = row.addStack();
+        col.layoutVertically();
+        addLabel(col, r.name, Font.semiboldSystemFont(13), white, 0.85);
+        addLabel(col, formatTemp(r.temp), Font.lightSystemFont(36), white);
+        let line = col.addStack();
+        line.centerAlignContent();
+        addSymbol(line, "water.waves", 11, white);
+        line.addSpacer(3);
+        addLabel(line, feeling(r.temp), Font.semiboldSystemFont(11), white, 0.85);
+    });
+
+    widget.addSpacer();
+}
+
+function buildRectangular(widget, results) {
+    let header = widget.addStack();
+    header.centerAlignContent();
+    addSymbol(header, "drop.fill", 11, Color.white());
+    header.addSpacer(4);
+    addLabel(header, "Wasser", Font.semiboldSystemFont(14), Color.white());
+    results.forEach(r => {
+        let row = widget.addStack();
+        addLabel(row, r.name, Font.regularSystemFont(13), Color.white(), 0.8);
+        row.addSpacer();
+        addLabel(row, formatTemp(r.temp), Font.semiboldSystemFont(13), Color.white());
+    });
+}
+
+async function createWidget() {
+    let results = await loadTemperatures();
+    let family = config.widgetFamily || "small";
+    let widget = new ListWidget();
+    widget.refreshAfterDate = new Date(Date.now() + 30 * 60 * 1000);
+
+    switch (family) {
+        case "accessoryInline":
+        case "accessoryCircular":
+            widget.addText(results.map(r => `${r.name.slice(0, 3)} ${formatTemp(r.temp)}`).join(" "));
+            break;
+        case "accessoryRectangular":
+            buildRectangular(widget, results);
+            break;
+        case "medium":
+        case "large":
+        case "extraLarge":
+            background(widget);
+            widget.setPadding(16, 16, 16, 16);
+            buildMedium(widget, results);
+            break;
+        default:
+            background(widget);
+            widget.setPadding(16, 16, 16, 16);
+            buildSmall(widget, results);
     }
-    Script.complete();
-})();
+    return widget;
+}
+
+let widget = await createWidget();
+if (config.runsInWidget) {
+    Script.setWidget(widget);
+} else {
+    await widget.presentSmall();
+}
+Script.complete();
