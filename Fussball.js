@@ -305,22 +305,40 @@ function seasonRange() {
 }
 
 // Alle Spiele des Wettbewerbs in der laufenden Saison (einmal geladen).
-// ESPN liefert lange Zeiträume nicht zuverlässig – daher monatsweise und parallel.
+// ESPN lehnt manche Abfragen ab (Antwort mit "message"/"code" statt Spielen) – je Monat wird daher
+// abgestuft probiert: mit Limit, ohne Limit, zuletzt wochenweise.
 let SEASON_EVENTS = null;
+let SCOREBOARD_ERROR = "";
+
+async function loadRange(base, from, to) {
+    let range = `${ymd(from)}-${ymd(to)}`;
+    for (let query of [`dates=${range}&limit=200`, `dates=${range}`]) {
+        let json = await loadJSON(`${base}?${query}`).catch(() => null);
+        if (json && Array.isArray(json.events)) return json.events;
+        if (json && json.message && !SCOREBOARD_ERROR) SCOREBOARD_ERROR = `${json.code || ""} ${json.message}`.trim();
+    }
+    // Wochenweise
+    let weeks = [];
+    for (let d = new Date(from); d <= to; d = new Date(d.getTime() + 7 * 86400000)) {
+        let end = new Date(Math.min(d.getTime() + 6 * 86400000, to.getTime()));
+        weeks.push(loadJSON(`${base}?dates=${ymd(d)}-${ymd(end)}`).catch(() => null));
+    }
+    return (await Promise.all(weeks)).flatMap(json => (json && json.events) || []);
+}
+
 async function loadSeasonEvents() {
     if (SEASON_EVENTS) return SEASON_EVENTS;
     let { from, to } = seasonRange();
     let until = new Date(Math.min(to.getTime(), Date.now() + 90 * 86400000));
-    let ranges = [];
+    let months = [];
     for (let d = new Date(from); d <= until; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
-        ranges.push(`${ymd(d)}-${ymd(new Date(d.getFullYear(), d.getMonth() + 1, 0))}`);
+        months.push([new Date(d), new Date(d.getFullYear(), d.getMonth() + 1, 0)]);
     }
     let base = `site/v2/sports/soccer/${LEAGUE.slug}/scoreboard`;
-    let answers = await Promise.all(ranges.map(r => loadJSON(`${base}?dates=${r}&limit=200`).catch(() => null)));
-    let events = mergeEvents(answers.map(json => (json && json.events) || []));
+    let lists = await Promise.all(months.map(([a, b]) => loadRange(base, a, b)));
+    let events = mergeEvents(lists);
     if (!events.length) {
-        let sample = answers.find(Boolean);
-        DIAG.push(`Scoreboard ${ranges.length} Monate: 0 Spiele${sample ? " · " + Object.keys(sample).slice(0, 4).join(",") : ""}`);
+        DIAG.push(`Scoreboard ${months.length} Monate: 0 Spiele${SCOREBOARD_ERROR ? " · " + SCOREBOARD_ERROR.slice(0, 80) : ""}`);
         // Notlösung: aktueller Spieltag
         let current = await loadJSON(base).catch(() => null);
         events = mergeEvents([(current && current.events) || []]);
@@ -771,16 +789,19 @@ function addKnockout(stack, data, images) {
 }
 
 // Ergebnisse-Ansicht: Heim oben, Gast unten; Bayern hervorgehoben, laufende Spiele mit Minute
+// Mittleres Ergebnis-Widget: etwas kleinere Zeilen, damit alles samt Kopfzeile passt
+let COMPACT = false;
+
 function addResultLine(stack, team, game, images) {
     let row = stack.addStack();
     row.centerAlignContent();
-    addLogo(row, images, team.logo, 14);
+    addLogo(row, images, team.logo, COMPACT ? 13 : 14);
     row.addSpacer(4);
     let mine = team.id === TEAM_ID;
     let loser = game.state === "post" && !team.winner && (game.home.winner || game.away.winner);
-    addLabel(row, team.abbr, team.winner || mine ? Font.boldSystemFont(12) : Font.mediumSystemFont(12), mine ? ACCENT : WHITE, loser ? 0.55 : 1);
+    addLabel(row, team.abbr, team.winner || mine ? Font.boldSystemFont(COMPACT ? 11 : 12) : Font.mediumSystemFont(COMPACT ? 11 : 12), mine ? ACCENT : WHITE, loser ? 0.55 : 1);
     row.addSpacer();
-    addLabel(row, team.score, team.winner ? Font.boldMonospacedSystemFont(12) : Font.mediumMonospacedSystemFont(12), WHITE, loser ? 0.55 : 1);
+    addLabel(row, team.score, team.winner ? Font.boldMonospacedSystemFont(COMPACT ? 11 : 12) : Font.mediumMonospacedSystemFont(COMPACT ? 11 : 12), WHITE, loser ? 0.55 : 1);
 }
 
 function addResult(stack, game, images) {
@@ -807,7 +828,7 @@ function buildResults(widget, data, columns, perColumn, images) {
     let info = [data.label, data.stale ? "offline" : ""].filter(Boolean).join(" · ");
     addLabel(header, info, Font.semiboldSystemFont(11), WHITE, 0.6);
 
-    widget.addSpacer(8);
+    widget.addSpacer(COMPACT ? 5 : 8);
 
     let games = data.games.slice(0, columns * perColumn);
     let row = widget.addStack();
@@ -816,7 +837,7 @@ function buildResults(widget, data, columns, perColumn, images) {
         let col = row.addStack();
         col.layoutVertically();
         games.slice(c * perColumn, (c + 1) * perColumn).forEach((game, i) => {
-            if (i > 0) col.addSpacer(6);
+            if (i > 0) col.addSpacer(COMPACT ? 3 : 6);
             addResult(col, game, images);
         });
         col.addSpacer();
@@ -1014,13 +1035,14 @@ async function createWidget() {
     let large = config.widgetFamily === "large" || config.widgetFamily === "extraLarge";
     let columns = large ? 2 : 3;
     let perColumn = large ? 7 : 3;
+    COMPACT = !large;
 
     let data = await loadWithCache(columns * perColumn);
     let widget = new ListWidget();
     widget.url = VIEW === "ergebnisse" ? `https://www.espn.com/soccer/scoreboard/_/league/${LEAGUE.slug}` : LEAGUE.url;
     widget.refreshAfterDate = nextRefresh(data);
     background(widget);
-    widget.setPadding(VIEW === "ergebnisse" ? 18 : 12, 16, 4, 16);
+    widget.setPadding(VIEW === "ergebnisse" ? (COMPACT ? 12 : 16) : 12, 16, 4, 16);
 
     if (!data) {
         buildError(widget);

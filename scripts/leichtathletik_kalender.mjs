@@ -1,5 +1,5 @@
 // Wettkampfkalender: die nächsten großen Wettkämpfe aus dem öffentlichen World-Athletics-Kalender.
-// Läuft täglich im Leichtathletik-Workflow und schreibt data/leichtathletik_kalender.json.
+// Läuft täglich im Leichtathletik-Workflow und schreibt data/leichtathletik_kalender.json (je 10 Termine).
 //   Bahn (Track and Field): weltweit Diamond League und höher (OW, DF, GW),
 //                           in Deutschland ab Kategorie B (OW, DF, GW, GL, A, B)
 //   Straße (Road Running):  weltweit ab Kategorie A (OW, DF, GW, GL, A)
@@ -9,7 +9,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 
 const CALENDAR = "https://worldathletics.org/competition/calendar-results";
 const OUTPUT = "data/leichtathletik_kalender.json";
-const COUNT = 5;
+const COUNT = 10; // mittleres Widget zeigt 5, großes 10
 const DAYS_AHEAD = 365;
 const GERMANY = "regionType=country&regionId=13188422";
 
