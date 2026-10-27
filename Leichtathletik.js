@@ -5,8 +5,8 @@
 //
 // Region: weltweit (Standard) oder nur deutsche Athleten – im Loader per
 // Function("REGION", code)("deutschland") oder als Widget-Parameter "deutschland".
-// Ansicht "rekorde": Rekorde und Bestleistungen der letzten Tage (Weltrekord, Deutscher Rekord,
-// Jahresbestleistungen …) – im Loader per Function("ANSICHT", code)("rekorde") oder Parameter "rekorde".
+// Ansicht "rekorde": die jüngsten Rekorde (WR, ER, DR) und neuen Einträge in den ewigen Top 10 von Welt,
+// Europa und Deutschland – im Loader per Function("ANSICHT", code)("rekorde") oder Parameter "rekorde".
 // Ansicht "kalender": die nächsten großen Wettkämpfe, Bahn und Straße nebeneinander (mittleres Widget).
 
 const params = String(args.widgetParameter || "").trim().toLowerCase().split(/\s+/);
@@ -178,61 +178,71 @@ function addSection(stack, title, list, count, compact) {
     });
 }
 
-// Auszeichnungen: Kürzel und Farbe
+// Auszeichnungen: Rekorde und Plätze in den ewigen Top 10
 const BADGES = {
     WR: { text: "WR", color: new Color("#FFD66B"), dark: true },
+    ER: { text: "ER", color: new Color("#2F6FEA") },
     DR: { text: "DR", color: new Color("#E0303A") },
-    AT: { text: "ewig", color: new Color("#8E6CEF") },
-    DA: { text: "DE ewig", color: new Color("#B4475A") },
-    WL: { text: "WL", color: new Color("#2F8FEA") },
-    DL: { text: "DL", color: new Color("#2DB37A") },
-    DT: { text: "DE Top 3", color: new Color("#5F7D8C") },
+    WT: { text: "Welt", color: new Color("#8E6CEF") },
+    ET: { text: "EU", color: new Color("#3F7FB8") },
+    DT: { text: "DE", color: new Color("#B4475A") },
 };
 
-function addBadge(stack, type) {
+function addBadge(stack, type, rank) {
     let badge = BADGES[type] || { text: type, color: new Color("#5F7D8C") };
     let pill = stack.addStack();
     pill.backgroundColor = badge.color;
     pill.cornerRadius = 4;
     pill.setPadding(1, 4, 1, 4);
-    addLabel(pill, badge.text, Font.boldSystemFont(9), badge.dark ? new Color("#3A2A00") : WHITE);
+    let text = rank > 1 ? `${badge.text} ${rank}` : badge.text;
+    addLabel(pill, text, Font.boldSystemFont(9), badge.dark ? new Color("#3A2A00") : WHITE);
 }
 
-// Zwei Zeilen: Auszeichnung, Name, Leistung – darunter Bedeutung, Disziplin, Ort, Datum
+// "25 OCT 2026" → "25.10.26"
+function fullDate(date) {
+    let m = /(\d{4})/.exec(date || "");
+    return m ? `${shortDate(date)}${m[1].slice(2)}` : shortDate(date);
+}
+
+// Zwei Zeilen: Auszeichnung(en), Name, Leistung – darunter Disziplin, Ort, Datum
 function addHighlight(stack, item, compact) {
     let top = stack.addStack();
     top.centerAlignContent();
-    addBadge(top, item.type);
+    let records = item.records && item.records.length ? item.records : [item.type];
+    records.forEach((type, i) => {
+        if (i > 0) top.addSpacer(3);
+        addBadge(top, type, item.rank);
+    });
     top.addSpacer(5);
     let f = flag(item.nat);
-    addLabel(top, `${f ? f + " " : ""}${shortName(item.name)}`, Font.semiboldSystemFont(compact ? 12 : 13), WHITE);
+    addLabel(top, `${f ? f + " " : ""}${shortName(item.name)}`, Font.semiboldSystemFont(12), WHITE);
     top.addSpacer(4);
     top.addSpacer();
-    addLabel(top, item.mark, Font.boldRoundedSystemFont(compact ? 12 : 13), GOLD);
+    addLabel(top, item.mark, Font.boldRoundedSystemFont(12), GOLD);
 
     let gender = item.gender === "women" ? "Frauen" : "Männer";
     let details = compact
-        ? `${item.label} · ${item.event} ${gender}`
-        : `${item.label} · ${item.event} ${gender} · ${city(item.venue)} · ${shortDate(item.date)}`;
-    addLabel(stack, details, Font.mediumSystemFont(compact ? 9 : 10), WHITE, 0.65);
+        ? `${item.event} ${gender} · ${fullDate(item.date)}`
+        : `${item.event} ${gender} · ${city(item.venue)} · ${fullDate(item.date)}`;
+    addLabel(stack, details, Font.mediumSystemFont(9), WHITE, 0.65);
 }
 
 function buildRecords(widget, data, count, compact) {
     let header = widget.addStack();
     header.centerAlignContent();
-    addSymbol(header, "trophy.fill", 14, GOLD);
+    addSymbol(header, "trophy.fill", 13, GOLD);
     header.addSpacer(5);
-    addLabel(header, "Rekorde & Bestleistungen", Font.semiboldSystemFont(compact ? 14 : 15), WHITE);
+    addLabel(header, "Rekorde & ewige Top 10", Font.semiboldSystemFont(14), WHITE);
     header.addSpacer();
-    addLabel(header, `${data.days} Tage${data.stale ? " · offline" : ""}`, Font.semiboldSystemFont(11), WHITE, 0.6);
-    widget.addSpacer(compact ? 5 : 8);
+    addLabel(header, `Welt · Europa · DE${data.stale ? " · offline" : ""}`, Font.semiboldSystemFont(10), WHITE, 0.6);
+    widget.addSpacer(compact ? 5 : 6);
 
     let items = data.items || [];
     if (!items.length) {
-        addLabel(widget, "Keine Rekorde oder Bestleistungen im Zeitraum", Font.mediumSystemFont(12), WHITE, 0.7);
+        addLabel(widget, "Noch keine Einträge", Font.mediumSystemFont(12), WHITE, 0.7);
     }
     items.slice(0, count).forEach((item, i) => {
-        if (i > 0) widget.addSpacer(compact ? 4 : 7);
+        if (i > 0) widget.addSpacer(compact ? 4 : 3);
         addHighlight(widget, item, compact);
     });
     widget.addSpacer();
@@ -369,7 +379,10 @@ async function createWidget() {
         let large = config.widgetFamily === "large" || config.widgetFamily === "extraLarge";
         widget.setPadding(12, 14, 4, 14);
         buildCalendar(widget, data, large ? 10 : 5);
-    } else if (RECORDS) buildRecords(widget, data, config.widgetFamily === "medium" ? 3 : 7, config.widgetFamily === "medium");
+    } else if (RECORDS) {
+        widget.setPadding(12, 14, 4, 14);
+        buildRecords(widget, data, config.widgetFamily === "medium" ? 3 : 10, config.widgetFamily === "medium");
+    }
     else if (config.widgetFamily === "medium") buildMedium(widget, data);
     else buildLarge(widget, data);
     addUpdated(widget);
