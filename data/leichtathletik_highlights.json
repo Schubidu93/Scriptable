@@ -1,55 +1,15 @@
 {
-  "generated": "2026-10-27T13:35:29.668Z",
-  "days": 7,
-  "from": "2026-10-20",
-  "to": "2026-10-27",
+  "generated": "2026-10-27T13:49:47.103Z",
   "items": [
     {
-      "type": "WR",
-      "label": "Weltrekord",
-      "priority": 100,
-      "gender": "women",
-      "event": "Marathon Gehen",
-      "name": "Rebecca HENDERSON",
-      "nat": "AUS",
-      "mark": "3:14:52",
-      "wind": "",
-      "venue": "Takahata Race Walk Course, Takahata (JPN)",
-      "date": "25 OCT 2026",
-      "score": 1265
-    },
-    {
-      "type": "WR",
-      "label": "Weltrekord",
-      "priority": 100,
-      "gender": "men",
-      "event": "Marathon Gehen",
-      "name": "Masatora KAWANO",
-      "nat": "JPN",
-      "mark": "2:55:14",
-      "wind": "",
-      "venue": "Takahata Race Walk Course, Takahata (JPN)",
-      "date": "25 OCT 2026",
-      "score": 1262
-    },
-    {
-      "type": "AT",
-      "label": "Platz 3 aller Zeiten",
-      "priority": 77,
-      "gender": "men",
-      "event": "Marathon Gehen",
-      "name": "Kazuya IWAI",
-      "nat": "JPN",
-      "mark": "2:55:55",
-      "wind": "",
-      "venue": "Takahata Race Walk Course, Takahata (JPN)",
-      "date": "25 OCT 2026",
-      "score": 1257
-    },
-    {
-      "type": "AT",
-      "label": "Platz 5 aller Zeiten",
-      "priority": 75,
+      "type": "WT",
+      "label": "Platz 5 ewig Welt",
+      "priority": 65,
+      "rank": 5,
+      "records": [],
+      "lists": [
+        "world"
+      ],
       "gender": "women",
       "event": "Halbmarathon",
       "name": "Sheila CHEPKIRUI",
@@ -61,23 +21,72 @@
       "score": 1260
     },
     {
-      "type": "AT",
-      "label": "Platz 5 aller Zeiten",
-      "priority": 75,
+      "type": "WT",
+      "label": "Platz 7 ewig Welt",
+      "priority": 63,
+      "rank": 7,
+      "records": [],
+      "lists": [
+        "world"
+      ],
       "gender": "women",
-      "event": "Halbmarathon Gehen",
-      "name": "Elizabeth MCMILLEN",
-      "nat": "AUS",
-      "mark": "1:31:31",
+      "event": "Halbmarathon",
+      "name": "Diana WANZA",
+      "nat": "KEN",
+      "mark": "1:03:52",
       "wind": "",
-      "venue": "Takahata Race Walk Course, Takahata (JPN)",
+      "venue": "Valencia (ESP)",
       "date": "25 OCT 2026",
-      "score": 1206
+      "score": 1259
     },
     {
-      "type": "DA",
-      "label": "Platz 2 der ewigen dt. Bestenliste",
-      "priority": 58,
+      "type": "WT",
+      "label": "Platz 8 ewig Welt",
+      "priority": 62,
+      "rank": 8,
+      "records": [],
+      "lists": [
+        "world"
+      ],
+      "gender": "men",
+      "event": "Halbmarathon",
+      "name": "Rodrigue KWIZERA",
+      "nat": "BDI",
+      "mark": "58:03",
+      "wind": "",
+      "venue": "Valencia (ESP)",
+      "date": "25 OCT 2026",
+      "score": 1266
+    },
+    {
+      "type": "ET",
+      "label": "Platz 2 ewig Europa",
+      "priority": 48,
+      "rank": 2,
+      "records": [],
+      "lists": [
+        "europe"
+      ],
+      "gender": "men",
+      "event": "Halbmarathon",
+      "name": "Thierry NDIKUMWENAYO",
+      "nat": "ESP",
+      "mark": "58:09",
+      "wind": "",
+      "venue": "Valencia (ESP)",
+      "date": "25 OCT 2026",
+      "score": 1262
+    },
+    {
+      "type": "ET",
+      "label": "Platz 8 ewig Europa",
+      "priority": 42,
+      "rank": 8,
+      "records": [],
+      "lists": [
+        "europe",
+        "germany"
+      ],
       "gender": "women",
       "event": "Marathon",
       "name": "Blanka DÖRFEL",
@@ -89,32 +98,701 @@
       "score": 1205
     },
     {
-      "type": "DA",
-      "label": "Platz 3 der ewigen dt. Bestenliste",
-      "priority": 57,
+      "type": "WT",
+      "label": "Platz 4 ewig Welt",
+      "priority": 66,
+      "rank": 4,
+      "records": [],
+      "lists": [
+        "world"
+      ],
       "gender": "women",
-      "event": "Marathon Gehen",
-      "name": "Julia SCHMIDT",
-      "nat": "GER",
-      "mark": "4:04:01",
+      "event": "Marathon",
+      "name": "Hawi FEYSA",
+      "nat": "ETH",
+      "mark": "2:13:33",
       "wind": "",
-      "venue": "Weinauparkstadion, Zittau (GER)",
-      "date": "24 OCT 2026",
-      "score": 923
+      "venue": "Chicago, IL (USA)",
+      "date": "11 OCT 2026",
+      "score": 1276
     },
     {
-      "type": "DA",
-      "label": "Platz 5 der ewigen dt. Bestenliste",
-      "priority": 55,
-      "gender": "women",
-      "event": "Halbmarathon Gehen",
-      "name": "Nika Helene ILLING",
-      "nat": "GER",
-      "mark": "1:46:50",
+      "type": "WT",
+      "label": "Platz 5 ewig Welt",
+      "priority": 65,
+      "rank": 5,
+      "records": [],
+      "lists": [
+        "world"
+      ],
+      "gender": "men",
+      "event": "Marathon",
+      "name": "Amos KIPRUTO",
+      "nat": "KEN",
+      "mark": "2:01:09",
       "wind": "",
-      "venue": "Weinauparkstadion, Zittau (GER)",
-      "date": "24 OCT 2026",
-      "score": 960
+      "venue": "Chicago, IL (USA)",
+      "date": "11 OCT 2026",
+      "score": 1296
+    },
+    {
+      "type": "ET",
+      "label": "Platz 6 ewig Europa",
+      "priority": 44,
+      "rank": 6,
+      "records": [],
+      "lists": [
+        "europe"
+      ],
+      "gender": "women",
+      "event": "400 m",
+      "name": "Henriette JÆGER",
+      "nat": "NOR",
+      "mark": "48.78",
+      "wind": "",
+      "venue": "StoneX Stadium, Hendon, London (GBR)",
+      "date": "18 SEP 2026",
+      "score": 1255
+    },
+    {
+      "type": "DR",
+      "label": "Deutscher Rekord",
+      "priority": 80,
+      "rank": 1,
+      "records": [
+        "DR"
+      ],
+      "lists": [
+        "germany",
+        "world",
+        "europe"
+      ],
+      "gender": "men",
+      "event": "400 m Hürden",
+      "name": "Emil AGYEKUM",
+      "nat": "GER",
+      "mark": "47.10",
+      "wind": "",
+      "venue": "Nemzeti Atlétikai Központ, Budapest (HUN)",
+      "date": "13 SEP 2026",
+      "score": 1279
+    },
+    {
+      "type": "WT",
+      "label": "Platz 3 ewig Welt",
+      "priority": 67,
+      "rank": 3,
+      "records": [],
+      "lists": [
+        "world"
+      ],
+      "gender": "women",
+      "event": "200 m",
+      "name": "Melissa JEFFERSON-WOODEN",
+      "nat": "USA",
+      "mark": "21.47",
+      "wind": "-0.6",
+      "venue": "Nemzeti Atlétikai Központ, Budapest (HUN)",
+      "date": "13 SEP 2026",
+      "score": 1297
     }
-  ]
+  ],
+  "scopes": {
+    "world": [
+      {
+        "type": "WT",
+        "label": "Platz 5 ewig Welt",
+        "priority": 65,
+        "rank": 5,
+        "records": [],
+        "lists": [
+          "world"
+        ],
+        "gender": "women",
+        "event": "Halbmarathon",
+        "name": "Sheila CHEPKIRUI",
+        "nat": "KEN",
+        "mark": "1:03:51",
+        "wind": "",
+        "venue": "Valencia (ESP)",
+        "date": "25 OCT 2026",
+        "score": 1260
+      },
+      {
+        "type": "WT",
+        "label": "Platz 7 ewig Welt",
+        "priority": 63,
+        "rank": 7,
+        "records": [],
+        "lists": [
+          "world"
+        ],
+        "gender": "women",
+        "event": "Halbmarathon",
+        "name": "Diana WANZA",
+        "nat": "KEN",
+        "mark": "1:03:52",
+        "wind": "",
+        "venue": "Valencia (ESP)",
+        "date": "25 OCT 2026",
+        "score": 1259
+      },
+      {
+        "type": "WT",
+        "label": "Platz 8 ewig Welt",
+        "priority": 62,
+        "rank": 8,
+        "records": [],
+        "lists": [
+          "world"
+        ],
+        "gender": "men",
+        "event": "Halbmarathon",
+        "name": "Rodrigue KWIZERA",
+        "nat": "BDI",
+        "mark": "58:03",
+        "wind": "",
+        "venue": "Valencia (ESP)",
+        "date": "25 OCT 2026",
+        "score": 1266
+      },
+      {
+        "type": "WT",
+        "label": "Platz 4 ewig Welt",
+        "priority": 66,
+        "rank": 4,
+        "records": [],
+        "lists": [
+          "world"
+        ],
+        "gender": "women",
+        "event": "Marathon",
+        "name": "Hawi FEYSA",
+        "nat": "ETH",
+        "mark": "2:13:33",
+        "wind": "",
+        "venue": "Chicago, IL (USA)",
+        "date": "11 OCT 2026",
+        "score": 1276
+      },
+      {
+        "type": "WT",
+        "label": "Platz 5 ewig Welt",
+        "priority": 65,
+        "rank": 5,
+        "records": [],
+        "lists": [
+          "world"
+        ],
+        "gender": "men",
+        "event": "Marathon",
+        "name": "Amos KIPRUTO",
+        "nat": "KEN",
+        "mark": "2:01:09",
+        "wind": "",
+        "venue": "Chicago, IL (USA)",
+        "date": "11 OCT 2026",
+        "score": 1296
+      },
+      {
+        "type": "WT",
+        "label": "Platz 8 ewig Welt",
+        "priority": 62,
+        "rank": 8,
+        "records": [],
+        "lists": [
+          "world"
+        ],
+        "gender": "women",
+        "event": "Marathon",
+        "name": "Sharon LOKEDI",
+        "nat": "KEN",
+        "mark": "2:14:07",
+        "wind": "",
+        "venue": "Chicago, IL (USA)",
+        "date": "11 OCT 2026",
+        "score": 1270
+      },
+      {
+        "type": "ER",
+        "label": "Europarekord",
+        "priority": 90,
+        "rank": 1,
+        "records": [
+          "ER"
+        ],
+        "lists": [
+          "europe",
+          "world"
+        ],
+        "gender": "men",
+        "event": "Halbmarathon",
+        "name": "Andreas ALMGREN",
+        "nat": "SWE",
+        "mark": "58:06",
+        "wind": "",
+        "venue": "København (DEN)",
+        "date": "20 SEP 2026",
+        "score": 1264
+      },
+      {
+        "type": "DR",
+        "label": "Deutscher Rekord",
+        "priority": 80,
+        "rank": 1,
+        "records": [
+          "DR"
+        ],
+        "lists": [
+          "germany",
+          "world",
+          "europe"
+        ],
+        "gender": "men",
+        "event": "400 m Hürden",
+        "name": "Emil AGYEKUM",
+        "nat": "GER",
+        "mark": "47.10",
+        "wind": "",
+        "venue": "Nemzeti Atlétikai Központ, Budapest (HUN)",
+        "date": "13 SEP 2026",
+        "score": 1279
+      },
+      {
+        "type": "WT",
+        "label": "Platz 3 ewig Welt",
+        "priority": 67,
+        "rank": 3,
+        "records": [],
+        "lists": [
+          "world"
+        ],
+        "gender": "women",
+        "event": "200 m",
+        "name": "Melissa JEFFERSON-WOODEN",
+        "nat": "USA",
+        "mark": "21.47",
+        "wind": "-0.6",
+        "venue": "Nemzeti Atlétikai Központ, Budapest (HUN)",
+        "date": "13 SEP 2026",
+        "score": 1297
+      },
+      {
+        "type": "WT",
+        "label": "Platz 7 ewig Welt",
+        "priority": 63,
+        "rank": 7,
+        "records": [],
+        "lists": [
+          "world"
+        ],
+        "gender": "men",
+        "event": "200 m",
+        "name": "Kenneth BEDNAREK",
+        "nat": "USA",
+        "mark": "19.52",
+        "wind": "-0.1",
+        "venue": "Nemzeti Atlétikai Központ, Budapest (HUN)",
+        "date": "13 SEP 2026",
+        "score": 1297
+      }
+    ],
+    "europe": [
+      {
+        "type": "ET",
+        "label": "Platz 2 ewig Europa",
+        "priority": 48,
+        "rank": 2,
+        "records": [],
+        "lists": [
+          "europe"
+        ],
+        "gender": "men",
+        "event": "Halbmarathon",
+        "name": "Thierry NDIKUMWENAYO",
+        "nat": "ESP",
+        "mark": "58:09",
+        "wind": "",
+        "venue": "Valencia (ESP)",
+        "date": "25 OCT 2026",
+        "score": 1262
+      },
+      {
+        "type": "ET",
+        "label": "Platz 6 ewig Europa",
+        "priority": 44,
+        "rank": 6,
+        "records": [],
+        "lists": [
+          "europe"
+        ],
+        "gender": "men",
+        "event": "Halbmarathon",
+        "name": "Emmanuel ROUDOLFF LEVISSE",
+        "nat": "FRA",
+        "mark": "59:23",
+        "wind": "",
+        "venue": "Valencia (ESP)",
+        "date": "25 OCT 2026",
+        "score": 1211
+      },
+      {
+        "type": "ET",
+        "label": "Platz 8 ewig Europa",
+        "priority": 42,
+        "rank": 8,
+        "records": [],
+        "lists": [
+          "europe",
+          "germany"
+        ],
+        "gender": "women",
+        "event": "Marathon",
+        "name": "Blanka DÖRFEL",
+        "nat": "GER",
+        "mark": "2:20:46",
+        "wind": "",
+        "venue": "Frankfurt (GER)",
+        "date": "25 OCT 2026",
+        "score": 1205
+      },
+      {
+        "type": "ET",
+        "label": "Platz 6 ewig Europa",
+        "priority": 44,
+        "rank": 6,
+        "records": [],
+        "lists": [
+          "europe"
+        ],
+        "gender": "women",
+        "event": "400 m",
+        "name": "Henriette JÆGER",
+        "nat": "NOR",
+        "mark": "48.78",
+        "wind": "",
+        "venue": "StoneX Stadium, Hendon, London (GBR)",
+        "date": "18 SEP 2026",
+        "score": 1255
+      },
+      {
+        "type": "DR",
+        "label": "Deutscher Rekord",
+        "priority": 80,
+        "rank": 1,
+        "records": [
+          "DR"
+        ],
+        "lists": [
+          "germany",
+          "world",
+          "europe"
+        ],
+        "gender": "men",
+        "event": "400 m Hürden",
+        "name": "Emil AGYEKUM",
+        "nat": "GER",
+        "mark": "47.10",
+        "wind": "",
+        "venue": "Nemzeti Atlétikai Központ, Budapest (HUN)",
+        "date": "13 SEP 2026",
+        "score": 1279
+      },
+      {
+        "type": "ET",
+        "label": "Platz 6 ewig Europa",
+        "priority": 44,
+        "rank": 6,
+        "records": [],
+        "lists": [
+          "europe"
+        ],
+        "gender": "women",
+        "event": "1500 m",
+        "name": "Klaudia KAZIMIERSKA",
+        "nat": "POL",
+        "mark": "3:54.05",
+        "wind": "",
+        "venue": "Boudewijnstadion, Bruxelles (BEL)",
+        "date": "05 SEP 2026",
+        "score": 1254
+      },
+      {
+        "type": "WT",
+        "label": "Platz 2 ewig Welt",
+        "priority": 68,
+        "rank": 2,
+        "records": [],
+        "lists": [
+          "world",
+          "europe"
+        ],
+        "gender": "men",
+        "event": "Stabhochsprung",
+        "name": "Emmanouil KARALIS",
+        "nat": "GRE",
+        "mark": "6.20",
+        "wind": "",
+        "venue": "Letzigrund, Zürich (SUI)",
+        "date": "27 AUG 2026",
+        "score": 1322
+      },
+      {
+        "type": "WT",
+        "label": "Platz 3 ewig Welt",
+        "priority": 67,
+        "rank": 3,
+        "records": [],
+        "lists": [
+          "world",
+          "europe"
+        ],
+        "gender": "women",
+        "event": "800 m",
+        "name": "Audrey WERRO",
+        "nat": "SUI",
+        "mark": "1:53.70",
+        "wind": "",
+        "venue": "Letzigrund, Zürich (SUI)",
+        "date": "27 AUG 2026",
+        "score": 1278
+      },
+      {
+        "type": "WT",
+        "label": "Platz 9 ewig Welt",
+        "priority": 61,
+        "rank": 9,
+        "records": [],
+        "lists": [
+          "world",
+          "europe"
+        ],
+        "gender": "women",
+        "event": "800 m",
+        "name": "Femke BROEDERS-BOL",
+        "nat": "NED",
+        "mark": "1:54.71",
+        "wind": "",
+        "venue": "Letzigrund, Zürich (SUI)",
+        "date": "27 AUG 2026",
+        "score": 1259
+      },
+      {
+        "type": "ET",
+        "label": "Platz 9 ewig Europa",
+        "priority": 41,
+        "rank": 9,
+        "records": [],
+        "lists": [
+          "europe"
+        ],
+        "gender": "men",
+        "event": "400 m Hürden",
+        "name": "Matic Ian GUČEK",
+        "nat": "SLO",
+        "mark": "47.80",
+        "wind": "",
+        "venue": "Letzigrund, Zürich (SUI)",
+        "date": "27 AUG 2026",
+        "score": 1242
+      }
+    ],
+    "germany": [
+      {
+        "type": "ET",
+        "label": "Platz 8 ewig Europa",
+        "priority": 42,
+        "rank": 8,
+        "records": [],
+        "lists": [
+          "europe",
+          "germany"
+        ],
+        "gender": "women",
+        "event": "Marathon",
+        "name": "Blanka DÖRFEL",
+        "nat": "GER",
+        "mark": "2:20:46",
+        "wind": "",
+        "venue": "Frankfurt (GER)",
+        "date": "25 OCT 2026",
+        "score": 1205
+      },
+      {
+        "type": "DT",
+        "label": "Platz 3 ewig DE",
+        "priority": 27,
+        "rank": 3,
+        "records": [],
+        "lists": [
+          "germany"
+        ],
+        "gender": "women",
+        "event": "Halbmarathon",
+        "name": "Esther PFEIFFER",
+        "nat": "GER",
+        "mark": "1:07:24",
+        "wind": "",
+        "venue": "Köln (GER)",
+        "date": "04 OCT 2026",
+        "score": 1184
+      },
+      {
+        "type": "DR",
+        "label": "Deutscher Rekord",
+        "priority": 80,
+        "rank": 1,
+        "records": [
+          "DR"
+        ],
+        "lists": [
+          "germany",
+          "world",
+          "europe"
+        ],
+        "gender": "men",
+        "event": "400 m Hürden",
+        "name": "Emil AGYEKUM",
+        "nat": "GER",
+        "mark": "47.10",
+        "wind": "",
+        "venue": "Nemzeti Atlétikai Központ, Budapest (HUN)",
+        "date": "13 SEP 2026",
+        "score": 1279
+      },
+      {
+        "type": "DT",
+        "label": "Platz 3 ewig DE",
+        "priority": 27,
+        "rank": 3,
+        "records": [],
+        "lists": [
+          "germany"
+        ],
+        "gender": "women",
+        "event": "3000 m Hindernis",
+        "name": "Olivia GÜRTH",
+        "nat": "GER",
+        "mark": "9:15.07",
+        "wind": "",
+        "venue": "Letzigrund, Zürich (SUI)",
+        "date": "27 AUG 2026",
+        "score": 1206
+      },
+      {
+        "type": "DT",
+        "label": "Platz 2 ewig DE",
+        "priority": 28,
+        "rank": 2,
+        "records": [],
+        "lists": [
+          "germany"
+        ],
+        "gender": "men",
+        "event": "200 m",
+        "name": "Owen ANSAH",
+        "nat": "GER",
+        "mark": "20.04",
+        "wind": "+0.5",
+        "venue": "Alexander Stadium, Birmingham (GBR)",
+        "date": "13 AUG 2026",
+        "score": 1214
+      },
+      {
+        "type": "DT",
+        "label": "Platz 8 ewig DE",
+        "priority": 22,
+        "rank": 8,
+        "records": [],
+        "lists": [
+          "germany"
+        ],
+        "gender": "women",
+        "event": "Dreisprung",
+        "name": "Kira WITTMANN",
+        "nat": "GER",
+        "mark": "14.26",
+        "wind": "+0.9",
+        "venue": "Alexander Stadium, Birmingham (GBR)",
+        "date": "10 AUG 2026",
+        "score": 1144
+      },
+      {
+        "type": "DT",
+        "label": "Platz 5 ewig DE",
+        "priority": 25,
+        "rank": 5,
+        "records": [],
+        "lists": [
+          "germany"
+        ],
+        "gender": "men",
+        "event": "400 m",
+        "name": "Jean Paul BREDAU",
+        "nat": "GER",
+        "mark": "44.72",
+        "wind": "",
+        "venue": "Lohrheidestadion, Wattenscheid, Bochum (GER)",
+        "date": "26 JUL 2026",
+        "score": 1199
+      },
+      {
+        "type": "DT",
+        "label": "Platz 10 ewig DE",
+        "priority": 20,
+        "rank": 10,
+        "records": [],
+        "lists": [
+          "germany"
+        ],
+        "gender": "women",
+        "event": "Speerwurf",
+        "name": "Julia ULBRICHT",
+        "nat": "GER",
+        "mark": "61.58",
+        "wind": "",
+        "venue": "Lohrheidestadion, Wattenscheid, Bochum (GER)",
+        "date": "26 JUL 2026",
+        "score": 1107
+      },
+      {
+        "type": "DT",
+        "label": "Platz 5 ewig DE",
+        "priority": 25,
+        "rank": 5,
+        "records": [],
+        "lists": [
+          "germany"
+        ],
+        "gender": "men",
+        "event": "100 m",
+        "name": "Heiko GUSSMANN",
+        "nat": "GER",
+        "mark": "10.06",
+        "wind": "+0.7",
+        "venue": "Lohrheidestadion, Wattenscheid, Bochum (GER)",
+        "date": "25 JUL 2026",
+        "score": 1186
+      },
+      {
+        "type": "DT",
+        "label": "Platz 7 ewig DE",
+        "priority": 23,
+        "rank": 7,
+        "records": [],
+        "lists": [
+          "germany"
+        ],
+        "gender": "men",
+        "event": "Weitsprung",
+        "name": "Simon BATZ",
+        "nat": "GER",
+        "mark": "8.29",
+        "wind": "+1.3",
+        "venue": "Lohrheidestadion, Wattenscheid, Bochum (GER)",
+        "date": "25 JUL 2026",
+        "score": 1201
+      }
+    ]
+  }
 }
