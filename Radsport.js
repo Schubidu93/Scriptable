@@ -1,5 +1,5 @@
 // Radsport – die letzten 3 WorldTour-Ergebnisse mit Top 3 und die nächsten 3 Rennen.
-// Rundfahrten erscheinen als einzelne Etappen plus Gesamtwertung.
+// Rundfahrten erscheinen als zwei Einträge: letzte Etappe und – wenn beendet – Gesamtwertung.
 // Quelle: ProCyclingStats (procyclingstats.com). Großes Widget, im Stil der iOS-Widgets.
 // Ein Tipp auf ein Rennen öffnet dessen Ergebnisse bei ProCyclingStats.
 //
@@ -203,6 +203,33 @@ function parsePodium(html) {
     return empty;
 }
 
+// Tabelle eines bestimmten Reiters (z. B. "STAGE" oder "GC") lesen.
+// PCS: <ul class="tabs … resultTabs"><li><a data-id="123">GC</a></li> … <div class="resTab" data-id="123">
+function parseTab(html, tabName) {
+    for (let m of html.matchAll(/<a[^>]*data-id=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+        if (cleanText(m[2]).toUpperCase() !== tabName) continue;
+        let id = m[1];
+        let idAttr = new RegExp(`data-id=["']${id.replace(/[^\w-]/g, "")}["']`);
+        let divs = [...html.matchAll(/<div[^>]*>/gi)].filter(d => /resTab/.test(d[0]) && idAttr.test(d[0]));
+        for (let d of divs) {
+            let table = /<table[^>]*>[\s\S]*?<\/table>/i.exec(html.slice(d.index));
+            let rows = table ? parseRankedRows(table[0]) : [];
+            if (rows.length) return rows;
+        }
+    }
+    return null; // Reiter nicht gefunden
+}
+
+// Etappennummer aus Titel oder Überschrift: "… Stage 21 results" / "Prologue"
+function parseStageNumber(html) {
+    let title = (/<title[^>]*>([\s\S]*?)<\/title>/i.exec(html) || ["", ""])[1];
+    let text = title + " " + cleanText((/<h1[\s\S]*?<\/h1>/i.exec(html) || [""])[0])
+        + " " + cleanText((/<h2[\s\S]*?<\/h2>/i.exec(html) || [""])[0]);
+    if (/prolog/i.test(text)) return 0;
+    let m = /Stage\s+(\d+)/i.exec(text);
+    return m ? Number(m[1]) : null;
+}
+
 // "Date: 26 July 2026" auf Ergebnisseiten
 function parseDate(html) {
     let months = ["january", "february", "march", "april", "may", "june", "july",
@@ -276,57 +303,36 @@ async function loadData() {
     };
 }
 
-// Rundfahrt in Einträge aufteilen:
-//   beendet: Gesamtwertung, letzte Etappe, vorletzte Etappe …
-//   läuft:   letzte gefahrene Etappe, aktuelle Gesamtwertung, Etappe davor …
+// Rundfahrt in zwei Einträge aufteilen: letzte Etappe und – wenn beendet – Gesamtwertung.
+// Die verlinkte Seite enthält beide als Reiter "STAGE" und "GC".
 async function loadStageEntries(race, today, need) {
-    let gcPath = resultPath(race);
-    let gcHtml = await load(gcPath);
-    let gcPodium = parsePodium(gcHtml);
+    let path = resultPath(race);
+    let html = await load(path);
     let isRunning = !race.finished;
 
-    // Etappen-Links: "race/tour-de-france-2026-stage-12" oder "race/tour-de-france/2026/stage-12"
-    let base = race.path.replace(/[-\/](gc|result)$/, "");
-    let stages = {};
-    // (stehen als Links oder als Optionen der Etappen-Auswahl in der Seite)
-    for (let m of gcHtml.matchAll(/(?:href|value)=["'][^"']*?\b(race\/[^"'?#]*?[-\/](?:stage-(\d+)|prologue))["']/gi)) {
-        if (m[1].startsWith(base)) stages[m[2] ? Number(m[2]) : 0] = m[1];
-    }
-    let numbers = Object.keys(stages).map(Number).sort((a, b) => b - a);
-    if (isRunning) {
-        let estimate = Math.floor((today - race.start) / 86400000) + 1;
-        numbers = numbers.filter(n => n <= estimate);
+    let stagePodium = parseTab(html, "STAGE");
+    let gcPodium = parseTab(html, "GC");
+    if (stagePodium === null && gcPodium === null) {
+        // Keine Reiter (z. B. alte Seitenstruktur): sichtbare Tabelle als Gesamtwertung
+        gcPodium = parsePodium(html);
     }
 
-    let gcEntry = gcPodium.length
-        ? { ...race, label: "Gesamt", date: race.end, path: gcPath, podium: gcPodium, running: isRunning, isGC: true }
-        : null;
+    let number = parseStageNumber(html);
+    let stageLabel = number === 0 ? "Prolog" : number ? `Etappe ${number}` : "Letzte Etappe";
+    let date = parseDate(html) || (isRunning ? today : race.end);
 
-    let stageEntries = [];
-    let attempts = 0;
-    for (let n of numbers) {
-        if (stageEntries.length >= need || attempts >= need + 3) break;
-        attempts++;
-        let html = await load(stages[n]);
-        let podium = parsePodium(html);
-        if (!podium.length) continue; // noch nicht gefahren (Ruhetag) oder keine Daten
-        let fallback = new Date(race.start.getTime() + Math.max(0, n - 1) * 86400000);
-        stageEntries.push({
-            ...race,
-            label: n === 0 ? "Prolog" : `Etappe ${n}`,
-            date: parseDate(html) || fallback,
-            path: stages[n],
-            podium,
-        });
+    let entries = [];
+    if (!isRunning && gcPodium && gcPodium.length) {
+        entries.push({ ...race, label: "Gesamtwertung", date: race.end, path, podium: gcPodium, isGC: true });
     }
-
-    let ordered = isRunning
-        ? stageEntries.slice(0, 1).concat(gcEntry ? [gcEntry] : [], stageEntries.slice(1))
-        : (gcEntry ? [gcEntry] : []).concat(stageEntries);
-    if (!ordered.length) {
-        ordered = [{ ...race, label: "", date: race.end, path: gcPath, podium: [], debug: gcPodium.debug }];
+    if (stagePodium && stagePodium.length) {
+        entries.push({ ...race, label: stageLabel, date, path, podium: stagePodium, running: isRunning });
     }
-    return ordered.slice(0, need);
+    if (!entries.length) {
+        let debug = (gcPodium && gcPodium.debug) || `${pageTitle(html)} · keine Etappen-/GC-Tabelle`;
+        entries.push({ ...race, label: "", date: race.end, path, podium: [], debug });
+    }
+    return entries.slice(0, need);
 }
 
 function serialize(data) {
@@ -433,7 +439,7 @@ function addPastRace(stack, race, podiumSize) {
     }
     title.addSpacer(6);
     title.addSpacer();
-    if (race.running && race.isGC) {
+    if (race.running) {
         addSymbol(title, "dot.radiowaves.left.and.right", 10, LIVE);
         title.addSpacer(3);
         addLabel(title, "läuft", Font.semiboldSystemFont(10), LIVE);
