@@ -1,17 +1,47 @@
-// Marathon – die 3 besten deutschen Ergebnisse der letzten 30 Tage (Frauen & Männer)
+// Straßenlauf – die 3 besten deutschen Ergebnisse der letzten 30 Tage (Frauen & Männer)
 // Quelle: World Athletics All-Time-Toplist. Mittleres Widget, im Stil der iOS-Widgets.
+//
+// Strecke wählen: "marathon" (Standard), "halbmarathon" oder "10km" –
+// entweder im Loader per Function("DISTANZ", code)("10km")
+// oder als Widget-Parameter (Widget bearbeiten → Parameter).
+
+const DISTANCES = {
+    marathon: {
+        title: "Marathon",
+        path: "marathon",
+        eventIds: { women: "10229534", men: "10229634" },
+        gradient: ["#F2994A", "#D9480F"],
+    },
+    halbmarathon: {
+        title: "Halbmarathon",
+        path: "half-marathon",
+        eventIds: { women: "10229541", men: "10229633" },
+        gradient: ["#B56CE0", "#6A3FB5"],
+    },
+    "10km": {
+        title: "10 km",
+        path: "10-kilometres",
+        eventIds: { women: "10229537", men: "10229507" },
+        gradient: ["#3CC48A", "#16855A"],
+    },
+};
+
+const distanceKey = String(
+    (typeof DISTANZ !== "undefined" && DISTANZ) || args.widgetParameter || "marathon"
+).trim().toLowerCase();
+const DISTANCE = DISTANCES[distanceKey] || DISTANCES.marathon;
 
 const CONFIG = {
     days: 30,
     count: 3,
     lists: [
-        { title: "Frauen", gender: "women", eventId: "10229534" },
-        { title: "Männer", gender: "men", eventId: "10229634" },
+        { title: "Frauen", gender: "women", eventId: DISTANCE.eventIds.women },
+        { title: "Männer", gender: "men", eventId: DISTANCE.eventIds.men },
     ],
 };
 
 const fm = FileManager.local();
-const cachePath = fm.joinPath(fm.cacheDirectory(), "marathon-ger.json");
+const cachePath = fm.joinPath(fm.cacheDirectory(), `strasse-ger-${DISTANCE.path}.json`);
 
 function isoDate(date) {
     let pad = n => String(n).padStart(2, "0");
@@ -21,7 +51,7 @@ function isoDate(date) {
 function listUrl(list) {
     let today = new Date();
     let from = new Date(today.getTime() - CONFIG.days * 24 * 60 * 60 * 1000);
-    return "https://worldathletics.org/records/all-time-toplists/road-running/marathon/all/"
+    return `https://worldathletics.org/records/all-time-toplists/road-running/${DISTANCE.path}/all/`
         + `${list.gender}/senior?regionType=countries&region=ger&page=1&bestResultsOnly=false`
         + `&firstDay=${isoDate(from)}&lastDay=${isoDate(today)}&maxResultsByCountry=all`
         + `&eventId=${list.eventId}&ageCategory=senior`;
@@ -125,7 +155,7 @@ function addLabel(stack, text, font, color, opacity = 1) {
 
 function background(widget) {
     let gradient = new LinearGradient();
-    gradient.colors = [new Color("#F2994A"), new Color("#D9480F")];
+    gradient.colors = DISTANCE.gradient.map(hex => new Color(hex));
     gradient.locations = [0, 1];
     widget.backgroundGradient = gradient;
 }
@@ -163,7 +193,7 @@ function buildMedium(widget, results) {
     header.centerAlignContent();
     addSymbol(header, "figure.run", 13, white);
     header.addSpacer(4);
-    addLabel(header, "Marathon 🇩🇪", Font.semiboldSystemFont(15), white);
+    addLabel(header, `${DISTANCE.title} 🇩🇪`, Font.semiboldSystemFont(15), white);
     header.addSpacer();
     let offline = results.some(r => r.stale) ? " · offline" : "";
     addLabel(header, `${CONFIG.days} Tage${offline}`, Font.semiboldSystemFont(11), white, 0.7);
