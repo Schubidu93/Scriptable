@@ -1,5 +1,5 @@
-// Radsport – die letzten 3 WorldTour-Rennen mit Top 3 und die nächsten 3 Rennen.
-// Läuft gerade eine Rundfahrt, zeigt es oben die letzte Etappe und die Gesamtwertung.
+// Radsport – die letzten 3 WorldTour-Ergebnisse mit Top 3 und die nächsten 3 Rennen.
+// Rundfahrten erscheinen als einzelne Etappen plus Gesamtwertung.
 // Quelle: ProCyclingStats (procyclingstats.com). Großes Widget, im Stil der iOS-Widgets.
 // Ein Tipp auf ein Rennen öffnet dessen Ergebnisse bei ProCyclingStats.
 //
@@ -117,7 +117,7 @@ function parseCalendar(html, year) {
         if (!dates.length) return null;
         let cls = (/\b([12]\.[A-Za-z0-9.]+)/.exec(cleanText(row)) || [])[1] || "";
         return {
-            name: cleanText(link[2]).replace(/\s*[-–]\s*(Men|Women|ME|WE)$|\s+(ME|WE)$/i, ""),
+            name: cleanText(link[2]).replace(/\s*[-–]\s*(Men|Women|ME|WE)$|\s+(ME|WE)$|\s+Women's World ?Tour$/i, ""),
             flag: flagEmoji(row.slice(0, link.index)),
             path: link[1].replace(/\/$/, ""),
             start: dates[0],
@@ -158,26 +158,59 @@ function shortRider(html) {
     return full;
 }
 
-// Top 3 aus der sichtbaren Ergebnistabelle (bei Rundfahrten die Gesamtwertung)
-function parsePodium(html) {
-    let tabs = html.match(/<div[^>]*class="[^"]*resTab[^"]*"[\s\S]*?<\/table>/gi) || [];
-    let visible = tabs.find(t => !/class="[^"]*resTab[^"]*\bhide\b/i.test(t.slice(0, 200)));
-    let table = visible || (html.match(/<table[^>]*class="[^"]*results[^"]*"[\s\S]*?<\/table>/i) || [])[0];
-    if (!table) return [];
-    let body = (table.match(/<tbody[\s\S]*?<\/tbody>/i) || [table])[0];
-    return (body.match(/<tr[\s\S]*?<\/tr>/gi) || [])
-        .map(row => {
-            let rider = /<a[^>]*href=["'][^"']*?\brider\/[^"']*["'][^>]*>([\s\S]*?)<\/a>/i.exec(row);
-            let team = /<a[^>]*href=["'][^"']*?\bteam\/[^"']*["'][^>]*>([\s\S]*?)<\/a>/i.exec(row);
-            if (!rider) return null;
+// Top 3 einer Ergebnistabelle: nur Zeilen mit Platzierung, beginnend bei 1.
+// Fahrer-Links bevorzugt, bei Mannschaftszeitfahren Teams.
+function parseRankedRows(table) {
+    let rows = (table.match(/<tr[\s\S]*?<\/tr>/gi) || []).map(row => {
+        let firstCell = /<td[^>]*>([\s\S]*?)<\/td>/i.exec(row);
+        let rank = firstCell ? cleanText(firstCell[1]) : "";
+        if (!/^\d+$/.test(rank)) return null;
+        let rider = /<a[^>]*href=["'][^"']*?\brider\/[^"']*["'][^>]*>([\s\S]*?)<\/a>/i.exec(row);
+        let team = /<a[^>]*href=["'][^"']*?\bteam\/[^"']*["'][^>]*>([\s\S]*?)<\/a>/i.exec(row);
+        if (rider) {
             return {
+                rank: Number(rank),
                 rider: shortRider(rider[1]),
                 flag: flagEmoji(row.slice(0, rider.index + rider[0].length)),
                 team: team ? cleanText(team[1]) : "",
             };
-        })
-        .filter(Boolean)
-        .slice(0, CONFIG.podium);
+        }
+        if (team) {
+            return { rank: Number(rank), rider: cleanText(team[1]), flag: flagEmoji(row.slice(0, team.index)), team: "" };
+        }
+        return null;
+    }).filter(Boolean);
+    if (!rows.length || rows[0].rank !== 1) return [];
+    return rows.slice(0, CONFIG.podium).map(({ rank, ...rest }) => rest);
+}
+
+// Alle Tabellen der Seite durchsuchen – sichtbare Reiter zuerst, versteckte danach
+function parsePodium(html) {
+    let tables = [...html.matchAll(/<table[^>]*>[\s\S]*?<\/table>/gi)];
+    let hidden = match => {
+        let before = html.slice(Math.max(0, match.index - 4000), match.index);
+        let tabs = [...before.matchAll(/<div[^>]*class=["']([^"']*\bresTab\b[^"']*)["']/gi)];
+        return tabs.length > 0 && /\bhide\b/.test(tabs[tabs.length - 1][1]);
+    };
+    let ordered = tables.filter(t => !hidden(t)).concat(tables.filter(hidden));
+    for (let t of ordered) {
+        let rows = parseRankedRows(t[0]);
+        if (rows.length) return rows;
+    }
+    let empty = [];
+    let riderLinks = (html.match(/href=["'][^"']*?\brider\//gi) || []).length;
+    empty.debug = `${pageTitle(html)} · ${tables.length} Tabellen · ${riderLinks} Fahrer`;
+    return empty;
+}
+
+// "Date: 26 July 2026" auf Ergebnisseiten
+function parseDate(html) {
+    let months = ["january", "february", "march", "april", "may", "june", "july",
+        "august", "september", "october", "november", "december"];
+    let m = /Date:?\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/i.exec(cleanText(html));
+    if (!m) return null;
+    let month = months.indexOf(m[2].toLowerCase());
+    return month >= 0 ? new Date(Number(m[3]), month, Number(m[1])) : null;
 }
 
 async function loadCalendar(year) {
@@ -217,60 +250,83 @@ async function loadData() {
     finished.sort((a, b) => b.end - a.end);
     upcoming.sort((a, b) => a.start - b.start);
 
-    // Laufende Rundfahrt: letzte Etappe + aktuelle Gesamtwertung, dafür ein Rennen weniger
-    let runningRace = upcoming.find(r => r.stageRace && r.start <= today);
-    let live = null;
-    if (runningRace) {
-        live = await loadStageRace(runningRace, today).catch(e => {
-            console.log(`${runningRace.name}: Etappe nicht geladen: ${e}`);
-            return { ...runningRace, podium: [], stage: null };
-        });
-        upcoming = upcoming.filter(r => r !== runningRace);
-    }
-    let pastCount = live ? CONFIG.past - 1 : CONFIG.past;
-
-    let past = await Promise.all(finished.slice(0, pastCount).map(async race => {
-        let podium = [];
+    // Laufende Rundfahrten zuerst, dann die beendeten Rennen – bis 3 Ergebnisse beisammen sind
+    let running = upcoming.filter(r => r.stageRace && r.start <= today);
+    let entries = [];
+    for (let race of running.concat(finished)) {
+        let need = CONFIG.past - entries.length;
+        if (need <= 0) break;
         try {
-            podium = parsePodium(await load(resultPath(race)));
+            if (race.stageRace) {
+                entries = entries.concat(await loadStageEntries(race, today, need));
+            } else {
+                let podium = parsePodium(await load(resultPath(race)));
+                entries.push({ ...race, label: "", date: race.end, path: resultPath(race), podium, debug: podium.debug });
+            }
         } catch (e) {
             console.log(`${race.name}: Ergebnis nicht geladen: ${e}`);
+            entries.push({ ...race, label: "", date: race.end, path: resultPath(race), podium: [], debug: String(e) });
         }
-        return { ...race, podium };
-    }));
+    }
 
     return {
-        live,
-        past,
-        upcoming: upcoming.slice(0, CONFIG.upcoming),
+        past: entries.slice(0, CONFIG.past),
+        upcoming: upcoming.filter(r => !running.includes(r)).slice(0, CONFIG.upcoming),
         stale: false,
     };
 }
 
-// Gesamtwertung laden und darin die Links zu den Etappen suchen
-async function loadStageRace(race, today) {
-    let gcHtml = await load(resultPath(race));
-    let podium = parsePodium(gcHtml);
+// Rundfahrt in Einträge aufteilen:
+//   beendet: Gesamtwertung, letzte Etappe, vorletzte Etappe …
+//   läuft:   letzte gefahrene Etappe, aktuelle Gesamtwertung, Etappe davor …
+async function loadStageEntries(race, today, need) {
+    let gcPath = resultPath(race);
+    let gcHtml = await load(gcPath);
+    let gcPodium = parsePodium(gcHtml);
+    let isRunning = !race.finished;
 
     // Etappen-Links: "race/tour-de-france-2026-stage-12" oder "race/tour-de-france/2026/stage-12"
     let base = race.path.replace(/[-\/](gc|result)$/, "");
     let stages = {};
-    for (let m of gcHtml.matchAll(/href=["'][^"']*?\b(race\/[^"'?#]*?[-\/]stage-(\d+))["']/gi)) {
-        if (m[1].startsWith(base)) stages[Number(m[2])] = m[1];
+    // (stehen als Links oder als Optionen der Etappen-Auswahl in der Seite)
+    for (let m of gcHtml.matchAll(/(?:href|value)=["'][^"']*?\b(race\/[^"'?#]*?[-\/](?:stage-(\d+)|prologue))["']/gi)) {
+        if (m[1].startsWith(base)) stages[m[2] ? Number(m[2]) : 0] = m[1];
+    }
+    let numbers = Object.keys(stages).map(Number).sort((a, b) => b - a);
+    if (isRunning) {
+        let estimate = Math.floor((today - race.start) / 86400000) + 1;
+        numbers = numbers.filter(n => n <= estimate);
     }
 
-    // Grobe Schätzung der heutigen Etappe; Ruhetage → rückwärts probieren
-    let estimate = Math.floor((today - race.start) / 86400000) + 1;
-    let candidates = Object.keys(stages).map(Number).filter(n => n <= estimate).sort((a, b) => b - a).slice(0, 3);
-    let stage = null;
-    for (let n of candidates) {
-        let result = parsePodium(await load(stages[n]));
-        if (result.length) {
-            stage = { number: n, path: stages[n], winner: result[0] };
-            break;
-        }
+    let gcEntry = gcPodium.length
+        ? { ...race, label: "Gesamt", date: race.end, path: gcPath, podium: gcPodium, running: isRunning, isGC: true }
+        : null;
+
+    let stageEntries = [];
+    let attempts = 0;
+    for (let n of numbers) {
+        if (stageEntries.length >= need || attempts >= need + 3) break;
+        attempts++;
+        let html = await load(stages[n]);
+        let podium = parsePodium(html);
+        if (!podium.length) continue; // noch nicht gefahren (Ruhetag) oder keine Daten
+        let fallback = new Date(race.start.getTime() + Math.max(0, n - 1) * 86400000);
+        stageEntries.push({
+            ...race,
+            label: n === 0 ? "Prolog" : `Etappe ${n}`,
+            date: parseDate(html) || fallback,
+            path: stages[n],
+            podium,
+        });
     }
-    return { ...race, podium, stage };
+
+    let ordered = isRunning
+        ? stageEntries.slice(0, 1).concat(gcEntry ? [gcEntry] : [], stageEntries.slice(1))
+        : (gcEntry ? [gcEntry] : []).concat(stageEntries);
+    if (!ordered.length) {
+        ordered = [{ ...race, label: "", date: race.end, path: gcPath, podium: [], debug: gcPodium.debug }];
+    }
+    return ordered.slice(0, need);
 }
 
 function serialize(data) {
@@ -279,10 +335,9 @@ function serialize(data) {
 
 function deserialize(json) {
     let data = JSON.parse(json);
-    let revive = r => ({ ...r, start: new Date(r.start), end: new Date(r.end) });
+    let revive = r => ({ ...r, start: new Date(r.start), end: new Date(r.end), date: r.date ? new Date(r.date) : undefined });
     data.past = data.past.map(revive);
     data.upcoming = data.upcoming.map(revive);
-    if (data.live) data.live = revive(data.live);
     return data;
 }
 
@@ -290,7 +345,7 @@ function deserialize(json) {
 async function loadWithCache() {
     try {
         let data = await loadData();
-        if (data.live || data.past.length || data.upcoming.length) {
+        if (data.past.length || data.upcoming.length) {
             fm.writeString(cachePath, serialize(data));
             return data;
         }
@@ -367,67 +422,33 @@ function addSectionTitle(stack, text) {
 function addPastRace(stack, race, podiumSize) {
     let block = stack.addStack();
     block.layoutVertically();
-    block.url = PCS + resultPath(race);
+    block.url = PCS + (race.path || resultPath(race));
 
     let title = block.addStack();
     title.centerAlignContent();
     addLabel(title, withFlag(race.flag, race.name), Font.semiboldSystemFont(13), WHITE);
+    if (race.label) {
+        title.addSpacer(5);
+        addLabel(title, race.label, Font.semiboldSystemFont(11), WHITE, 0.65);
+    }
     title.addSpacer(6);
     title.addSpacer();
-    addLabel(title, formatRange(race), Font.mediumSystemFont(10), WHITE, 0.6);
+    if (race.running && race.isGC) {
+        addSymbol(title, "dot.radiowaves.left.and.right", 10, LIVE);
+        title.addSpacer(3);
+        addLabel(title, "läuft", Font.semiboldSystemFont(10), LIVE);
+    } else {
+        let date = race.isGC || !race.label ? formatRange(race) : formatDate(race.date || race.end);
+        addLabel(title, date, Font.mediumSystemFont(10), WHITE, 0.6);
+    }
 
     if (!race.podium.length) {
-        addLabel(block, "Ergebnis nicht verfügbar", Font.mediumSystemFont(11), WHITE, 0.6);
+        let t = addLabel(block, `Ergebnis nicht verfügbar${race.debug ? " · " + race.debug : ""}`, Font.mediumSystemFont(10), WHITE, 0.6);
+        t.lineLimit = 2;
         return;
     }
     race.podium.slice(0, podiumSize).forEach((p, i) => {
         block.addSpacer(3);
-        let row = block.addStack();
-        row.centerAlignContent();
-        addSymbol(row, `${i + 1}.circle.fill`, 12, MEDALS[i]);
-        row.addSpacer(5);
-        addLabel(row, withFlag(p.flag, p.rider), Font.mediumSystemFont(12), WHITE);
-        row.addSpacer(6);
-        row.addSpacer();
-        addLabel(row, p.team, Font.regularSystemFont(10), WHITE, 0.55);
-    });
-}
-
-// Laufende Rundfahrt: Etappensieger, darunter die Gesamtwertung
-function addLiveRace(stack, race) {
-    let block = stack.addStack();
-    block.layoutVertically();
-    block.url = PCS + (race.stage ? race.stage.path : resultPath(race));
-
-    let title = block.addStack();
-    title.centerAlignContent();
-    addLabel(title, withFlag(race.flag, race.name), Font.semiboldSystemFont(13), WHITE);
-    title.addSpacer(6);
-    title.addSpacer();
-    addSymbol(title, "dot.radiowaves.left.and.right", 10, LIVE);
-    title.addSpacer(3);
-    addLabel(title, "läuft", Font.semiboldSystemFont(10), LIVE);
-
-    if (race.stage) {
-        block.addSpacer(3);
-        let row = block.addStack();
-        row.centerAlignContent();
-        addSymbol(row, "flag.checkered", 12, WHITE);
-        row.addSpacer(5);
-        addLabel(row, `Etappe ${race.stage.number}`, Font.semiboldSystemFont(12), WHITE, 0.7);
-        row.addSpacer(6);
-        addLabel(row, withFlag(race.stage.winner.flag, race.stage.winner.rider), Font.mediumSystemFont(12), WHITE);
-        row.addSpacer();
-    }
-    if (!race.podium.length) {
-        block.addSpacer(3);
-        addLabel(block, "Gesamtwertung folgt nach der 1. Etappe", Font.mediumSystemFont(11), WHITE, 0.6);
-        return;
-    }
-    block.addSpacer(3);
-    addLabel(block, "GESAMTWERTUNG", Font.semiboldSystemFont(9), WHITE, 0.5);
-    race.podium.forEach((p, i) => {
-        block.addSpacer(2);
         let row = block.addStack();
         row.centerAlignContent();
         addSymbol(row, `${i + 1}.circle.fill`, 12, MEDALS[i]);
@@ -470,11 +491,9 @@ function buildLarge(widget, data) {
         return;
     }
 
-    let blocks = (data.live ? [data.live] : []).concat(data.past);
-    blocks.forEach((race, i) => {
+    data.past.forEach((race, i) => {
         if (i > 0) widget.addSpacer(10);
-        if (race === data.live) addLiveRace(widget, race);
-        else addPastRace(widget, race, CONFIG.podium);
+        addPastRace(widget, race, CONFIG.podium);
     });
 
     widget.addSpacer();
@@ -502,12 +521,12 @@ function buildMedium(widget, data) {
     left.layoutVertically();
     left.size = new Size(150, 0);
     addSectionTitle(left, "Sieger");
-    (data.live ? [data.live] : []).concat(data.past).forEach(race => {
+    data.past.forEach(race => {
         left.addSpacer(4);
         let block = left.addStack();
         block.layoutVertically();
-        block.url = PCS + resultPath(race);
-        addLabel(block, withFlag(race.flag, race.name), Font.semiboldSystemFont(12), WHITE);
+        block.url = PCS + (race.path || resultPath(race));
+        addLabel(block, withFlag(race.flag, race.label ? `${race.name} · ${race.label}` : race.name), Font.semiboldSystemFont(12), WHITE);
         let winner = block.addStack();
         winner.centerAlignContent();
         addSymbol(winner, "trophy.fill", 10, MEDALS[0]);
