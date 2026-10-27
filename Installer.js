@@ -25,6 +25,7 @@ const SCRIPTS = [
     { name: "ClubElo", file: "ClubElo.js", glyph: "chart-line", color: "deep-gray" },
     { name: "Bayern Bundesliga", file: "Fussball.js", params: { LIGA: "bundesliga" }, glyph: "futbol", color: "red" },
     { name: "Bayern CL", file: "Fussball.js", params: { LIGA: "cl" }, glyph: "futbol", color: "deep-blue" },
+    { name: "Hajduk ECL", file: "Fussball.js", params: { LIGA: "ecl", TEAM: "489" }, glyph: "futbol", color: "green" },
     { name: "Bundesliga Ergebnisse", file: "Fussball.js", params: { ANSICHT: "ergebnisse", LIGA: "bundesliga" }, glyph: "futbol", color: "red" },
     { name: "CL Ergebnisse", file: "Fussball.js", params: { ANSICHT: "ergebnisse", LIGA: "cl" }, glyph: "futbol", color: "deep-blue" },
     { name: "EL Ergebnisse", file: "Fussball.js", params: { ANSICHT: "ergebnisse", LIGA: "el" }, glyph: "futbol", color: "orange" },
