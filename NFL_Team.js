@@ -380,6 +380,7 @@ function buildMedium(widget, data, images) {
     left.addSpacer();
 
     body.addSpacer(14);
+    body.addSpacer();
 
     let right = body.addStack();
     right.layoutVertically();
