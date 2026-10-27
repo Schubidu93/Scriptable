@@ -1,6 +1,6 @@
 name: Leichtathletik Woche
 
-# Täglich die besten Leistungen der letzten Tage aus den World-Athletics-Toplisten sammeln
+# Täglich aus den World-Athletics-Toplisten: Top-Leistungen der Woche sowie Rekorde und Bestleistungen
 on:
   schedule:
     - cron: "17 4 * * *"
@@ -9,6 +9,8 @@ on:
     branches-ignore: [main]
     paths:
       - "scripts/leichtathletik_woche.mjs"
+      - "scripts/leichtathletik_rekorde.mjs"
+      - "scripts/wa_toplists.mjs"
       - ".github/workflows/leichtathletik.yml"
 
 permissions:
@@ -17,7 +19,7 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,10 +29,13 @@ jobs:
         run: node scripts/leichtathletik_woche.mjs
         env:
           DEBUG: ${{ github.ref == 'refs/heads/main' && '0' || '1' }}
+      - name: Rekorde und Bestleistungen suchen
+        run: node scripts/leichtathletik_rekorde.mjs
+        continue-on-error: true
       - name: Ergebnis speichern
         if: github.ref == 'refs/heads/main'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/leichtathletik_woche*.json
-          git diff --staged --quiet || (git commit -m "Leichtathletik: Wochenbestleistungen aktualisiert" && git pull --rebase && git push)
+          git add data/leichtathletik_*.json
+          git diff --staged --quiet || (git commit -m "Leichtathletik: Daten aktualisiert" && git pull --rebase && git push)
