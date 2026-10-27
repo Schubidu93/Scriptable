@@ -2,11 +2,15 @@
 // nach World-Athletics-Punkten. Die Daten sammelt täglich ein GitHub-Workflow
 // (scripts/leichtathletik_woche.mjs); das Widget lädt nur die fertige Datei.
 // Großes Widget: Top 5 Frauen und Männer. Mittleres Widget: Top 3 nebeneinander.
+//
+// Region: weltweit (Standard) oder nur deutsche Athleten – im Loader per
+// Function("REGION", code)("deutschland") oder als Widget-Parameter "deutschland".
 
-const DATA_URL = "https://raw.githubusercontent.com/Schubidu93/Scriptable/main/data/leichtathletik_woche.json";
+const GERMANY = String((typeof REGION !== "undefined" && REGION) || args.widgetParameter || "").trim().toLowerCase() === "deutschland";
+const DATA_URL = `https://raw.githubusercontent.com/Schubidu93/Scriptable/main/data/leichtathletik_woche${GERMANY ? "_ger" : ""}.json`;
 
 const fm = FileManager.local();
-const cachePath = fm.joinPath(fm.cacheDirectory(), "leichtathletik-woche.json");
+const cachePath = fm.joinPath(fm.cacheDirectory(), `leichtathletik-woche${GERMANY ? "-ger" : ""}.json`);
 
 // Zeitpunkt der angezeigten Daten (bei Offline-Anzeige der des Zwischenspeichers)
 let UPDATED = Date.now();
@@ -123,7 +127,7 @@ function addHeader(widget, data) {
     header.centerAlignContent();
     addSymbol(header, "figure.run", 14, WHITE);
     header.addSpacer(5);
-    addLabel(header, "Leichtathletik", Font.semiboldSystemFont(15), WHITE);
+    addLabel(header, GERMANY ? "Leichtathletik 🇩🇪" : "Leichtathletik", Font.semiboldSystemFont(15), WHITE);
     header.addSpacer();
     let info = data ? `Top-Leistungen · ${data.days} Tage${data.stale ? " · offline" : ""}` : "";
     addLabel(header, info, Font.semiboldSystemFont(11), WHITE, 0.6);
@@ -136,7 +140,7 @@ function addPerformance(stack, p, compact) {
     let rank = top.addStack();
     rank.size = new Size(compact ? 12 : 14, 0);
     addLabel(rank, `${p.rank}`, Font.semiboldMonospacedSystemFont(compact ? 10 : 11), WHITE, 0.6);
-    let f = flag(p.nat);
+    let f = GERMANY ? "" : flag(p.nat);
     addLabel(top, `${f ? f + " " : ""}${shortName(p.name)}`, Font.semiboldSystemFont(compact ? 12 : 13), WHITE);
     top.addSpacer(4);
     top.addSpacer();
