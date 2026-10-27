@@ -1,6 +1,6 @@
 // ClubElo – die besten Vereine nach Elo, mit Veränderung zum Vormonat.
-// Die Daten holt täglich ein GitHub-Workflow (scripts/clubelo.mjs); das Widget lädt nur die
-// fertige Datei und speichert sie zusätzlich auf dem iPhone, falls GitHub nicht erreichbar ist.
+// Die Daten holt alle 6 Stunden ein GitHub-Workflow (scripts/clubelo.mjs); das Widget lädt die
+// fertige Datei. Fehlt sie, fragt es ClubElo direkt. Der letzte Stand wird auf dem iPhone gespeichert.
 // Kleines Widget: Top 5. Mittleres Widget: Top 10 in zwei Spalten mit Flaggen und Elo-Änderung.
 
 const DATA_URL = "https://raw.githubusercontent.com/Schubidu93/Scriptable/main/data/clubelo.json";
@@ -24,16 +24,61 @@ function addUpdated(widget, note) {
     t.textOpacity = 0.5;
 }
 
+// Direkt bei ClubElo: CSV mit Rank,Club,Country,Level,Elo,From,To
+async function loadRanking(date) {
+    let req = new Request(`http://api.clubelo.com/${date.toISOString().slice(0, 10)}`);
+    req.timeoutInterval = 15;
+    let lines = (await req.loadString()).trim().split(/\r?\n/);
+    let header = lines.shift().split(",");
+    let col = name => header.indexOf(name);
+    let clubs = lines.map(l => l.split(",")).map(c => ({
+        club: c[col("Club")], country: c[col("Country")], elo: Math.round(Number(c[col("Elo")])),
+    })).filter(c => c.club && c.elo).sort((a, b) => b.elo - a.elo);
+    clubs.forEach((c, i) => { c.rank = i + 1; });
+    if (!clubs.length) throw new Error("ClubElo: leere Liste");
+    return clubs;
+}
+
+async function loadDirect() {
+    let today = new Date();
+    let now = await loadRanking(today);
+    let then = await loadRanking(new Date(today.getTime() - 30 * 86400000)).catch(() => []);
+    let previous = {};
+    then.forEach(c => { previous[c.club] = c; });
+    return {
+        generated: today.toISOString(),
+        clubs: now.slice(0, 10).map(c => ({
+            ...c,
+            prevRank: previous[c.club] ? previous[c.club].rank : null,
+            prevElo: previous[c.club] ? previous[c.club].elo : null,
+        })),
+    };
+}
+
+// Reihenfolge: Datei auf GitHub (ist sie älter als 2 Tage, zuerst ClubElo direkt versuchen),
+// dann ClubElo direkt, zuletzt der Zwischenspeicher auf dem iPhone
 async function loadData() {
+    let fromGitHub = null;
     try {
         let data = await new Request(DATA_URL).loadJSON();
-        if (data && data.clubs && data.clubs.length) {
-            fm.writeString(cachePath, JSON.stringify(data));
-            UPDATED = new Date(data.generated).getTime();
-            return data;
-        }
+        if (data && data.clubs && data.clubs.length) fromGitHub = data;
     } catch (e) {
-        console.log(`Abruf fehlgeschlagen: ${e}`);
+        console.log(`GitHub: ${e}`);
+    }
+    let fresh = fromGitHub && Date.now() - new Date(fromGitHub.generated).getTime() < 2 * 86400000;
+    let data = fresh ? fromGitHub : null;
+    if (!data) {
+        try {
+            data = await loadDirect();
+        } catch (e) {
+            console.log(`ClubElo direkt: ${e}`);
+            data = fromGitHub;
+        }
+    }
+    if (data) {
+        fm.writeString(cachePath, JSON.stringify(data));
+        UPDATED = new Date(data.generated).getTime();
+        return data;
     }
     if (fm.fileExists(cachePath)) {
         let data = JSON.parse(fm.readString(cachePath));
