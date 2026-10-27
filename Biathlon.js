@@ -365,6 +365,8 @@ function shortPlace(place) {
 
 // Schriftgröße der Athletennamen – in Rennergebnissen und Gesamtweltcup gleich
 const NAME_SIZE = 10.5;
+// Schriftgröße der Zahlen rechts (Datum, Zeit, Rückstand, Startzeit)
+const NUMBER_SIZE = 11;
 
 function addPastRace(stack, race) {
     let block = stack.addStack();
@@ -378,7 +380,8 @@ function addPastRace(stack, race) {
         .minimumScaleFactor = 1;
     title.addSpacer(6);
     title.addSpacer();
-    addLabel(title, formatDate(race.start), Font.mediumSystemFont(10), WHITE, 0.6);
+    // Zahlen rechts (Datum, Zeiten, Abstände) überall gleich groß wie bei den nächsten Rennen
+    addLabel(title, formatDate(race.start), Font.mediumSystemFont(NUMBER_SIZE), WHITE, 0.6).minimumScaleFactor = 1;
 
     race.podium.forEach((p, i) => {
         block.addSpacer(3);
@@ -391,7 +394,7 @@ function addPastRace(stack, race) {
             .minimumScaleFactor = 1;
         row.addSpacer(6);
         row.addSpacer();
-        addLabel(row, p.time, Font.mediumMonospacedSystemFont(10), WHITE, 0.6);
+        addLabel(row, p.time, Font.mediumMonospacedSystemFont(NUMBER_SIZE), WHITE, 0.6).minimumScaleFactor = 1;
     });
 }
 
@@ -405,7 +408,7 @@ function addUpcomingRace(stack, race) {
         .minimumScaleFactor = 1;
     row.addSpacer(6);
     row.addSpacer();
-    addLabel(row, formatStart(race.start), Font.mediumSystemFont(10), WHITE, 0.6);
+    addLabel(row, formatStart(race.start), Font.mediumSystemFont(NUMBER_SIZE), WHITE, 0.6).minimumScaleFactor = 1;
 }
 
 function addSectionTitle(stack, text) {
@@ -419,7 +422,7 @@ function buildRaces(widget, data, large) {
     let past = data.past.slice(0, large ? CONFIG.past : 1);
     if (!past.length) addLabel(widget, "Noch keine Ergebnisse", Font.mediumSystemFont(12), WHITE, 0.7);
     past.forEach((race, i) => {
-        if (i > 0) widget.addSpacer(10);
+        if (i > 0) widget.addSpacer(14);
         addPastRace(widget, race);
     });
 

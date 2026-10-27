@@ -279,8 +279,8 @@ function buildWeekCompact(widget, data, images) {
 
     let games = data.games.slice(0, 16);
     let half = Math.ceil(games.length / 2);
-    // Zeilen à ~12,5 pt in ~114 pt Höhe; bei weniger Spielen mehr Abstand
-    let gap = Math.max(1, Math.min(7, (114 - half * 12.5) / Math.max(1, half - 1)));
+    // Zeilen à ~13 pt in ~104 pt Höhe; bei weniger Spielen mehr Abstand (sonst rutscht die Fußzeile raus)
+    let gap = Math.max(1, Math.min(6, (104 - half * 13) / Math.max(1, half - 1)));
     let row = widget.addStack();
     [games.slice(0, half), games.slice(half)].forEach((list, c) => {
         if (c > 0) row.addSpacer();
