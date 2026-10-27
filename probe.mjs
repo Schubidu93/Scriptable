@@ -1,11 +1,16 @@
-for (let slug of ["uefa.europa.conf", "cro.1"]) {
-  let j = await (await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/teams?limit=200`)).json().catch(() => ({}));
-  let teams = (((j.sports || [])[0] || {}).leagues || [{}])[0].teams || [];
-  console.log(slug, teams.length, "Teams");
-  teams.map(t => t.team).filter(t => /hajduk|split/i.test(t.displayName + t.name)).forEach(t => console.log("  ", t.id, t.displayName, t.abbreviation));
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15";
+const clean = h => h.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+async function show(url) {
+  try {
+    let res = await fetch(url, { headers: { "User-Agent": UA } });
+    let html = await res.text();
+    console.log(`\n== ${url}: ${res.status}, ${html.length} Zeichen, Titel: ${(/<title>([^<]*)/.exec(html) || [])[1]}`);
+    let t = (html.match(/<table[\s\S]*?<\/table>/gi) || []).slice(0, 3);
+    t.forEach((x, i) => console.log(`  Tabelle ${i}: ${(x.match(/<tr[\s\S]*?<\/tr>/gi) || []).slice(0, 4).map(r => clean(r).slice(0, 80)).join(" || ")}`));
+  } catch (e) { console.log(url, e.message); }
 }
-let id = process.argv[2];
-let s = await (await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.europa.conf/scoreboard?dates=2026&limit=1000`)).json();
-let hits = (s.events || []).filter(e => /hajduk/i.test(JSON.stringify(e.competitions[0].competitors.map(c => c.team.displayName))));
-console.log("ECL 2026 Spiele mit Hajduk:", hits.length, hits.slice(0, 6).map(e => `${e.date.slice(0,10)} ${e.name}`).join(" | "));
-hits.slice(0,1).forEach(e => e.competitions[0].competitors.forEach(c => console.log("  team", c.team.id, c.team.displayName)));
+await show("https://firstcycling.com/race.php?r=23&y=2026");
+await show("https://firstcycling.com/race.php?r=23&y=2026&k=2");
+await show("https://firstcycling.com/race.php?y=2026&t=2");
+await show("https://en.wikipedia.org/w/api.php?action=parse&page=2026_Vuelta_a_Espa%C3%B1a&prop=sections&format=json");
+await show("https://www.procyclingstats.com/race/vuelta-a-espana/2026/gc");
