@@ -393,15 +393,15 @@ function stat(entry, name) {
     return s ? Number(s.value) : 0;
 }
 
-// Tabellen-Ausschnitt mit 6 Zeilen:
-//   Platz 1–4:  Plätze 1–6
-//   sonst:      Platz 1, …, Platz davor, eigenes Team, Platz danach, …
+// Tabellen-Ausschnitt mit 7 Zeilen:
+//   Platz 1–5:  Plätze 1–7
+//   sonst:      Platz 1, 2, …, Platz davor, eigenes Team, Platz danach, …
 function standingsWindow(rows, pos) {
-    if (pos < 0) return rows.slice(0, 6);
-    if (pos <= 3) return rows.slice(0, 6);
-    // Am Tabellenende statt der hinteren Lücke ein Platz mehr
-    if (pos + 1 >= rows.length - 1) return [rows[0], { gap: true }].concat(rows.slice(-4));
-    return [rows[0], { gap: true }].concat(rows.slice(pos - 1, pos + 2), [{ gap: true }]);
+    if (pos <= 4) return rows.slice(0, 7);
+    // Am Tabellenende statt der hinteren Lücke die letzten fünf
+    if (pos + 1 >= rows.length - 1) return [rows[0], { gap: true }].concat(rows.slice(-5));
+    let before = pos - 1 > 2 ? [{ gap: true }] : [];
+    return rows.slice(0, 2).concat(before, rows.slice(pos - 1, pos + 2), [{ gap: true }]);
 }
 
 function parseStandings(json) {
@@ -714,7 +714,7 @@ function addNextGame(stack, next, images) {
     addLabel(stack, formatKickoff(next.date), Font.mediumSystemFont(10), WHITE, 0.6);
 }
 
-// 6 Zeilen: kompakt, damit sie ins mittlere Widget passen; Lücken als „···“
+// 7 Zeilen: kompakt, damit sie ins mittlere Widget passen; Lücken als „···“
 function addStandings(stack, data, images) {
     let standings = data.standings;
     addSectionTitle(stack, LEAGUE.table);
