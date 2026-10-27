@@ -4,7 +4,7 @@
 //   "rennen"  (Standard): die letzten 3 Rennen mit Top 3 und die nächsten 3 Rennen,
 //                         je für Männer oder Frauen – großes Widget
 //   "weltcup":            Gesamtweltcup Frauen | Männer, Top 3 und die 3 besten Deutschen –
-//                         mittleres Widget
+//                         großes Widget (auch mittel)
 //
 // Auswahl im Loader per Function("ANSICHT", "GESCHLECHT", code)("rennen", "frauen")
 // oder als Widget-Parameter, z. B. "rennen frauen" oder "weltcup".
@@ -492,7 +492,7 @@ async function createWidget() {
     if (!data) {
         buildError(widget);
     } else if (VIEW === "weltcup") {
-        let compact = config.widgetFamily !== "large" && config.widgetFamily !== "extraLarge";
+        let compact = Boolean(config.widgetFamily) && config.widgetFamily !== "large" && config.widgetFamily !== "extraLarge";
         if (compact) widget.setPadding(12, 16, 4, 16);
         buildCup(widget, data, compact);
     } else {
@@ -507,8 +507,6 @@ async function main() {
     let widget = await createWidget();
     if (config.runsInWidget) {
         Script.setWidget(widget);
-    } else if (VIEW === "weltcup") {
-        await widget.presentMedium();
     } else {
         await widget.presentLarge();
     }

@@ -231,6 +231,9 @@ function buildMedium(widget, data) {
     widget.addSpacer();
 }
 
+// In der App: mittleres Widget (Standardgröße)
+const FAMILY = config.widgetFamily || "medium";
+
 async function createWidget() {
     let data = await loadData();
     let widget = new ListWidget();
@@ -240,13 +243,13 @@ async function createWidget() {
     widget.setPadding(12, 14, 4, 14);
 
     if (!data) {
-        addHeader(widget, null, config.widgetFamily !== "medium");
+        addHeader(widget, null, FAMILY !== "medium");
         widget.addSpacer(6);
         addLabel(widget, "Keine Daten – später erneut versuchen", Font.mediumSystemFont(11), WHITE, 0.8);
         widget.addSpacer();
         return widget;
     }
-    if (config.widgetFamily === "medium" || config.widgetFamily === "large") buildMedium(widget, data);
+    if (FAMILY === "medium" || FAMILY === "large") buildMedium(widget, data);
     else buildSmall(widget, data);
     addUpdated(widget);
     return widget;
@@ -258,7 +261,7 @@ async function main() {
     if (config.runsInWidget) {
         Script.setWidget(widget);
     } else {
-        await widget.presentSmall();
+        await widget.presentMedium();
     }
     Script.complete();
 }

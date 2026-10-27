@@ -1244,8 +1244,11 @@ function nextRefresh(data) {
     return new Date(now + 60 * minute);
 }
 
+// Größe: auf dem Homescreen die gewählte; in der App die Standardgröße (Ergebnisse groß, sonst mittel)
+const FAMILY = config.widgetFamily || (VIEW === "ergebnisse" ? "large" : "medium");
+
 async function createWidget() {
-    let large = config.widgetFamily === "large" || config.widgetFamily === "extraLarge";
+    let large = FAMILY === "large" || FAMILY === "extraLarge";
     let columns = large ? 2 : 3;
     let perColumn = large ? 7 : 3;
     COMPACT = !large;
@@ -1282,7 +1285,7 @@ async function createWidget() {
         buildResults(widget, data, columns, perColumn, images);
     } else if (VIEW === "pokal") {
         buildPokal(widget, data, images);
-    } else if (config.widgetFamily === "small") {
+    } else if (FAMILY === "small") {
         buildSmall(widget, data, images);
     } else {
         buildMedium(widget, data, images);
@@ -1296,6 +1299,8 @@ async function main() {
     let widget = await createWidget();
     if (config.runsInWidget) {
         Script.setWidget(widget);
+    } else if (FAMILY === "large") {
+        await widget.presentLarge();
     } else {
         await widget.presentMedium();
     }
