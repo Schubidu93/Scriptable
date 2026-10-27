@@ -15,6 +15,9 @@ const SCRIPTS = [
     { name: "10km Welt", file: "Marathon_GER.js", distanz: "10km", region: "welt", glyph: "globe-europe", color: "green" },
     { name: "Radsport", file: "Radsport.js", glyph: "bicycle", color: "yellow" },
     { name: "Radsport Frauen", file: "Radsport.js", params: { GESCHLECHT: "frauen" }, glyph: "bicycle", color: "pink" },
+    { name: "Biathlon Männer", file: "Biathlon.js", params: { ANSICHT: "rennen", GESCHLECHT: "maenner" }, glyph: "skiing-nordic", color: "blue" },
+    { name: "Biathlon Frauen", file: "Biathlon.js", params: { ANSICHT: "rennen", GESCHLECHT: "frauen" }, glyph: "skiing-nordic", color: "pink" },
+    { name: "Biathlon Weltcup", file: "Biathlon.js", params: { ANSICHT: "weltcup" }, glyph: "trophy", color: "blue" },
     { name: "Browns", file: "NFL_Team.js", glyph: "football-ball", color: "orange" },
     { name: "NFL Ergebnisse", file: "NFL_Scores.js", glyph: "football-ball", color: "deep-blue" },
 ];
