@@ -455,6 +455,26 @@ async function wikiGC(race) {
     return null;
 }
 
+// Teams zu Fahrern aus der PCS-Ergebnistabelle ergänzen (dort stehen alle Fahrer mit Team)
+function withTeams(rows, html) {
+    let trs = (html || "").match(/<tr[\s\S]*?<\/tr>/gi) || [];
+    return rows.map(r => {
+        if (r.team) return r;
+        let last = r.rider.replace(/^[A-ZÀ-Ž]\.\s*/u, "").toLowerCase();
+        let initial = r.rider.charAt(0).toLowerCase();
+        for (let tr of trs) {
+            let rider = /<a[^>]*href=["'][^"']*?\brider\/[^"']*["'][^>]*>([\s\S]*?)<\/a>/i.exec(tr);
+            if (!rider) continue;
+            let short = shortRider(rider[1]).toLowerCase();
+            if (short.endsWith(last) && short.charAt(0) === initial) {
+                let team = /<a[^>]*href=["'][^"']*?\bteam\/[^"']*["'][^>]*>([\s\S]*?)<\/a>/i.exec(tr);
+                return { ...r, team: team ? cleanText(team[1]) : "", flag: r.flag || flagEmoji(tr) };
+            }
+        }
+        return r;
+    });
+}
+
 // Gesamtwertung, wenn der GC-Reiter auf der Seite leer ist:
 // eigener Link des Reiters, dann übliche Adressen, zuletzt Klick im Browser
 async function loadGC(race, path, html, stageNumber, stage) {
@@ -463,6 +483,12 @@ async function loadGC(race, path, html, stageNumber, stage) {
     // Schnellster Weg: Wikipedia
     try {
         let rows = await wikiGC(race);
+        // Gleicht die Wikipedia-GC der sichtbaren Tabelle, ist diese bereits die Gesamtwertung (mit Teams)
+        if (rows && samePodium(rows, stage)) {
+            let gc = stage.slice();
+            gc.stageIsGC = true;
+            return gc;
+        }
         if (isGC(rows, stage)) return rows;
     } catch (e) {
         console.log(`GC über Wikipedia: ${e}`);
@@ -571,15 +597,24 @@ async function loadData() {
         if (count() >= CONFIG.past) break;
         let key = resultPath(race);
         let stored = race.finished && saved[key];
-        if (stored && stored.complete !== false) {
+        let gcWithoutTeams = stored && !stored.teamsTried
+            && stored.entries.some(e => e.isGC && e.podium.length && e.podium.every(p => !p.team));
+        if (stored && stored.complete !== false && !gcWithoutTeams) {
             collected.push({ race, entries: stored.entries.map(revive) });
+            continue;
+        }
+        if (gcWithoutTeams) {
+            // Gesamtwertung ohne Teams (aus Wikipedia) – einmal mit der PCS-Seite ergänzen
+            let item = { race, entries: stored.entries.map(revive) };
+            collected.push(item);
+            pending.push({ item, ctx: null });
             continue;
         }
         if (stored) {
             // Etappe schon bekannt, GC fehlte – anzeigen und ggf. später erneut suchen
             let item = { race, entries: stored.entries.map(revive) };
             collected.push(item);
-            if (Date.now() - (stored.gcTried || 0) > GC_RETRY) pending.push({ item, ctx: null });
+            if (Date.now() - (stored.gcTry || 0) > GC_RETRY) pending.push({ item, ctx: null });
             continue;
         }
         if (timeLeft() < 5000) {
@@ -593,7 +628,7 @@ async function loadData() {
                 collected.push(item);
                 if (race.finished) {
                     let complete = result.entries.some(e => e.isGC);
-                    saved[key] = { entries: result.entries, savedAt: Date.now(), complete, gcTried: 0 };
+                    saved[key] = { entries: result.entries, savedAt: Date.now(), complete, gcTry: 0 };
                     saveResults(saved);
                     if (!complete) pending.push({ item, ctx: result.ctx });
                 }
@@ -620,11 +655,16 @@ async function loadData() {
             if (!ctx) ctx = (await loadStageEntries(race, today, false)).ctx;
             let gc = await loadGC(race, ctx.path, ctx.html, ctx.number, ctx.stagePodium);
             let stageEntries = item.entries.filter(e => !e.isGC && e.podium.length);
-            if (isGC(gc, ctx.stagePodium)) {
-                item.entries = [{ ...race, label: "GC", date: race.end, path: ctx.path, podium: gc, isGC: true }].concat(stageEntries);
+            if (gc && gc.stageIsGC) {
+                // Die vermeintliche Etappe war die Gesamtwertung – als GC anzeigen
+                item.entries = [{ ...race, label: "GC", date: race.end, path: ctx.path, podium: gc.slice(), isGC: true }];
                 saved[key] = { entries: item.entries, savedAt: Date.now(), complete: true };
+            } else if (isGC(gc, ctx.stagePodium)) {
+                gc = withTeams(gc, ctx.html);
+                item.entries = [{ ...race, label: "GC", date: race.end, path: ctx.path, podium: gc, isGC: true }].concat(stageEntries);
+                saved[key] = { entries: item.entries, savedAt: Date.now(), complete: true, teamsTried: true };
             } else {
-                saved[key] = { entries: item.entries, savedAt: Date.now(), complete: false, gcTried: Date.now() };
+                saved[key] = { entries: item.entries, savedAt: Date.now(), complete: false, gcTry: Date.now() };
             }
             saveResults(saved);
         } catch (e) {
