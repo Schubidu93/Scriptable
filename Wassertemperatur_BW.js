@@ -196,10 +196,18 @@ async function createWidget() {
     return widget;
 }
 
-let widget = await createWidget();
-if (config.runsInWidget) {
-    Script.setWidget(widget);
-} else {
-    await widget.presentSmall();
+// Ohne Top-Level-await, damit das Skript auch per Function(code)() startet
+async function main() {
+    let widget = await createWidget();
+    if (config.runsInWidget) {
+        Script.setWidget(widget);
+    } else {
+        await widget.presentSmall();
+    }
+    Script.complete();
 }
-Script.complete();
+
+main().catch(e => {
+    console.error(e);
+    Script.complete();
+});
