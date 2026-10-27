@@ -7,7 +7,7 @@
 // Function("REGION", code)("deutschland") oder als Widget-Parameter "deutschland".
 // Ansicht "rekorde": die jüngsten Rekorde (WR, ER, DR) und neuen Einträge in den ewigen Top 10 von Welt,
 // Europa und Deutschland – im Loader per Function("ANSICHT", code)("rekorde") oder Parameter "rekorde".
-// Ansicht "kalender": die nächsten großen Wettkämpfe, Bahn und Straße nebeneinander (mittleres Widget).
+// Ansicht "kalender": die nächsten großen Wettkämpfe, Bahn und Straße nebeneinander (großes Widget, auch mittel).
 
 const params = String(args.widgetParameter || "").trim().toLowerCase().split(/\s+/);
 const GERMANY = String((typeof REGION !== "undefined" && REGION) || params.find(p => p === "deutschland") || "") === "deutschland";
@@ -414,7 +414,8 @@ async function createWidget() {
         return widget;
     }
     if (CALENDAR) {
-        let large = config.widgetFamily === "large" || config.widgetFamily === "extraLarge";
+        // In der App (ohne Widget-Größe) groß – das ist die Standardgröße des Kalenders
+        let large = !config.widgetFamily || config.widgetFamily === "large" || config.widgetFamily === "extraLarge";
         widget.setPadding(12, 14, 4, 14);
         buildCalendar(widget, data, large);
     } else if (RECORDS) {
@@ -432,8 +433,6 @@ async function main() {
     let widget = await createWidget();
     if (config.runsInWidget) {
         Script.setWidget(widget);
-    } else if (CALENDAR) {
-        await widget.presentMedium();
     } else {
         await widget.presentLarge();
     }
