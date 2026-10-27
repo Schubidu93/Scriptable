@@ -397,6 +397,7 @@ function parseStandings(json) {
         rank: stat(e, "rank") || i + 1,
         points: stat(e, "points"),
         played: stat(e, "gamesPlayed"),
+        diff: stat(e, "pointDifferential"),
     })).sort((a, b) => a.rank - b.rank);
     let pos = rows.findIndex(r => r.id === TEAM_ID);
     return { rows: standingsWindow(rows, pos), own: pos >= 0 ? rows[pos] : null };
@@ -596,10 +597,10 @@ function background(widget) {
 function addRecord(stack, record) {
     if (!record) return;
     let pill = stack.addStack();
-    pill.backgroundColor = new Color("#ffffff", 0.18);
-    pill.cornerRadius = 9;
-    pill.setPadding(1, 9, 1, 9);
-    addLabel(pill, record, Font.boldRoundedSystemFont(17), WHITE);
+    pill.backgroundColor = new Color("#ffffff", 0.12);
+    pill.cornerRadius = 7;
+    pill.setPadding(2, 7, 2, 7);
+    addLabel(pill, record, Font.semiboldRoundedSystemFont(12), WHITE, 0.85);
 }
 
 function addSectionTitle(stack, text, color = WHITE, opacity = 0.6) {
@@ -730,7 +731,15 @@ function addStandings(stack, data, images) {
         row.addSpacer(3);
         addLabel(row, r.abbr, mine ? Font.boldSystemFont(10) : Font.mediumSystemFont(10), mine ? ACCENT : WHITE);
         row.addSpacer();
-        addLabel(row, `${r.points}`, Font.semiboldMonospacedSystemFont(10), WHITE, 0.85);
+        // Schmale Spalten: Tordifferenz und Punkte, jeweils rechtsbündig
+        let diff = row.addStack();
+        diff.size = new Size(24, 0);
+        diff.addSpacer();
+        addLabel(diff, r.diff > 0 ? `+${r.diff}` : `${r.diff}`, Font.mediumMonospacedSystemFont(9), WHITE, 0.55);
+        let points = row.addStack();
+        points.size = new Size(20, 0);
+        points.addSpacer();
+        addLabel(points, `${r.points}`, Font.semiboldMonospacedSystemFont(10), WHITE, 0.9);
     });
 }
 
@@ -955,7 +964,7 @@ function buildMedium(widget, data, images) {
 
     let right = body.addStack();
     right.layoutVertically();
-    right.size = new Size(110, 0);
+    right.size = new Size(134, 0);
     if (data.knockout) addKnockout(right, data, images);
     else addStandings(right, data, images);
     right.addSpacer();
