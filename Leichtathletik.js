@@ -118,7 +118,8 @@ function addLabel(stack, text, font, color, opacity = 1) {
 }
 
 function addSymbol(stack, name, size, color) {
-    let sym = SFSymbol.named(name);
+    // Mehrere Namen möglich ("a|b"): der erste, den iOS kennt
+    let sym = name.split("|").map(n => SFSymbol.named(n)).find(Boolean) || SFSymbol.named("circle");
     sym.applyFont(Font.systemFont(size));
     let img = stack.addImage(sym.image);
     img.imageSize = new Size(size, size);
@@ -349,42 +350,60 @@ function displayName(event, track) {
         .trim();
 }
 
-// Links Name (höchstens zwei Zeilen) und darunter Flagge, Ort, Datum – rechts in fester Spalte das Kürzel.
-// So beginnen alle Namen an derselben Stelle.
+// Wie im iOS-Kalender: links das Datum als Block (Tag groß, Monat klein), rechts Name und darunter
+// Kürzel, Flagge und Ort. Mehrtägige Wettkämpfe: „bis 10.01.“ in der Ortszeile.
+const MONTHS_DE = ["JAN", "FEB", "MÄR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEZ"];
+
+function addCentered(stack, text, font, color, opacity = 1) {
+    let line = stack.addStack();
+    line.addSpacer();
+    addLabel(line, text, font, color, opacity);
+    line.addSpacer();
+}
+
 function addEvent(stack, event, track) {
     let row = stack.addStack();
     row.topAlignContent();
+    let start = dayOf(event.startDate), end = dayOf(event.endDate || event.startDate);
+    let soon = countdown(event);
+    let live = soon === "läuft" || soon === "heute";
 
-    let left = row.addStack();
-    left.layoutVertically();
-    let name = addLabel(left, displayName(event, track), Font.semiboldSystemFont(12), WHITE);
+    let date = row.addStack();
+    date.layoutVertically();
+    date.size = new Size(28, 0);
+    addCentered(date, String(start.getDate()), Font.boldRoundedSystemFont(16), live ? GOLD : WHITE);
+    addCentered(date, MONTHS_DE[start.getMonth()], Font.semiboldSystemFont(8), GOLD, 0.9);
+
+    row.addSpacer(7);
+    let right = row.addStack();
+    right.layoutVertically();
+    let name = addLabel(right, displayName(event, track), Font.semiboldSystemFont(12), WHITE);
     name.lineLimit = 2;
     name.minimumScaleFactor = 1;
-    let nat = (/\(([A-Z]{3})\)\s*$/.exec(event.venue || "") || [])[1];
-    let f = nat ? flag(nat) : "";
-    // Läuft der Wettkampf gerade oder ist er heute, steht das statt des Datums
-    let soon = countdown(event);
-    let when = soon === "läuft" || soon === "heute" ? soon : dateRange(event);
-    addLabel(left, `${f ? f + " " : ""}${city(event.venue)} · ${when}`, Font.mediumSystemFont(10), WHITE, 0.65);
+    right.addSpacer(2);
 
-    row.addSpacer(4);
-    row.addSpacer();
-    let badgeCol = row.addStack();
-    badgeCol.size = new Size(30, 0);
-    badgeCol.addSpacer();
+    let info = right.addStack();
+    info.centerAlignContent();
     let badge = categoryBadge(event);
-    let pill = badgeCol.addStack();
+    let pill = info.addStack();
     pill.backgroundColor = badge.color;
     pill.cornerRadius = 3;
-    pill.setPadding(1, 3, 1, 3);
-    addLabel(pill, badge.text, Font.boldSystemFont(9), badge.dark ? new Color("#3A2A00") : WHITE);
+    pill.setPadding(0, 3, 0, 3);
+    addLabel(pill, badge.text, Font.boldSystemFont(8), badge.dark ? new Color("#3A2A00") : WHITE);
+    info.addSpacer(4);
+    let nat = (/\(([A-Z]{3})\)\s*$/.exec(event.venue || "") || [])[1];
+    let f = nat ? flag(nat) : "";
+    let pad = n => String(n).padStart(2, "0");
+    let extra = live ? soon : end.getTime() !== start.getTime() ? `bis ${pad(end.getDate())}.${pad(end.getMonth() + 1)}.` : "";
+    addLabel(info, `${f ? f + " " : ""}${city(event.venue)}${extra ? " · " + extra : ""}`, Font.mediumSystemFont(10), WHITE, 0.65);
+    right.addSpacer();
 }
 
-// Geschätzte Zeilen des Namens (ca. 16 Zeichen je Zeile neben dem Kürzel, Umbruch an Wortgrenzen)
+// Geschätzte Zeilen des Namens (ca. 17 Zeichen je Zeile neben dem Kürzel, Umbruch an Wortgrenzen)
 function nameLines(event, track) {
     let lines = 1, width = 0;
     for (let word of displayName(event, track).split(" ")) {
-        if (width && width + 1 + word.length > 16) {
+        if (width && width + 1 + word.length > 17) {
             lines++;
             width = word.length;
         } else {
@@ -396,9 +415,9 @@ function nameLines(event, track) {
 
 // So viele Termine, wie in die Höhe passen – lange Namen brauchen zwei, drei Zeilen
 function fitEvents(events, track, large) {
-    let budget = large ? 330 : 118, gap = large ? 6 : 4, used = 0, list = [];
+    let budget = large ? 335 : 115, gap = large ? 8 : 5, used = 0, list = [];
     for (let event of events || []) {
-        let height = nameLines(event, track) * 14.5 + 12 + (list.length ? gap : 0);
+        let height = nameLines(event, track) * 14.5 + 15 + (list.length ? gap : 0);
         if (used + height > budget) break;
         used += height;
         list.push(event);
@@ -408,7 +427,7 @@ function fitEvents(events, track, large) {
 
 // Kopfzeile = Spaltentitel (Bahn | Straße), spart eine Zeile gegenüber Titel plus Spaltenköpfen
 function buildCalendar(widget, data, large) {
-    let columns = [["Bahn", "sportscourt", data.track], ["Straße", "road.lanes", data.road]];
+    let columns = [["Bahn", "figure.track.and.field|oval", data.track], ["Straße", "figure.run|road.lanes", data.road]];
     let row = widget.addStack();
     columns.forEach(([title, symbol, events], i) => {
         if (i > 0) row.addSpacer(12);
@@ -417,20 +436,20 @@ function buildCalendar(widget, data, large) {
         col.size = new Size(150, 0);
         let head = col.addStack();
         head.centerAlignContent();
-        addSymbol(head, symbol, 12, WHITE);
-        head.addSpacer(4);
-        addLabel(head, title, Font.semiboldSystemFont(13), WHITE);
+        addSymbol(head, symbol, 13, GOLD);
+        head.addSpacer(5);
+        addLabel(head, title.toUpperCase(), Font.boldSystemFont(12), WHITE, 0.9);
         if (i === 1 && data.stale) {
             head.addSpacer();
             addLabel(head, "offline", Font.semiboldSystemFont(9), WHITE, 0.6);
         }
-        col.addSpacer(1);
+        col.addSpacer(3);
         if (!events || !events.length) {
             col.addSpacer(2);
             addLabel(col, "Keine Termine", Font.mediumSystemFont(11), WHITE, 0.7);
         }
         fitEvents(events, i === 0, large).forEach((event, j) => {
-            col.addSpacer(j === 0 ? 3 : large ? 6 : 4);
+            col.addSpacer(j === 0 ? 4 : large ? 8 : 5);
             addEvent(col, event, i === 0);
         });
         col.addSpacer();
