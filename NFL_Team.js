@@ -232,12 +232,20 @@ async function loadWithCache() {
     return null;
 }
 
+
+// ESPN-Logos sind 500×500 px – auf dem Homescreen reicht der Speicher dafür nicht.
+// Über den ESPN-Bildserver in 64 px laden.
+function smallLogo(url) {
+    let m = /^https?:\/\/a\.espncdn\.com(\/i\/[^?]+)/.exec(url || "");
+    return m ? `https://a.espncdn.com/combiner/i?img=${m[1]}&w=64&h=64` : url;
+}
+
 // Logos parallel laden, Fehler ignorieren
 async function loadLogos(urls) {
     let images = {};
     await Promise.all([...new Set(urls.filter(Boolean))].map(async url => {
         try {
-            images[url] = await new Request(url).loadImage();
+            images[url] = await new Request(smallLogo(url)).loadImage();
         } catch (e) {
             console.log(`Logo nicht geladen: ${url}`);
         }
