@@ -11,6 +11,9 @@ import { EVENTS, CONCURRENCY, isoDate, parseDate, loadToplist, mapLimited } from
 const OUTPUT = "data/leichtathletik_highlights.json";
 const WINDOWS = [7, 14, 30]; // Tage – ohne Höhepunkt wird der Zeitraum erweitert
 const MAX_ITEMS = 8;
+const MAX_PER_EVENT = 2;  // je Disziplin und Geschlecht – sonst dominiert eine einzelne Veranstaltung
+const GERMAN_SLOTS = 3;   // Plätze für deutsche Höhepunkte, damit Weltleistungen sie nicht verdrängen
+const GERMAN_TYPES = ["DR", "DA", "DL", "DT"];
 
 const WORLD = "regionType=world";
 const GERMANY = "regionType=countries&region=ger";
@@ -64,9 +67,17 @@ function highlights(results, from) {
                 wind: row.wind, venue: row.venue, date: row.date, score: row.score };
         }
     }
-    return Object.values(best)
+    let perEvent = {};
+    let ranked = Object.values(best)
         .sort((a, b) => b.priority - a.priority || b.score - a.score)
-        .slice(0, MAX_ITEMS);
+        .filter(h => {
+            let key = `${h.gender}|${h.event}`;
+            perEvent[key] = (perEvent[key] || 0) + 1;
+            return perEvent[key] <= MAX_PER_EVENT;
+        });
+    let german = ranked.filter(h => GERMAN_TYPES.includes(h.type)).slice(0, GERMAN_SLOTS);
+    let world = ranked.filter(h => !GERMAN_TYPES.includes(h.type)).slice(0, MAX_ITEMS - german.length);
+    return world.concat(german).sort((a, b) => b.priority - a.priority || b.score - a.score);
 }
 
 async function main() {

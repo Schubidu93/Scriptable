@@ -26,7 +26,7 @@ function best(rows, from) {
             return true;
         })
         .slice(0, TOP)
-        .map((r, i) => ({ rank: i + 1, ...r }));
+        .map((r, i) => ({ ...r, rank: i + 1 })); // eigener Rang, nicht der aus der Topliste
 }
 
 // Eine Region: alle Disziplinen laden, Top 5 bestimmen, Datei schreiben
