@@ -371,11 +371,102 @@ async function loadGCInBrowser(path, stage) {
     return { stage, gc: [] };
 }
 
+// ---------- Gesamtwertung aus Wikipedia ----------
+// Schnell und zuverlässig erreichbar; die Rennberichte führen Tabellen „General classification
+// after Stage N“ bzw. „Final general classification“ (Vorlage {{cyclingresult}} oder Tabelle mit {{flagathlete}}).
+const WIKI = "https://en.wikipedia.org/w/api.php?format=json&";
+const IOC_ISO = {
+    AUS: "AU", AUT: "AT", BEL: "BE", BLR: "BY", BRA: "BR", CAN: "CA", CHN: "CN", COL: "CO", CRO: "HR", CZE: "CZ",
+    DEN: "DK", ECU: "EC", ERI: "ER", ESP: "ES", EST: "EE", ETH: "ET", FRA: "FR", GBR: "GB", GER: "DE", HUN: "HU",
+    IRL: "IE", ISR: "IL", ITA: "IT", JPN: "JP", KAZ: "KZ", LAT: "LV", LTU: "LT", LUX: "LU", MEX: "MX", NED: "NL",
+    NOR: "NO", NZL: "NZ", POL: "PL", POR: "PT", RSA: "ZA", RUS: "RU", RWA: "RW", SLO: "SI", SVK: "SK", SUI: "CH",
+    SWE: "SE", UKR: "UA", URU: "UY", USA: "US", VEN: "VE", ARG: "AR", ALG: "DZ", KEN: "KE", UGA: "UG",
+};
+
+function iocFlag(code) {
+    let iso = IOC_ISO[String(code || "").toUpperCase()];
+    return iso ? String.fromCodePoint(...[...iso].map(c => 0x1F1E6 + c.charCodeAt(0) - 65)) : "";
+}
+
+async function wikiJSON(params) {
+    let req = new Request(WIKI + params);
+    req.timeoutInterval = 8;
+    req.headers = { "User-Agent": "Scriptable-Radsport-Widget/1.0" };
+    return req.loadJSON();
+}
+
+async function wikiText(title) {
+    let json = await wikiJSON(`action=parse&prop=wikitext&redirects=1&page=${encodeURIComponent(title)}`);
+    return json.parse ? json.parse.wikitext["*"] : "";
+}
+
+// "[[João Almeida (cyclist)|João Almeida]]" → "J. Almeida"
+function wikiRider(cell) {
+    let link = /\[\[(?:[^\]|]*\|)?([^\]]+)\]\]/.exec(cell);
+    let full = (link ? link[1] : cell).replace(/\(.*?\)/g, "").replace(/\{\{[^}]*\}\}/g, "").trim();
+    let parts = full.split(/\s+/);
+    return parts.length > 1 ? `${parts[0].charAt(0)}. ${parts.slice(1).join(" ")}` : full;
+}
+
+// Alle GC-Tabellen eines Artikels; die beste ist die Schlusswertung („Final …“ oder höchste Etappe)
+function parseWikiGC(text) {
+    let blocks = [];
+    let score = title => /final/i.test(title) ? 1000 : (Number((/stage\s+(\d+)/i.exec(title) || [])[1]) || 999);
+    for (let m of text.matchAll(/\{\{\s*cyclingresult start([^}]*)\}\}([\s\S]*?)\{\{\s*cyclingresult end/gi)) {
+        let title = (/title\s*=\s*([^|}<]*)/i.exec(m[1]) || [])[1] || "";
+        if (!title) {
+            let heading = [...text.slice(Math.max(0, m.index - 300), m.index).matchAll(/=+\s*([^=\n]+?)\s*=+/g)].pop();
+            title = heading ? heading[1] : "";
+        }
+        if (!/general classification/i.test(title)) continue;
+        let rows = [...m[2].matchAll(/\{\{\s*cyclingresult\s*\|\s*(\d+)\s*\|((?:\[\[[^\]]*\]\]|[^|\[}])+)\|\s*([A-Z]{3})/gi)]
+            .map(r => ({ rank: Number(r[1]), rider: wikiRider(r[2]), flag: iocFlag(r[3]), team: "" }));
+        blocks.push({ score: score(title), rows });
+    }
+    // Tabelle mit Überschrift „Final general classification“ und {{flagathlete|[[Name]]|NAT}}
+    for (let m of text.matchAll(/\|\+([^\n]*general classification[^\n]*)\n([\s\S]*?)\n\|\}/gi)) {
+        let rows = [...m[2].matchAll(/\{\{\s*flagathlete\s*\|((?:\[\[[^\]]*\]\]|[^|\[}])+)\|\s*([A-Z]{3})/gi)]
+            .map((r, i) => ({ rank: i + 1, rider: wikiRider(r[1]), flag: iocFlag(r[2]), team: "" }));
+        blocks.push({ score: score(m[1]), rows });
+    }
+    let best = blocks.filter(b => b.rows.length >= 3 && b.rows[0].rank === 1).sort((a, b) => b.score - a.score)[0];
+    return best ? best.rows.slice(0, CONFIG.podium).map(({ rank, ...rest }) => rest) : null;
+}
+
+// Artikel suchen ("2026 La Vuelta Ciclista a España" → "2026 Vuelta a España"), dann Etappenseiten
+async function wikiGC(race) {
+    let year = (race.end || race.start || new Date()).getFullYear();
+    // PCS-Namen auf die Wikipedia-Schreibweise bringen: "La Vuelta Ciclista a España" → "Vuelta a España"
+    let name = race.name.replace(/^(La|Le|Il)\s+(?=Vuelta|Tour)/i, "").replace(/\bCiclista\s+/i, "");
+    let female = /women|femmes|donne|ladies|femenina|feminin/i;
+    let query = `${year} ${name}${WOMEN && !female.test(name) ? " Women" : ""} stage`;
+    let search = await wikiJSON(`action=query&list=search&srlimit=10&srsearch=${encodeURIComponent(query)}`);
+    let titles = ((search.query && search.query.search) || []).map(x => x.title)
+        .filter(t => t.startsWith(String(year)) && !/^\d{4} .*teams? and cyclists/i.test(t))
+        .filter(t => WOMEN ? female.test(t) : !female.test(t));
+    let main = titles.filter(t => !/stage/i.test(t)).slice(0, 1);
+    let stagePages = titles.filter(t => /stage/i.test(t))
+        .sort((a, b) => (Number((/(\d+)\D*$/.exec(b) || [])[1]) || 0) - (Number((/(\d+)\D*$/.exec(a) || [])[1]) || 0));
+    for (let title of main.concat(stagePages).slice(0, 3)) {
+        if (timeLeft() < 3000) break;
+        let rows = parseWikiGC(await wikiText(title));
+        if (rows) return rows;
+    }
+    return null;
+}
+
 // Gesamtwertung, wenn der GC-Reiter auf der Seite leer ist:
 // eigener Link des Reiters, dann übliche Adressen, zuletzt Klick im Browser
 async function loadGC(race, path, html, stageNumber, stage) {
     let tab = findTab(html, "GC");
     if (tab && isGC(tab.rows, stage)) return tab.rows;
+    // Schnellster Weg: Wikipedia
+    try {
+        let rows = await wikiGC(race);
+        if (isGC(rows, stage)) return rows;
+    } catch (e) {
+        console.log(`GC über Wikipedia: ${e}`);
+    }
     let base = race.path.replace(/[-\/](gc|result)$/, "");
     let candidates = [];
     if (tab && tab.path && tab.path !== path) candidates.push(tab.path);
@@ -398,7 +489,8 @@ async function loadGC(race, path, html, stageNumber, stage) {
             console.log(`GC über ${candidate}: ${e}`);
         }
     }
-    if (timeLeft() < 12000) return null;
+    // Klick im unsichtbaren Browser dauert lange – nur in der App, nicht im Widget (Zeitlimit)
+    if (config.runsInWidget || timeLeft() < 12000) return null;
     try {
         return (await loadGCInBrowser(path, stage)).gc;
     } catch (e) {
@@ -487,7 +579,7 @@ async function loadData() {
             // Etappe schon bekannt, GC fehlte – anzeigen und ggf. später erneut suchen
             let item = { race, entries: stored.entries.map(revive) };
             collected.push(item);
-            if (Date.now() - (stored.gcTriedAt || 0) > GC_RETRY) pending.push({ item, ctx: null });
+            if (Date.now() - (stored.gcTried || 0) > GC_RETRY) pending.push({ item, ctx: null });
             continue;
         }
         if (timeLeft() < 5000) {
@@ -501,7 +593,7 @@ async function loadData() {
                 collected.push(item);
                 if (race.finished) {
                     let complete = result.entries.some(e => e.isGC);
-                    saved[key] = { entries: result.entries, savedAt: Date.now(), complete, gcTriedAt: 0 };
+                    saved[key] = { entries: result.entries, savedAt: Date.now(), complete, gcTried: 0 };
                     saveResults(saved);
                     if (!complete) pending.push({ item, ctx: result.ctx });
                 }
@@ -522,7 +614,7 @@ async function loadData() {
 
     // Zweiter Durchgang: Gesamtwertungen, solange Zeit bleibt
     for (let { item, ctx } of pending) {
-        if (timeLeft() < 14000) break;
+        if (timeLeft() < 8000) break;
         let race = item.race, key = resultPath(race);
         try {
             if (!ctx) ctx = (await loadStageEntries(race, today, false)).ctx;
@@ -532,7 +624,7 @@ async function loadData() {
                 item.entries = [{ ...race, label: "GC", date: race.end, path: ctx.path, podium: gc, isGC: true }].concat(stageEntries);
                 saved[key] = { entries: item.entries, savedAt: Date.now(), complete: true };
             } else {
-                saved[key] = { entries: item.entries, savedAt: Date.now(), complete: false, gcTriedAt: Date.now() };
+                saved[key] = { entries: item.entries, savedAt: Date.now(), complete: false, gcTried: Date.now() };
             }
             saveResults(saved);
         } catch (e) {
