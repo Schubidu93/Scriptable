@@ -375,8 +375,10 @@ function addEvent(stack, event, track) {
     addCentered(date, MONTHS_DE[start.getMonth()], Font.semiboldSystemFont(8), GOLD, 0.9);
 
     row.addSpacer(7);
+    // Feste Breite (Spalte 150 − Datum 28 − Abstand 7), damit lange Namen umbrechen statt „…“
     let right = row.addStack();
     right.layoutVertically();
+    right.size = new Size(115, 0);
     // Gleiche Schrift wie die Athletennamen in den Straßenlauf-Widgets
     let name = addLabel(right, displayName(event, track), Font.semiboldSystemFont(11), WHITE);
     name.lineLimit = 2;
