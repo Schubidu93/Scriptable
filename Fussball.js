@@ -893,7 +893,6 @@ function addResultLine(stack, team, game, images) {
 function addResult(stack, game, images) {
     let box = stack.addStack();
     box.layoutVertically();
-    box.url = `https://www.espn.com/soccer/match/_/gameId/${game.id}`;
     addResultLine(box, game.home, game, images);
     box.addSpacer(1);
     addResultLine(box, game.away, game, images);
@@ -935,7 +934,6 @@ function buildResults(widget, data, columns, perColumn, images) {
 function addGameRow(stack, game, images) {
     let row = stack.addStack();
     row.centerAlignContent();
-    row.url = `https://www.espn.com/soccer/match/_/gameId/${game.id}`;
     let played = game.state !== "pre";
     let draw = played && !game.home.winner && !game.away.winner;
     let teamFont = team => (!played || draw ? Font.semiboldSystemFont(13)
@@ -1254,7 +1252,8 @@ async function createWidget() {
 
     let data = await loadWithCache(columns * perColumn);
     let widget = new ListWidget();
-    widget.url = VIEW === "ergebnisse" ? `https://www.espn.com/soccer/scoreboard/_/league/${LEAGUE.slug}` : LEAGUE.url;
+    // Antippen startet das Skript in Scriptable (frische Daten) statt eine Website zu öffnen
+    widget.url = URLScheme.forRunningScript();
     widget.refreshAfterDate = nextRefresh(data);
     background(widget);
     widget.setPadding(VIEW === "ergebnisse" ? (COMPACT ? 12 : 16) : 12, 16, 4, 16);

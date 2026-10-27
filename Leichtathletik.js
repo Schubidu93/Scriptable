@@ -482,7 +482,8 @@ function buildMedium(widget, data) {
 async function createWidget() {
     let data = await loadData();
     let widget = new ListWidget();
-    widget.url = "https://worldathletics.org/records/toplists";
+    // Antippen startet das Skript in Scriptable (frische Daten) statt eine Website zu öffnen
+    widget.url = URLScheme.forRunningScript();
     widget.refreshAfterDate = new Date(Date.now() + 3 * 60 * 60 * 1000);
     background(widget);
     widget.setPadding(14, 16, 6, 16);

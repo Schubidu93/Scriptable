@@ -184,7 +184,6 @@ function addTeamLine(stack, team, game, images) {
 function addGame(stack, game, images) {
     let box = stack.addStack();
     box.layoutVertically();
-    box.url = `https://www.espn.com/nfl/game/_/gameId/${game.id}`;
     addTeamLine(box, game.away, game, images);
     box.addSpacer(1);
     addTeamLine(box, game.home, game, images);
@@ -239,7 +238,8 @@ async function createWidget() {
 
     let data = await loadWithCache(columns * perColumn);
     let widget = new ListWidget();
-    widget.url = "https://www.espn.com/nfl/scoreboard";
+    // Antippen startet das Skript in Scriptable (frische Daten) statt eine Website zu öffnen
+    widget.url = URLScheme.forRunningScript();
     widget.refreshAfterDate = new Date(Date.now() + 30 * 60 * 1000);
     background(widget);
     widget.setPadding(COMPACT ? 14 : 18, 16, 4, 16);

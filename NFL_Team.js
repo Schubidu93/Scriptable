@@ -518,7 +518,8 @@ function nextRefresh(data) {
 async function createWidget() {
     let data = await loadWithCache();
     let widget = new ListWidget();
-    widget.url = `https://www.espn.com/nfl/team/_/name/${teamKey}`;
+    // Antippen startet das Skript in Scriptable (frische Daten) statt eine Website zu öffnen
+    widget.url = URLScheme.forRunningScript();
     widget.refreshAfterDate = nextRefresh(data);
     background(widget);
     widget.setPadding(12, 16, 4, 16);
