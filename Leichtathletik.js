@@ -285,38 +285,40 @@ function addEvent(stack, event) {
     addLabel(pill, badge.text, Font.boldSystemFont(8), badge.dark ? new Color("#3A2A00") : WHITE);
     top.addSpacer(4);
     addLabel(top, event.name, Font.semiboldSystemFont(11), WHITE);
-    top.addSpacer(3);
     top.addSpacer();
-    let soon = countdown(event);
-    addLabel(top, soon, Font.boldSystemFont(9), soon === "läuft" || soon === "heute" ? GOLD : WHITE, soon === "läuft" || soon === "heute" ? 1 : 0.8);
 
     let nat = (/\(([A-Z]{3})\)\s*$/.exec(event.venue || "") || [])[1];
     let f = nat ? flag(nat) : "";
-    addLabel(stack, `${f ? f + " " : ""}${city(event.venue)} · ${dateRange(event)}`, Font.mediumSystemFont(9), WHITE, 0.6);
+    // Läuft der Wettkampf gerade oder ist er heute, steht das statt des Datums
+    let soon = countdown(event);
+    let when = soon === "läuft" || soon === "heute" ? soon : dateRange(event);
+    addLabel(stack, `${f ? f + " " : ""}${city(event.venue)} · ${when}`, Font.mediumSystemFont(9), WHITE, 0.6);
 }
 
-function buildCalendar(widget, data) {
-    let header = widget.addStack();
-    header.centerAlignContent();
-    addSymbol(header, "calendar", 13, WHITE);
-    header.addSpacer(5);
-    addLabel(header, "Wettkampfkalender", Font.semiboldSystemFont(14), WHITE);
-    header.addSpacer();
-    if (data.stale) addLabel(header, "offline", Font.semiboldSystemFont(10), WHITE, 0.6);
-    widget.addSpacer(5);
-
+// Kopfzeile = Spaltentitel (Bahn | Straße), spart eine Zeile gegenüber Titel plus Spaltenköpfen
+function buildCalendar(widget, data, count) {
+    let columns = [["Bahn", "sportscourt", data.track], ["Straße", "road.lanes", data.road]];
     let row = widget.addStack();
-    [["Bahn", data.track], ["Straße", data.road]].forEach(([title, events], i) => {
+    columns.forEach(([title, symbol, events], i) => {
         if (i > 0) row.addSpacer(12);
         let col = row.addStack();
         col.layoutVertically();
-        addLabel(col, title.toUpperCase(), Font.semiboldSystemFont(9), WHITE, 0.6);
+        let head = col.addStack();
+        head.centerAlignContent();
+        addSymbol(head, symbol, 11, WHITE);
+        head.addSpacer(4);
+        addLabel(head, title, Font.semiboldSystemFont(12), WHITE);
+        if (i === 1 && data.stale) {
+            head.addSpacer();
+            addLabel(head, "offline", Font.semiboldSystemFont(9), WHITE, 0.6);
+        }
+        col.addSpacer(1);
         if (!events || !events.length) {
-            col.addSpacer(3);
+            col.addSpacer(2);
             addLabel(col, "Keine Termine", Font.mediumSystemFont(11), WHITE, 0.7);
         }
-        (events || []).slice(0, 5).forEach(event => {
-            col.addSpacer(3);
+        (events || []).slice(0, count).forEach(event => {
+            col.addSpacer(2);
             addEvent(col, event);
         });
         col.addSpacer();
@@ -364,8 +366,9 @@ async function createWidget() {
         return widget;
     }
     if (CALENDAR) {
-        widget.setPadding(10, 14, 4, 14);
-        buildCalendar(widget, data);
+        let large = config.widgetFamily === "large" || config.widgetFamily === "extraLarge";
+        widget.setPadding(12, 14, 4, 14);
+        buildCalendar(widget, data, large ? 10 : 5);
     } else if (RECORDS) buildRecords(widget, data, config.widgetFamily === "medium" ? 3 : 7, config.widgetFamily === "medium");
     else if (config.widgetFamily === "medium") buildMedium(widget, data);
     else buildLarge(widget, data);
