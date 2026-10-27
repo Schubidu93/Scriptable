@@ -10,13 +10,29 @@ const CONFIG = {
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), "schnee-muenchen.json");
 
+// Zeitpunkt der angezeigten Daten (bei Offline-Anzeige der des Zwischenspeichers)
+let UPDATED = Date.now();
+
+// Kleine Zeile „aktualisiert 10:42“ unten rechts – in allen Widgets gleich
+function addUpdated(widget, note) {
+    let date = new Date(UPDATED);
+    let df = new DateFormatter();
+    df.dateFormat = date.toDateString() === new Date().toDateString() ? "HH:mm" : "dd.MM. HH:mm";
+    let row = widget.addStack();
+    row.addSpacer();
+    let t = row.addText(`${note ? note + " · " : ""}aktualisiert ${df.string(date)}`);
+    t.font = Font.mediumSystemFont(8);
+    t.textColor = Color.white();
+    t.textOpacity = 0.5;
+}
+
 // Schneehöhe laden – bei Fehlern den letzten bekannten Wert verwenden
 async function loadSnow() {
     try {
         let html = await new Request(CONFIG.url).loadString();
         let match = /Schneehöhe vom (.*?) Uhr: <b>(\d+)<\/b> cm/.exec(html);
         if (match) {
-            let data = { depth: parseInt(match[2]), stand: match[1].trim(), stale: false };
+            let data = { depth: parseInt(match[2]), stand: match[1].trim(), stale: false, updated: Date.now() };
             fm.writeString(cachePath, JSON.stringify(data));
             return data;
         }
@@ -26,6 +42,7 @@ async function loadSnow() {
     if (fm.fileExists(cachePath)) {
         let data = JSON.parse(fm.readString(cachePath));
         data.stale = true;
+        if (data.updated) UPDATED = data.updated;
         return data;
     }
     return null;
@@ -235,13 +252,15 @@ async function createWidget() {
         case "large":
         case "extraLarge":
             background(widget);
-            widget.setPadding(16, 16, 16, 16);
+            widget.setPadding(16, 16, 6, 16);
             buildMedium(widget, data);
+            addUpdated(widget);
             break;
         default:
             background(widget);
-            widget.setPadding(16, 16, 16, 16);
+            widget.setPadding(16, 16, 6, 16);
             buildSmall(widget, data);
+            addUpdated(widget);
     }
     return widget;
 }

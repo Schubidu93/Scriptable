@@ -24,6 +24,22 @@ const cachePath = fm.joinPath(fm.cacheDirectory(), `radsport-pcs${WOMEN ? "-frau
 // Was beim Abruf passiert ist – wird angezeigt, wenn keine Daten kommen
 const DIAG = [];
 
+// Zeitpunkt der angezeigten Daten (bei Offline-Anzeige der des Zwischenspeichers)
+let UPDATED = Date.now();
+
+// Kleine Zeile „aktualisiert 10:42“ unten rechts – in allen Widgets gleich
+function addUpdated(widget, note) {
+    let date = new Date(UPDATED);
+    let df = new DateFormatter();
+    df.dateFormat = date.toDateString() === new Date().toDateString() ? "HH:mm" : "dd.MM. HH:mm";
+    let row = widget.addStack();
+    row.addSpacer();
+    let t = row.addText(`${note ? note + " · " : ""}aktualisiert ${df.string(date)}`);
+    t.font = Font.mediumSystemFont(8);
+    t.textColor = Color.white();
+    t.textOpacity = 0.5;
+}
+
 function pageTitle(html) {
     let m = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html || "");
     return m ? m[1].replace(/\s+/g, " ").trim().slice(0, 40) : "ohne Titel";
@@ -352,6 +368,7 @@ async function loadWithCache() {
     try {
         let data = await loadData();
         if (data.past.length || data.upcoming.length) {
+            data.updated = Date.now();
             fm.writeString(cachePath, serialize(data));
             return data;
         }
@@ -363,6 +380,7 @@ async function loadWithCache() {
     if (fm.fileExists(cachePath)) {
         let data = deserialize(fm.readString(cachePath));
         data.stale = true;
+        if (data.updated) UPDATED = data.updated;
         return data;
     }
     return null;
@@ -565,13 +583,14 @@ async function createWidget() {
     widget.url = `${PCS}races.php?year=${new Date().getFullYear()}&circuit=${CONFIG.circuit}&filter=Filter`;
     widget.refreshAfterDate = new Date(Date.now() + 3 * 60 * 60 * 1000);
     background(widget);
-    widget.setPadding(14, 16, 14, 16);
+    widget.setPadding(14, 16, 6, 16);
 
     if (config.widgetFamily === "medium") {
         buildMedium(widget, data);
     } else {
         buildLarge(widget, data);
     }
+    if (data) addUpdated(widget);
     return widget;
 }
 

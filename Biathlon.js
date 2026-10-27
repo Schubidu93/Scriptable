@@ -28,6 +28,22 @@ const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), `biathlon-${VIEW}${VIEW === "rennen" ? (WOMEN ? "-frauen" : "-maenner") : ""}.json`);
 const DIAG = [];
 
+// Zeitpunkt der angezeigten Daten (bei Offline-Anzeige der des Zwischenspeichers)
+let UPDATED = Date.now();
+
+// Kleine Zeile „aktualisiert 10:42“ unten rechts – in allen Widgets gleich
+function addUpdated(widget, note) {
+    let date = new Date(UPDATED);
+    let df = new DateFormatter();
+    df.dateFormat = date.toDateString() === new Date().toDateString() ? "HH:mm" : "dd.MM. HH:mm";
+    let row = widget.addStack();
+    row.addSpacer();
+    let t = row.addText(`${note ? note + " · " : ""}aktualisiert ${df.string(date)}`);
+    t.font = Font.mediumSystemFont(8);
+    t.textColor = Color.white();
+    t.textOpacity = 0.5;
+}
+
 // Beide Adressen der IBU-Schnittstelle probieren
 async function api(method, query) {
     let qs = Object.entries(query || {}).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
@@ -231,6 +247,7 @@ async function loadWithCache() {
         let data = VIEW === "weltcup" ? await loadCupData() : await loadRaceData();
         let empty = VIEW === "weltcup" ? !data.women.top.length && !data.men.top.length : !data.past.length && !data.upcoming.length;
         if (!empty) {
+            data.updated = Date.now();
             fm.writeString(cachePath, JSON.stringify(data));
             return data;
         }
@@ -243,6 +260,7 @@ async function loadWithCache() {
     if (fm.fileExists(cachePath)) {
         let data = reviveDates(JSON.parse(fm.readString(cachePath)));
         data.stale = true;
+        if (data.updated) UPDATED = data.updated;
         return data;
     }
     return null;
@@ -463,17 +481,18 @@ async function createWidget() {
     widget.url = "https://www.biathlonresults.com/";
     widget.refreshAfterDate = new Date(Date.now() + 2 * 60 * 60 * 1000);
     background(widget);
-    widget.setPadding(14, 16, 14, 16);
+    widget.setPadding(14, 16, 6, 16);
 
     if (!data) {
         buildError(widget);
     } else if (VIEW === "weltcup") {
         let compact = config.widgetFamily !== "large" && config.widgetFamily !== "extraLarge";
-        if (compact) widget.setPadding(12, 16, 12, 16);
+        if (compact) widget.setPadding(12, 16, 4, 16);
         buildCup(widget, data, compact);
     } else {
         buildRaces(widget, data, config.widgetFamily !== "medium");
     }
+    if (data) addUpdated(widget);
     return widget;
 }
 
