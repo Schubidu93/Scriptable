@@ -351,11 +351,14 @@ function displayName(event, track) {
 // Kürzel, Flagge und Ort. Mehrtägige Wettkämpfe: „bis 10.01.“ in der Ortszeile.
 const MONTHS_DE = ["JAN", "FEB", "MÄR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEZ"];
 
+// Zentriert in fester Breite – ohne Abstandhalter, die selbst Platz kosten (sonst „…“ statt „27“)
 function addCentered(stack, text, font, color, opacity = 1) {
     let line = stack.addStack();
-    line.addSpacer();
-    addLabel(line, text, font, color, opacity);
-    line.addSpacer();
+    line.size = new Size(28, 0);
+    line.centerAlignContent();
+    let t = addLabel(line, text, font, color, opacity);
+    t.centerAlignText();
+    t.minimumScaleFactor = 1;
 }
 
 function addEvent(stack, event, track) {
@@ -394,7 +397,6 @@ function addEvent(stack, event, track) {
     let pad = n => String(n).padStart(2, "0");
     let extra = live ? soon : end.getTime() !== start.getTime() ? `bis ${pad(end.getDate())}.${pad(end.getMonth() + 1)}.` : "";
     addLabel(info, `${f ? f + " " : ""}${city(event.venue)}${extra ? " · " + extra : ""}`, Font.mediumSystemFont(10), WHITE, 0.65);
-    right.addSpacer();
 }
 
 // Geschätzte Zeilen des Namens (ca. 18 Zeichen je Zeile neben dem Kürzel, Umbruch an Wortgrenzen)
