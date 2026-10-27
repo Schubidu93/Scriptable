@@ -196,7 +196,7 @@ function addBadge(stack, type, rank) {
     pill.cornerRadius = 4;
     pill.setPadding(1, 4, 1, 4);
     let text = rank > 1 ? `${badge.text} ${rank}` : badge.text;
-    addLabel(pill, text, Font.boldSystemFont(9), badge.dark ? new Color("#3A2A00") : WHITE);
+    addLabel(pill, text, Font.boldSystemFont(9), badge.dark ? new Color("#3A2A00") : WHITE).minimumScaleFactor = 1;
 }
 
 // "25 OCT 2026" → "25.10.26"
@@ -212,13 +212,13 @@ function badgesOf(item) {
     return badges.slice(0, 3);
 }
 
-// Höhe eines Eintrags: zwei Textzeilen oder die übereinander stehenden Abzeichen
-function highlightHeight(item) {
-    return Math.max(26, badgesOf(item).length * 15 - 2);
+// Höhe eines Eintrags: immer zwei Textzeilen (Abzeichen stehen nebeneinander)
+function highlightHeight() {
+    return 26;
 }
 
-// Einheitliche Spalten: links Name und darunter Disziplin, Ort, Datum – rechts in fester Spalte
-// die Abzeichen übereinander, ganz rechts die Leistung
+// Einheitliche Zeilen: links Name und darunter Disziplin, Ort, Datum – rechts die Abzeichen
+// nebeneinander (rechtsbündig, gleiche Größe), ganz rechts die Leistung
 function addHighlight(stack, item, compact) {
     let row = stack.addStack();
     row.topAlignContent();
@@ -237,13 +237,10 @@ function addHighlight(stack, item, compact) {
     row.addSpacer();
 
     let tags = row.addStack();
-    tags.layoutVertically();
-    tags.size = new Size(46, 0);
+    tags.centerAlignContent();
     badgesOf(item).forEach((badge, i) => {
-        if (i > 0) tags.addSpacer(2);
-        let line = tags.addStack();
-        line.addSpacer();
-        addBadge(line, badge.type, badge.rank);
+        if (i > 0) tags.addSpacer(3);
+        addBadge(tags, badge.type, badge.rank);
     });
 
     row.addSpacer(8);
@@ -268,7 +265,7 @@ function buildRecords(widget, data, large) {
         addLabel(widget, "Noch keine Einträge", Font.mediumSystemFont(12), WHITE, 0.7);
     }
     // So viele Einträge, wie in die Höhe passen (mehrere Abzeichen brauchen mehr Platz)
-    let budget = large ? 330 : 100, gap = large ? 5 : 4, used = 0, shown = [];
+    let budget = large ? 330 : 100, gap = large ? 7 : 4, used = 0, shown = [];
     for (let item of items.slice(0, 10)) {
         let h = highlightHeight(item) + (shown.length ? gap : 0);
         if (used + h > budget) break;
