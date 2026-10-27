@@ -1,7 +1,7 @@
 // NFL – Ergebnisse der aktuellen Woche (inkl. laufender Spiele)
 // Quelle: ESPN (öffentliche Schnittstelle). Im Stil der iOS-Widgets.
-// Großes Widget: die ganze Woche, ein Spiel pro Zeile wie bei den Fußball-Ergebnissen.
-// Mittleres Widget (Standard): die letzten 9 Ergebnisse.
+// Ganze Woche, ein Spiel pro Zeile wie bei den Fußball-Ergebnissen.
+// Mittleres Widget (Standard): kompakt in zwei Spalten. Großes Widget: größer, mit Tageszeilen.
 
 const ESPN = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/";
 const FAVORITE = String(
@@ -13,7 +13,7 @@ const FAMILY = config.widgetFamily || "medium";
 const LARGE = FAMILY === "large" || FAMILY === "extraLarge";
 
 const fm = FileManager.local();
-const cachePath = fm.joinPath(fm.cacheDirectory(), `nfl-scores${LARGE ? "-woche" : ""}.json`);
+const cachePath = fm.joinPath(fm.cacheDirectory(), "nfl-scores-woche.json");
 const DIAG = [];
 
 // Zeitpunkt der angezeigten Daten (bei Offline-Anzeige der des Zwischenspeichers)
@@ -74,32 +74,6 @@ function parseGames(json) {
     });
 }
 
-// Beendete und laufende Spiele, neueste zuerst; reicht die Woche nicht, die Vorwoche dazu
-async function loadData(count) {
-    let json = await loadJSON("scoreboard");
-    let week = json.week && json.week.number;
-    let seasonType = json.season && json.season.type;
-    let year = json.season && json.season.year;
-
-    let games = parseGames(json).filter(g => g.state !== "pre");
-    let label = week ? `Woche ${week}` : "";
-
-    if (games.length < count && week > 1) {
-        try {
-            let prev = await loadJSON(`scoreboard?seasontype=${seasonType}&week=${week - 1}&dates=${year}`);
-            let prevGames = parseGames(prev).filter(g => g.state !== "pre");
-            if (prevGames.length) label = games.length ? `Woche ${week - 1}–${week}` : `Woche ${week - 1}`;
-            games = games.concat(prevGames);
-        } catch (e) {
-            console.log(`Vorwoche nicht geladen: ${e}`);
-        }
-    }
-
-    // Laufende Spiele zuerst, dann neueste Ergebnisse
-    games.sort((a, b) => (b.state === "in") - (a.state === "in") || new Date(b.date) - new Date(a.date));
-    return { label, games };
-}
-
 // Ganze Woche (alle Spiele, nach Anstoß sortiert). Hat die neue Woche noch nicht begonnen und
 // ist das erste Spiel mehr als einen Tag entfernt, die abgeschlossene Vorwoche.
 async function loadWeek() {
@@ -125,9 +99,9 @@ async function loadWeek() {
     return { label, games };
 }
 
-async function loadWithCache(count) {
+async function loadWithCache() {
     try {
-        let data = LARGE ? await loadWeek() : await loadData(count);
+        let data = await loadWeek();
         if (data.games.length) {
             data.updated = Date.now();
             fm.writeString(cachePath, JSON.stringify(data));
@@ -188,88 +162,29 @@ function background(widget) {
     widget.backgroundGradient = gradient;
 }
 
-// Mittleres Widget mit 9 Spielen: etwas kleinere Zeilen, damit alles samt Kopfzeile passt
-let COMPACT = false;
-
-function addTeamLine(stack, team, game, images) {
-    let size = COMPACT ? 14 : 16;
-    let fontSize = COMPACT ? 12 : 13;
-    let row = stack.addStack();
-    row.centerAlignContent();
-    if (images[team.logo]) {
-        let img = row.addImage(images[team.logo]);
-        img.imageSize = new Size(size, size);
-    } else {
-        row.addSpacer(size);
-    }
-    row.addSpacer(5);
-    let favorite = team.abbr === FAVORITE;
-    let loser = game.state === "post" && !team.winner;
-    let font = team.winner ? Font.boldSystemFont(fontSize) : Font.mediumSystemFont(fontSize);
-    addLabel(row, team.abbr, font, favorite ? ACCENT : WHITE, loser ? 0.55 : 1);
-    row.addSpacer();
-    let scoreFont = team.winner ? Font.boldMonospacedSystemFont(fontSize) : Font.mediumMonospacedSystemFont(fontSize);
-    addLabel(row, team.score, scoreFont, WHITE, loser ? 0.55 : 1);
-}
-
-function addGame(stack, game, images) {
-    let box = stack.addStack();
-    box.layoutVertically();
-    addTeamLine(box, game.away, game, images);
-    box.addSpacer(1);
-    addTeamLine(box, game.home, game, images);
-    if (game.state === "in") {
-        box.addSpacer(1);
-        addLabel(box, `● ${game.detail}`, Font.semiboldSystemFont(9), LIVE);
-    }
-}
-
-function build(widget, data, columns, perColumn, images) {
-    let header = widget.addStack();
-    header.centerAlignContent();
-    addLabel(header, "🏈 NFL", Font.semiboldSystemFont(15), WHITE);
-    header.addSpacer();
-    let info = [data.label, data.stale ? "offline" : ""].filter(Boolean).join(" · ");
-    addLabel(header, info, Font.semiboldSystemFont(11), WHITE, 0.6);
-
-    widget.addSpacer(COMPACT ? 5 : 8);
-
-    let games = data.games.slice(0, columns * perColumn);
-    let row = widget.addStack();
-    for (let c = 0; c < columns; c++) {
-        if (c > 0) row.addSpacer(columns > 2 ? 12 : 18);
-        let col = row.addStack();
-        col.layoutVertically();
-        games.slice(c * perColumn, (c + 1) * perColumn).forEach((game, i) => {
-            if (i > 0) col.addSpacer(COMPACT ? 4 : 7);
-            addGame(col, game, images);
-        });
-        col.addSpacer();
-    }
-    widget.addSpacer();
-}
-
-// Großes Widget: eine Zeile je Spiel – Logo Gast · Ergebnis bzw. Anstoß · Heim Logo
-function addGameRow(stack, game, images) {
+// Eine Zeile je Spiel – Logo Gast · Ergebnis bzw. Anstoß · Heim Logo (kompakt: kleiner, mit Wochentag)
+function addGameRow(stack, game, images, compact = false) {
+    let fontSize = compact ? 10.5 : 13;
+    let logoSize = compact ? 11 : 15;
     let row = stack.addStack();
     row.centerAlignContent();
     let played = game.state !== "pre";
     let tie = game.state === "post" && !game.home.winner && !game.away.winner;
     let team = (side, alignRight) => {
         let box = row.addStack();
-        box.size = new Size(34, 0);
+        box.size = new Size(compact ? 30 : 34, 0);
         if (alignRight) box.addSpacer();
         let loser = game.state === "post" && !side.winner && !tie;
-        let font = !played || tie ? Font.semiboldSystemFont(13) : side.winner ? Font.boldSystemFont(13) : Font.mediumSystemFont(13);
-        addLabel(box, side.abbr, font, side.abbr === FAVORITE ? ACCENT : WHITE, loser ? 0.55 : 1);
+        let font = !played || tie ? Font.semiboldSystemFont(fontSize) : side.winner ? Font.boldSystemFont(fontSize) : Font.mediumSystemFont(fontSize);
+        addLabel(box, side.abbr, font, side.abbr === FAVORITE ? ACCENT : WHITE, loser ? 0.55 : 1).minimumScaleFactor = 1;
         if (!alignRight) box.addSpacer();
     };
     let logo = side => {
         if (images[side.logo]) {
             let img = row.addImage(images[side.logo]);
-            img.imageSize = new Size(15, 15);
+            img.imageSize = new Size(logoSize, logoSize);
         } else {
-            row.addSpacer(15);
+            row.addSpacer(logoSize);
         }
     };
 
@@ -278,18 +193,20 @@ function addGameRow(stack, game, images) {
     team(game.away, false);
     // Feste Breite, Inhalt zentriert – ohne Abstandhalter, die selbst Platz kosten
     let mid = row.addStack();
-    mid.size = new Size(46, 0);
+    mid.size = new Size(compact ? 44 : 46, 0);
     mid.centerAlignContent();
     let text;
     if (game.state === "pre") {
         let df = new DateFormatter();
-        df.dateFormat = "HH:mm";
-        text = addLabel(mid, df.string(new Date(game.date)), Font.semiboldMonospacedSystemFont(10), WHITE, 0.7);
+        df.locale = "de_DE";
+        df.dateFormat = compact ? "EE HH:mm" : "HH:mm";
+        text = addLabel(mid, df.string(new Date(game.date)).replace(".", ""), Font.semiboldSystemFont(compact ? 8.5 : 10), WHITE, 0.7);
     } else {
-        text = addLabel(mid, `${game.away.score}–${game.home.score}`, Font.boldRoundedSystemFont(13),
+        text = addLabel(mid, `${game.away.score}–${game.home.score}`, Font.boldRoundedSystemFont(fontSize),
             game.state === "in" ? LIVE : WHITE);
     }
     text.centerAlignText();
+    text.minimumScaleFactor = 1;
     team(game.home, true);
     row.addSpacer(3);
     logo(game.home);
@@ -349,6 +266,34 @@ function buildWeek(widget, data, images) {
     widget.addSpacer();
 }
 
+// Mittleres Widget: die ganze Woche kompakt in zwei Spalten, ohne Tageszeilen
+function buildWeekCompact(widget, data, images) {
+    let header = widget.addStack();
+    header.centerAlignContent();
+    addLabel(header, "🏈 NFL", Font.semiboldSystemFont(13), WHITE);
+    header.addSpacer();
+    let info = [data.label, data.stale ? "offline" : ""].filter(Boolean).join(" · ");
+    addLabel(header, info, Font.semiboldSystemFont(10), WHITE, 0.6);
+    widget.addSpacer(4);
+
+    let games = data.games.slice(0, 16);
+    let half = Math.ceil(games.length / 2);
+    // 8 Zeilen à ~12,5 pt füllen ~100 pt; bei weniger Spielen mehr Abstand
+    let gap = Math.max(1, Math.min(6, (104 - half * 12.5) / Math.max(1, half - 1)));
+    let row = widget.addStack();
+    [games.slice(0, half), games.slice(half)].forEach((list, c) => {
+        if (c > 0) row.addSpacer();
+        let col = row.addStack();
+        col.layoutVertically();
+        list.forEach((game, i) => {
+            if (i > 0) col.addSpacer(gap);
+            addGameRow(col, game, images, true);
+        });
+        col.addSpacer();
+    });
+    widget.addSpacer();
+}
+
 function buildError(widget) {
     addLabel(widget, "🏈 NFL", Font.semiboldSystemFont(15), WHITE);
     widget.addSpacer(6);
@@ -372,26 +317,22 @@ function nextRefresh(data) {
 
 async function createWidget() {
     let large = LARGE;
-    let columns = large ? 2 : 3;
-    COMPACT = !large;
-    let perColumn = large ? 9 : 3;
-
-    let data = await loadWithCache(columns * perColumn);
+    let data = await loadWithCache();
     let widget = new ListWidget();
     // Antippen startet das Skript in Scriptable (frische Daten) statt eine Website zu öffnen
     widget.url = URLScheme.forRunningScript();
     widget.refreshAfterDate = nextRefresh(data);
     background(widget);
-    widget.setPadding(COMPACT ? 14 : 12, 16, 4, 16);
+    widget.setPadding(large ? 12 : 10, 16, 4, 16);
 
     if (!data) {
         buildError(widget);
         return widget;
     }
-    let shown = data.games.slice(0, columns * perColumn);
+    let shown = data.games.slice(0, large ? 18 : 16);
     let images = await loadLogos(shown.flatMap(g => [g.away.logo, g.home.logo]));
     if (large) buildWeek(widget, data, images);
-    else build(widget, data, columns, perColumn, images);
+    else buildWeekCompact(widget, data, images);
     addUpdated(widget);
     return widget;
 }
