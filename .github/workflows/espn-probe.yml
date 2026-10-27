@@ -8,7 +8,7 @@ jobs:
     steps:
       - run: |
           B=https://site.api.espn.com/apis/site/v2/sports/soccer
-          for q in "ger.1/scoreboard" "ger.1/scoreboard?dates=20261001-20261031" "ger.1/scoreboard?dates=20261001-20261031&limit=200" "ger.1/scoreboard?dates=20261024" "ger.1/scoreboard?dates=20261019-20261025" "ger.1/scoreboard?dates=2026" "eng.1/scoreboard?dates=20261001-20261031" "uefa.champions/scoreboard?dates=20261001-20261031" "ger.1/teams/132/schedule" "ger.1/teams/132/schedule?fixture=true"; do
+          for q in "ger.1/scoreboard?dates=2026&limit=1000" "ger.1/scoreboard?dates=2027&limit=1000" "uefa.champions/scoreboard?dates=2026&limit=1000" "uefa.champions/scoreboard?dates=2027&limit=1000" "ger.dfb_pokal/scoreboard?dates=2026&limit=1000" "ger.1/scoreboard?dates=202610" "ger.1/scoreboard?dates=20261001-20261031&limit=100"; do
             echo "== $q"
             curl -s "$B/$q" | python3 -c 'import sys,json
           try:
@@ -17,7 +17,7 @@ jobs:
               print("kein JSON", e); sys.exit()
           ev=d.get("events")
           if ev is None: print("Antwort:", str(d)[:200])
-          else: print(len(ev), "Spiele", [ (e["date"][:10], e["shortName"]) for e in ev[:3]])'
+          else: print(len(ev), "Spiele", [ (e["date"][:10], e["shortName"]) for e in ev[:2]], ev[-1]["date"][:10] if ev else "")'
           done
           echo "== core api"
           curl -s "https://sports.core.api.espn.com/v2/sports/soccer/leagues/ger.1/events?dates=20261001-20261031&limit=100" | head -c 400; echo
