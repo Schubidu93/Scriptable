@@ -1,6 +1,6 @@
 name: Leichtathletik Woche
 
-# Täglich aus den World-Athletics-Toplisten: Top-Leistungen der Woche sowie Rekorde und Bestleistungen
+# Täglich von World Athletics: Top-Leistungen der Woche, Rekorde und Bestleistungen, Wettkampfkalender
 on:
   schedule:
     - cron: "17 4 * * *"
@@ -11,6 +11,7 @@ on:
       - "scripts/leichtathletik_woche.mjs"
       - "scripts/leichtathletik_rekorde.mjs"
       - "scripts/wa_toplists.mjs"
+      - "scripts/leichtathletik_kalender.mjs"
       - ".github/workflows/leichtathletik.yml"
 
 permissions:
@@ -31,6 +32,9 @@ jobs:
           DEBUG: ${{ github.ref == 'refs/heads/main' && '0' || '1' }}
       - name: Rekorde und Bestleistungen suchen
         run: node scripts/leichtathletik_rekorde.mjs
+        continue-on-error: true
+      - name: Wettkampfkalender laden
+        run: node scripts/leichtathletik_kalender.mjs
         continue-on-error: true
       - name: Ergebnis speichern
         if: github.ref == 'refs/heads/main'

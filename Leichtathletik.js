@@ -7,11 +7,15 @@
 // Function("REGION", code)("deutschland") oder als Widget-Parameter "deutschland".
 // Ansicht "rekorde": Rekorde und Bestleistungen der letzten Tage (Weltrekord, Deutscher Rekord,
 // Jahresbestleistungen …) – im Loader per Function("ANSICHT", code)("rekorde") oder Parameter "rekorde".
+// Ansicht "kalender": die nächsten großen Wettkämpfe, Bahn und Straße nebeneinander (mittleres Widget).
 
 const params = String(args.widgetParameter || "").trim().toLowerCase().split(/\s+/);
 const GERMANY = String((typeof REGION !== "undefined" && REGION) || params.find(p => p === "deutschland") || "") === "deutschland";
-const RECORDS = String((typeof ANSICHT !== "undefined" && ANSICHT) || params.find(p => p === "rekorde") || "") === "rekorde";
-const FILE = RECORDS ? "leichtathletik_highlights" : `leichtathletik_woche${GERMANY ? "_ger" : ""}`;
+const VIEW = String((typeof ANSICHT !== "undefined" && ANSICHT) || params.find(p => p === "rekorde" || p === "kalender") || "");
+const RECORDS = VIEW === "rekorde";
+const CALENDAR = VIEW === "kalender";
+const FILE = RECORDS ? "leichtathletik_highlights" : CALENDAR ? "leichtathletik_kalender"
+    : `leichtathletik_woche${GERMANY ? "_ger" : ""}`;
 const DATA_URL = `https://raw.githubusercontent.com/Schubidu93/Scriptable/main/data/${FILE}.json`;
 
 const fm = FileManager.local();
@@ -36,7 +40,7 @@ function addUpdated(widget, note) {
 async function loadData() {
     try {
         let data = await new Request(DATA_URL).loadJSON();
-        if (data && (data.women || data.men || data.items)) {
+        if (data && (data.women || data.men || data.items || data.track || data.road)) {
             fm.writeString(cachePath, JSON.stringify(data));
             if (data.generated) UPDATED = new Date(data.generated).getTime();
             return data;
@@ -232,6 +236,92 @@ function buildRecords(widget, data, count, compact) {
     widget.addSpacer();
 }
 
+// Kalender: Kategorie als Kürzel (Olympia/WM, Diamond League, Gold Label …)
+function categoryBadge(event) {
+    let group = event.group || "";
+    if (event.category === "OW") return { text: /olymp/i.test(event.name + group) ? "OS" : "WM", color: new Color("#FFD66B"), dark: true };
+    if (event.category === "DF") return { text: "DL Finale", color: new Color("#7B4BD8") };
+    if (event.category === "GW") return { text: "DL", color: new Color("#7B4BD8") };
+    if (event.category === "GL") return { text: "GL", color: new Color("#2F8FEA") };
+    return { text: event.category, color: event.category === "A" ? new Color("#2DB37A") : new Color("#5F7D8C") };
+}
+
+// "2027-06-25" → Date (lokal, Mitternacht)
+function dayOf(iso) {
+    let [y, m, d] = iso.split("-").map(Number);
+    return new Date(y, m - 1, d);
+}
+
+function countdown(event) {
+    let today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let start = dayOf(event.startDate), end = dayOf(event.endDate || event.startDate);
+    if (start <= today && today <= end) return "läuft";
+    let days = Math.round((start - today) / 86400000);
+    if (days === 0) return "heute";
+    if (days === 1) return "morgen";
+    return `in ${days} T`;
+}
+
+// "25.06." bzw. "25.–27.06."
+function dateRange(event) {
+    let pad = n => String(n).padStart(2, "0");
+    let s = dayOf(event.startDate), e = dayOf(event.endDate || event.startDate);
+    if (s.getTime() === e.getTime()) return `${pad(s.getDate())}.${pad(s.getMonth() + 1)}.`;
+    if (s.getMonth() === e.getMonth()) return `${pad(s.getDate())}.–${pad(e.getDate())}.${pad(e.getMonth() + 1)}.`;
+    return `${pad(s.getDate())}.${pad(s.getMonth() + 1)}.–${pad(e.getDate())}.${pad(e.getMonth() + 1)}.`;
+}
+
+function addEvent(stack, event) {
+    let top = stack.addStack();
+    top.centerAlignContent();
+    let badge = categoryBadge(event);
+    let pill = top.addStack();
+    pill.backgroundColor = badge.color;
+    pill.cornerRadius = 3;
+    pill.setPadding(0, 3, 0, 3);
+    addLabel(pill, badge.text, Font.boldSystemFont(8), badge.dark ? new Color("#3A2A00") : WHITE);
+    top.addSpacer(4);
+    addLabel(top, event.name, Font.semiboldSystemFont(11), WHITE);
+    top.addSpacer(3);
+    top.addSpacer();
+    let soon = countdown(event);
+    addLabel(top, soon, Font.boldSystemFont(9), soon === "läuft" || soon === "heute" ? GOLD : WHITE, soon === "läuft" || soon === "heute" ? 1 : 0.8);
+
+    let nat = (/\(([A-Z]{3})\)\s*$/.exec(event.venue || "") || [])[1];
+    let f = nat ? flag(nat) : "";
+    addLabel(stack, `${f ? f + " " : ""}${city(event.venue)} · ${dateRange(event)}`, Font.mediumSystemFont(9), WHITE, 0.6);
+}
+
+function buildCalendar(widget, data) {
+    let header = widget.addStack();
+    header.centerAlignContent();
+    addSymbol(header, "calendar", 13, WHITE);
+    header.addSpacer(5);
+    addLabel(header, "Wettkampfkalender", Font.semiboldSystemFont(14), WHITE);
+    header.addSpacer();
+    if (data.stale) addLabel(header, "offline", Font.semiboldSystemFont(10), WHITE, 0.6);
+    widget.addSpacer(5);
+
+    let row = widget.addStack();
+    [["Bahn", data.track], ["Straße", data.road]].forEach(([title, events], i) => {
+        if (i > 0) row.addSpacer(12);
+        let col = row.addStack();
+        col.layoutVertically();
+        addLabel(col, title.toUpperCase(), Font.semiboldSystemFont(9), WHITE, 0.6);
+        if (!events || !events.length) {
+            col.addSpacer(3);
+            addLabel(col, "Keine Termine", Font.mediumSystemFont(11), WHITE, 0.7);
+        }
+        (events || []).slice(0, 5).forEach(event => {
+            col.addSpacer(3);
+            addEvent(col, event);
+        });
+        col.addSpacer();
+    });
+    widget.addSpacer();
+}
+
 function buildLarge(widget, data) {
     addHeader(widget, data);
     widget.addSpacer(8);
@@ -271,7 +361,10 @@ async function createWidget() {
         widget.addSpacer();
         return widget;
     }
-    if (RECORDS) buildRecords(widget, data, config.widgetFamily === "medium" ? 3 : 7, config.widgetFamily === "medium");
+    if (CALENDAR) {
+        widget.setPadding(10, 14, 4, 14);
+        buildCalendar(widget, data);
+    } else if (RECORDS) buildRecords(widget, data, config.widgetFamily === "medium" ? 3 : 7, config.widgetFamily === "medium");
     else if (config.widgetFamily === "medium") buildMedium(widget, data);
     else buildLarge(widget, data);
     addUpdated(widget);
@@ -283,6 +376,8 @@ async function main() {
     let widget = await createWidget();
     if (config.runsInWidget) {
         Script.setWidget(widget);
+    } else if (CALENDAR) {
+        await widget.presentMedium();
     } else {
         await widget.presentLarge();
     }
