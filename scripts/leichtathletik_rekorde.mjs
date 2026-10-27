@@ -91,8 +91,10 @@ function entries(results, today) {
         let records = e.awards.filter(a => a.rank === 1);
         let label = records.length > 1 ? records.map(a => a.label).join(" · ") : main.label;
         let { awards, ...rest } = e;
+        // Alle Auszeichnungen als Abzeichen, bedeutendste zuerst (z. B. EU 8 und DE 2)
+        let badges = awards.map(a => ({ type: a.type, rank: a.rank }));
         return { type: main.type, label, priority: main.priority, rank: main.rank, records: records.map(a => a.type),
-            lists: awards.map(a => a.scope), ...rest };
+            badges, lists: awards.map(a => a.scope), ...rest };
     });
 }
 
