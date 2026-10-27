@@ -14,16 +14,20 @@ const SCRIPTS = [
     { name: "Halbmarathon Welt", file: "Marathon_GER.js", distanz: "halbmarathon", region: "welt", glyph: "globe-europe", color: "purple" },
     { name: "10km Welt", file: "Marathon_GER.js", distanz: "10km", region: "welt", glyph: "globe-europe", color: "green" },
     { name: "Radsport", file: "Radsport.js", glyph: "bicycle", color: "yellow" },
+    { name: "Radsport Frauen", file: "Radsport.js", params: { GESCHLECHT: "frauen" }, glyph: "bicycle", color: "pink" },
     { name: "Browns", file: "NFL_Team.js", glyph: "football-ball", color: "orange" },
     { name: "NFL Ergebnisse", file: "NFL_Scores.js", glyph: "football-ball", color: "deep-blue" },
 ];
 
 function loaderCode(script) {
-    let run = script.region
-        ? `Function("DISTANZ", "REGION", code)("${script.distanz}", "${script.region}");`
-        : script.distanz
-            ? `Function("DISTANZ", code)("${script.distanz}");`
-            : "Function(code)();";
+    let params = script.params ? Object.entries(script.params) : [];
+    let run = params.length
+        ? `Function(${params.map(([k]) => `"${k}"`).join(", ")}, code)(${params.map(([, v]) => `"${v}"`).join(", ")});`
+        : script.region
+            ? `Function("DISTANZ", "REGION", code)("${script.distanz}", "${script.region}");`
+            : script.distanz
+                ? `Function("DISTANZ", code)("${script.distanz}");`
+                : "Function(code)();";
     return `// Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
 // icon-color: ${script.color}; icon-glyph: ${script.glyph};
