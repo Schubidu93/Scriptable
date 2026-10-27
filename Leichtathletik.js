@@ -399,11 +399,11 @@ function addEvent(stack, event, track) {
     right.addSpacer();
 }
 
-// Geschätzte Zeilen des Namens (ca. 16 Zeichen je Zeile neben dem Kürzel, Umbruch an Wortgrenzen)
+// Geschätzte Zeilen des Namens (ca. 17 Zeichen je Zeile neben dem Kürzel, Umbruch an Wortgrenzen)
 function nameLines(event, track) {
     let lines = 1, width = 0;
     for (let word of displayName(event, track).split(" ")) {
-        if (width && width + 1 + word.length > 16) {
+        if (width && width + 1 + word.length > 17) {
             lines++;
             width = word.length;
         } else {
