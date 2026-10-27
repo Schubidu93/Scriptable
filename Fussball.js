@@ -499,11 +499,16 @@ async function loadData() {
 }
 
 // Ergebnisse-Ansicht: laufende Spiele zuerst, dann die neuesten Ergebnisse
+// Ergebniszeilen haben Platz für drei Buchstaben: "COMO" → "COM", "BODO" → "BOD"
+function shortAbbr(abbr) {
+    return String(abbr || "").length > 3 ? String(abbr).slice(0, 3) : abbr;
+}
+
 function toGame(e) {
     let side = homeAway => {
         let c = e.competitions[0].competitors.find(x => x.homeAway === homeAway);
         let german = germanTeam(c.team);
-        return { id: String(c.team.id), abbr: german.abbr, logo: logoUrl(c.team), score: score(c), winner: c.winner === true };
+        return { id: String(c.team.id), abbr: shortAbbr(german.abbr), logo: logoUrl(c.team), score: score(c), winner: c.winner === true };
     };
     return {
         id: String(e.id),
