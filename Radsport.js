@@ -284,24 +284,55 @@ function isGC(rows, stage) {
     return Boolean(rows && rows.length && !samePodium(rows, stage));
 }
 
-// Reiter im unsichtbaren Browser anklicken und warten, bis seine Tabelle gefüllt ist
-// (und sich von der Etappenwertung unterscheidet)
-async function loadTabInBrowser(path, tabName, stage) {
-    let wv = new WebView();
-    await wv.loadURL(PCS + path);
-    await wv.evaluateJavaScript(`(function () {
-        var a = Array.prototype.slice.call(document.querySelectorAll("a[data-id]"))
-            .find(function (x) { return x.textContent.trim().toUpperCase() === "${tabName}"; });
-        if (a) a.click();
-        return !!a;
-    })()`);
-    for (let i = 0; i < 10; i++) {
-        let html = await wv.evaluateJavaScript("document.documentElement.outerHTML");
-        let rows = parseTab(html, tabName);
-        if (isGC(rows, stage)) return rows;
-        await sleep(1000);
+// Sichtbare Ergebnistabellen der Seite im Browser (nur Tabellen mit Fahrer-Links)
+const VISIBLE_TABLES_JS = `(function () {
+    return JSON.stringify(Array.prototype.slice.call(document.querySelectorAll("table"))
+        .filter(function (t) { return t.offsetParent !== null && t.querySelector('a[href*="rider/"]'); })
+        .map(function (t) { return t.outerHTML; }));
+})()`;
+
+async function visiblePodium(wv) {
+    let tables = JSON.parse(await wv.evaluateJavaScript(VISIBLE_TABLES_JS) || "[]");
+    for (let table of tables) {
+        let rows = parseRankedRows(table);
+        if (rows.length) return rows;
     }
     return [];
+}
+
+// Seite im unsichtbaren Browser öffnen, sichtbare Tabelle merken (Etappe), dann den Reiter
+// „GC“ antippen – egal ob Link, Listeneintrag oder Knopf mit Trikot-Symbol – und warten,
+// bis eine andere Tabelle sichtbar ist. Ergebnis: { stage, gc }
+async function loadGCInBrowser(path, stage) {
+    let wv = new WebView();
+    await wv.loadURL(PCS + path);
+    let before = [];
+    for (let i = 0; i < 8 && !before.length; i++) {
+        before = await visiblePodium(wv);
+        if (!before.length) await sleep(1000);
+    }
+    stage = stage && stage.length ? stage : before;
+    let clicked = await wv.evaluateJavaScript(`(function () {
+        var all = Array.prototype.slice.call(document.querySelectorAll("a, li, button, span, div"));
+        var hits = all.filter(function (e) {
+            return e.textContent.trim().toUpperCase() === "GC"
+                && !Array.prototype.some.call(e.children, function (c) { return c.textContent.trim().toUpperCase() === "GC"; });
+        });
+        if (!hits.length) return false;
+        var target = hits[0].closest("a, li, button") || hits[0];
+        target.click();
+        return true;
+    })()`);
+    if (!clicked) return { stage, gc: [] };
+    for (let i = 0; i < 10; i++) {
+        await sleep(1000);
+        let rows = await visiblePodium(wv);
+        if (isGC(rows, stage)) return { stage, gc: rows };
+        let html = await wv.evaluateJavaScript("document.documentElement.outerHTML");
+        let tab = parseTab(html, "GC");
+        if (isGC(tab, stage)) return { stage, gc: tab };
+    }
+    return { stage, gc: [] };
 }
 
 // Gesamtwertung, wenn der GC-Reiter auf der Seite leer ist:
@@ -330,12 +361,10 @@ async function loadGC(race, path, html, stageNumber, stage) {
             console.log(`GC über ${candidate}: ${e}`);
         }
     }
-    if (tab) {
-        try {
-            return await loadTabInBrowser(path, "GC", stage);
-        } catch (e) {
-            console.log(`GC im Browser: ${e}`);
-        }
+    try {
+        return (await loadGCInBrowser(path, stage)).gc;
+    } catch (e) {
+        console.log(`GC im Browser: ${e}`);
     }
     return null;
 }
@@ -434,8 +463,19 @@ async function loadStageEntries(race, today, need) {
     let stagePodium = parseTab(html, "STAGE");
     let gcPodium = null;
     if (stagePodium === null && findTab(html, "GC") === null) {
-        // Keine Reiter (z. B. alte Seitenstruktur): sichtbare Tabelle als Gesamtwertung
-        gcPodium = parsePodium(html);
+        // Reiter nicht im HTML erkannt (z. B. Symbol-Reiter): die sichtbare Tabelle ist die Etappe,
+        // die Gesamtwertung kommt per Klick auf „GC“ im Browser
+        let visible = parsePodium(html);
+        stagePodium = visible.length ? visible : null;
+        if (!isRunning) {
+            try {
+                let result = await loadGCInBrowser(path, stagePodium);
+                if (!stagePodium && result.stage.length) stagePodium = result.stage;
+                gcPodium = result.gc;
+            } catch (e) {
+                console.log(`GC im Browser: ${e}`);
+            }
+        }
     } else if (!isRunning) {
         gcPodium = await loadGC(race, path, html, number, stagePodium);
     }
