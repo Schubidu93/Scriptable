@@ -228,7 +228,7 @@ async function main() {
     if (config.runsInWidget) {
         Script.setWidget(widget);
     } else {
-        await widget.presentLarge();
+        await widget.presentMedium();
     }
     Script.complete();
 }
