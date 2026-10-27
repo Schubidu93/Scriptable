@@ -284,7 +284,22 @@ function dateRange(event) {
     return `${pad(s.getDate())}.${pad(s.getMonth() + 1)}.–${pad(e.getDate())}.${pad(e.getMonth() + 1)}.`;
 }
 
-function addEvent(stack, event) {
+// Bahn-Meetings: Stadt aus dem Namen streichen, sie steht schon in der Zeile darunter
+// ("ISTAF INDOOR Düsseldorf" → "ISTAF INDOOR"); bleibt nur ein Wort übrig ("Doha Meeting"), Name behalten
+function eventName(event, track) {
+    let place = city(event.venue);
+    if (!track || !place) return event.name;
+    let escaped = place.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    let short = event.name
+        .replace(new RegExp(`(^|[\\s,\\-–])${escaped}(?=$|[\\s,\\-–])`, "gi"), " ")
+        .replace(/\s+(de|di|of|in|du|von)\s*$/i, "")
+        .replace(/[\s,\-–]+$/, "")
+        .replace(/^[\s,\-–]+/, "")
+        .replace(/\s+/g, " ");
+    return short.split(" ").length >= 2 ? short : event.name;
+}
+
+function addEvent(stack, event, track) {
     let top = stack.addStack();
     top.centerAlignContent();
     let badge = categoryBadge(event);
@@ -292,9 +307,9 @@ function addEvent(stack, event) {
     pill.backgroundColor = badge.color;
     pill.cornerRadius = 3;
     pill.setPadding(0, 3, 0, 3);
-    addLabel(pill, badge.text, Font.boldSystemFont(8), badge.dark ? new Color("#3A2A00") : WHITE);
+    addLabel(pill, badge.text, Font.boldSystemFont(9), badge.dark ? new Color("#3A2A00") : WHITE);
     top.addSpacer(4);
-    addLabel(top, event.name, Font.semiboldSystemFont(11), WHITE);
+    addLabel(top, eventName(event, track), Font.semiboldSystemFont(12), WHITE);
     top.addSpacer();
 
     let nat = (/\(([A-Z]{3})\)\s*$/.exec(event.venue || "") || [])[1];
@@ -302,7 +317,7 @@ function addEvent(stack, event) {
     // Läuft der Wettkampf gerade oder ist er heute, steht das statt des Datums
     let soon = countdown(event);
     let when = soon === "läuft" || soon === "heute" ? soon : dateRange(event);
-    addLabel(stack, `${f ? f + " " : ""}${city(event.venue)} · ${when}`, Font.mediumSystemFont(9), WHITE, 0.6);
+    addLabel(stack, `${f ? f + " " : ""}${city(event.venue)} · ${when}`, Font.mediumSystemFont(10), WHITE, 0.65);
 }
 
 // Kopfzeile = Spaltentitel (Bahn | Straße), spart eine Zeile gegenüber Titel plus Spaltenköpfen
@@ -315,9 +330,9 @@ function buildCalendar(widget, data, count) {
         col.layoutVertically();
         let head = col.addStack();
         head.centerAlignContent();
-        addSymbol(head, symbol, 11, WHITE);
+        addSymbol(head, symbol, 12, WHITE);
         head.addSpacer(4);
-        addLabel(head, title, Font.semiboldSystemFont(12), WHITE);
+        addLabel(head, title, Font.semiboldSystemFont(13), WHITE);
         if (i === 1 && data.stale) {
             head.addSpacer();
             addLabel(head, "offline", Font.semiboldSystemFont(9), WHITE, 0.6);
@@ -329,7 +344,7 @@ function buildCalendar(widget, data, count) {
         }
         (events || []).slice(0, count).forEach(event => {
             col.addSpacer(2);
-            addEvent(col, event);
+            addEvent(col, event, i === 0);
         });
         col.addSpacer();
     });
@@ -378,7 +393,7 @@ async function createWidget() {
     if (CALENDAR) {
         let large = config.widgetFamily === "large" || config.widgetFamily === "extraLarge";
         widget.setPadding(12, 14, 4, 14);
-        buildCalendar(widget, data, large ? 10 : 5);
+        buildCalendar(widget, data, large ? 10 : 4);
     } else if (RECORDS) {
         widget.setPadding(12, 14, 4, 14);
         buildRecords(widget, data, config.widgetFamily === "medium" ? 3 : 10, config.widgetFamily === "medium");
