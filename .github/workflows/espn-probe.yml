@@ -1,0 +1,26 @@
+name: ESPN Probe
+on:
+  push:
+    branches: [espn-probe]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          B=https://site.api.espn.com/apis/site/v2/sports/soccer
+          for q in "ger.1/scoreboard" "ger.1/scoreboard?dates=20261001-20261031" "ger.1/scoreboard?dates=20261001-20261031&limit=200" "ger.1/scoreboard?dates=20261024" "ger.1/scoreboard?dates=20261019-20261025" "ger.1/scoreboard?dates=2026" "eng.1/scoreboard?dates=20261001-20261031" "uefa.champions/scoreboard?dates=20261001-20261031" "ger.1/teams/132/schedule" "ger.1/teams/132/schedule?fixture=true"; do
+            echo "== $q"
+            curl -s "$B/$q" | python3 -c 'import sys,json
+          try:
+              d=json.load(sys.stdin)
+          except Exception as e:
+              print("kein JSON", e); sys.exit()
+          ev=d.get("events")
+          if ev is None: print("Antwort:", str(d)[:200])
+          else: print(len(ev), "Spiele", [ (e["date"][:10], e["shortName"]) for e in ev[:3]])'
+          done
+          echo "== core api"
+          curl -s "https://sports.core.api.espn.com/v2/sports/soccer/leagues/ger.1/events?dates=20261001-20261031&limit=100" | head -c 400; echo
+          echo "== openligadb"
+          curl -s "https://api.openligadb.de/getmatchdata/bl1/2026/8" | head -c 600; echo
+          curl -s "https://api.openligadb.de/getbltable/bl1/2026" | head -c 300; echo
