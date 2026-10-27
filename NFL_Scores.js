@@ -193,7 +193,7 @@ function addGameRow(stack, game, images, compact = false) {
     team(game.away, false);
     // Feste Breite, Inhalt zentriert – ohne Abstandhalter, die selbst Platz kosten
     let mid = row.addStack();
-    mid.size = new Size(compact ? 44 : 46, 0);
+    mid.size = new Size(44, 0);
     mid.centerAlignContent();
     let text;
     if (game.state === "pre") {
