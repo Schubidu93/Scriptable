@@ -1,0 +1,121 @@
+{
+  "generated": "2026-10-27T12:10:51.682Z",
+  "region": "Deutschland",
+  "days": 7,
+  "from": "2026-10-20",
+  "to": "2026-10-27",
+  "women": [
+    {
+      "rank": 1,
+      "mark": "2:20:46",
+      "wind": "",
+      "name": "Blanka DÖRFEL",
+      "nat": "GER",
+      "venue": "Frankfurt (GER)",
+      "date": "25 OCT 2026",
+      "score": 1205,
+      "event": "Marathon"
+    },
+    {
+      "rank": 2,
+      "mark": "1:09:57",
+      "wind": "",
+      "name": "Lisa MERKEL",
+      "nat": "GER",
+      "venue": "Valencia (ESP)",
+      "date": "25 OCT 2026",
+      "score": 1131,
+      "event": "Halbmarathon"
+    },
+    {
+      "rank": 3,
+      "mark": "1:46:50",
+      "wind": "",
+      "name": "Nika Helene ILLING",
+      "nat": "GER",
+      "venue": "Weinauparkstadion, Zittau (GER)",
+      "date": "24 OCT 2026",
+      "score": 960,
+      "event": "Halbmarathon Gehen"
+    },
+    {
+      "rank": 4,
+      "mark": "1:47:35",
+      "wind": "",
+      "name": "Mia BANDOLY",
+      "nat": "GER",
+      "venue": "Weinauparkstadion, Zittau (GER)",
+      "date": "24 OCT 2026",
+      "score": 949,
+      "event": "Halbmarathon Gehen"
+    },
+    {
+      "rank": 5,
+      "mark": "4:04:01",
+      "wind": "",
+      "name": "Julia SCHMIDT",
+      "nat": "GER",
+      "venue": "Weinauparkstadion, Zittau (GER)",
+      "date": "24 OCT 2026",
+      "score": 923,
+      "event": "Marathon Gehen"
+    }
+  ],
+  "men": [
+    {
+      "rank": 1,
+      "mark": "2:05:46",
+      "wind": "",
+      "name": "Amanal PETROS",
+      "nat": "GER",
+      "venue": "Frankfurt (GER)",
+      "date": "25 OCT 2026",
+      "score": 1208,
+      "event": "Marathon"
+    },
+    {
+      "rank": 2,
+      "mark": "2:07:07",
+      "wind": "",
+      "name": "Richard RINGER",
+      "nat": "GER",
+      "venue": "Frankfurt (GER)",
+      "date": "25 OCT 2026",
+      "score": 1183,
+      "event": "Marathon"
+    },
+    {
+      "rank": 3,
+      "mark": "2:08:57",
+      "wind": "",
+      "name": "Samuel FITWI SIBHATU",
+      "nat": "GER",
+      "venue": "Frankfurt (GER)",
+      "date": "25 OCT 2026",
+      "score": 1149,
+      "event": "Marathon"
+    },
+    {
+      "rank": 4,
+      "mark": "1:27:45",
+      "wind": "",
+      "name": "Leo KÖPP",
+      "nat": "GER",
+      "venue": "Weinauparkstadion, Zittau (GER)",
+      "date": "24 OCT 2026",
+      "score": 1140,
+      "event": "Halbmarathon Gehen"
+    },
+    {
+      "rank": 5,
+      "mark": "1:01:30",
+      "wind": "",
+      "name": "Jan Lukas BECKER",
+      "nat": "GER",
+      "venue": "Valencia (ESP)",
+      "date": "25 OCT 2026",
+      "score": 1127,
+      "event": "Halbmarathon"
+    }
+  ]
+}
