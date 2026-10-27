@@ -1,6 +1,6 @@
 // Wettkampfkalender: die nächsten großen Wettkämpfe aus dem öffentlichen World-Athletics-Kalender.
 // Läuft täglich im Leichtathletik-Workflow und schreibt data/leichtathletik_kalender.json (je 10 Termine).
-//   Bahn (Track and Field): weltweit Diamond League und höher (OW, DF, GW),
+//   Bahn (Track and Field): weltweit ab Gold Label (OW, DF, GW, GL),
 //                           in Deutschland ab Kategorie B (OW, DF, GW, GL, A, B)
 //   Straße (Road Running):  weltweit ab Kategorie A (OW, DF, GW, GL, A)
 // Die Kalenderseite enthält ihre Daten eingebettet (__NEXT_DATA__); je Kategorie ein Abruf.
@@ -19,7 +19,7 @@ const DISCIPLINES = { track: 5, road: 2 };
 
 const QUERIES = {
     track: [
-        { region: "", categories: ["OW", "DF", "GW"] },
+        { region: "", categories: ["OW", "DF", "GW", "GL"] },
         { region: GERMANY, categories: ["OW", "DF", "GW", "GL", "A", "B"] },
     ],
     road: [
