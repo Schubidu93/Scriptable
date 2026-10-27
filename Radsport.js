@@ -97,8 +97,9 @@ function cleanText(html) {
 function parseCalendar(html, year) {
     let rows = html.match(/<tr[\s\S]*?<\/tr>/gi) || [];
     return rows.map(row => {
-        // Links können relativ ("race/…") oder absolut ("https://www.procyclingstats.com/race/…") sein
-        let link = /href=["'][^"']*?\brace\/([^"'\/?#]+)\/(\d{4})[^"']*["'][^>]*>([\s\S]*?)<\/a>/i.exec(row);
+        // Link direkt übernehmen – PCS nutzt "race/tour-down-under-2026-gc",
+        // ältere Seiten "race/tour-down-under/2026/gc"; relativ oder absolut
+        let link = /href=["'][^"']*?\b(race\/[^"'?#]+)["'][^>]*>([\s\S]*?)<\/a>/i.exec(row);
         if (!link) return null;
         let text = cleanText(row);
         let dates = [...text.matchAll(/\b(\d{1,2})\.(\d{1,2})\b/g)].map(m => new Date(year, m[2] - 1, m[1]));
@@ -108,10 +109,9 @@ function parseCalendar(html, year) {
         if (!dates.length) return null;
         let cls = (/\b([12]\.[A-Za-z0-9.]+)/.exec(cleanText(row)) || [])[1] || "";
         return {
-            name: cleanText(link[3]),
+            name: cleanText(link[2]),
             flag: flagEmoji(row.slice(0, link.index)),
-            slug: link[1],
-            year: link[2],
+            path: link[1].replace(/\/$/, ""),
             start: dates[0],
             end: dates[1] || dates[0],
             stageRace: cls.startsWith("2."),
@@ -120,8 +120,12 @@ function parseCalendar(html, year) {
     }).filter(Boolean);
 }
 
+// Der Kalender verlinkt bereits auf die Ergebnisseite (bei Rundfahrten die Gesamtwertung)
 function resultPath(race) {
-    return `race/${race.slug}/${race.year}/${race.stageRace ? "gc" : "result"}`;
+    let path = race.path;
+    if (/-(gc|result)$|\/(gc|result)$/.test(path)) return path;
+    if (/\/\d{4}$/.test(path)) return `${path}/${race.stageRace ? "gc" : "result"}`;
+    return path;
 }
 
 // "<span class="uppercase">Pogačar</span> Tadej" → "T. Pogačar"
@@ -343,7 +347,7 @@ function addPastRace(stack, race, podiumSize) {
 function addUpcomingRace(stack, race, today) {
     let row = stack.addStack();
     row.centerAlignContent();
-    row.url = `${PCS}race/${race.slug}/${race.year}`;
+    row.url = PCS + resultPath(race);
     let running = race.start <= today;
     addSymbol(row, running ? "dot.radiowaves.left.and.right" : "calendar", 11, WHITE);
     row.addSpacer(5);
@@ -426,7 +430,7 @@ function buildMedium(widget, data) {
         right.addSpacer(4);
         let block = right.addStack();
         block.layoutVertically();
-        block.url = `${PCS}race/${race.slug}/${race.year}`;
+        block.url = PCS + resultPath(race);
         addLabel(block, withFlag(race.flag, race.name), Font.semiboldSystemFont(12), WHITE);
         let running = race.start <= today;
         addLabel(block, running ? "läuft" : formatRange(race), Font.regularSystemFont(11), WHITE, 0.6);
