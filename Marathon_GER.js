@@ -95,16 +95,61 @@ function parseResults(html) {
 
     let body = (table.match(/<tbody[\s\S]*?<\/tbody>/i) || [table])[0];
     return (body.match(/<tr[\s\S]*?<\/tr>/gi) || [])
-        .map(row => (row.match(/<td[\s\S]*?<\/td>/gi) || []).map(cleanCell))
-        .filter(cells => cells.length > idx.date && cells[idx.mark])
-        .map(cells => ({
+        .map(row => (row.match(/<td[\s\S]*?<\/td>/gi) || []))
+        .map(raw => ({ raw, cells: raw.map(cleanCell) }))
+        .filter(({ cells }) => cells.length > idx.date && cells[idx.mark])
+        .map(({ raw, cells }) => ({
             mark: cells[idx.mark],
             name: cells[idx.name],
             venue: cells[idx.venue],
             date: cells[idx.date],
-            nat: idx.nat >= 0 ? cells[idx.nat] : "",
+            nat: findNat(raw, cells, idx),
         }))
         .slice(0, CONFIG.count);
+}
+
+// Länderkürzel (IOC, z. B. "KEN") aus Text, Bild-Attributen oder Flaggen-Dateinamen
+function natFromHtml(html) {
+    let text = cleanCell(html);
+    if (/^[A-Z]{3}$/.test(text)) return text;
+    let attr = /(?:alt|title|data-[\w-]+)="([A-Z]{3})"/.exec(html);
+    if (attr) return attr[1];
+    let file = /flags?[^"']*?\/([a-z]{3})\.(?:svg|png|gif|jpe?g|webp)/i.exec(html);
+    if (file) return file[1].toUpperCase();
+    let cls = /class="[^"]*flag[^"]*\b([a-z]{3})\b[^"]*"/i.exec(html);
+    return cls ? cls[1].toUpperCase() : "";
+}
+
+function findNat(raw, cells, idx) {
+    if (idx.nat >= 0) {
+        let nat = natFromHtml(raw[idx.nat]);
+        if (nat) return nat;
+    }
+    // Ohne eigene Spalte: Flagge im Namensfeld oder eine Zelle, die nur aus dem Kürzel besteht
+    let nat = natFromHtml(raw[idx.name] || "");
+    if (nat) return nat;
+    let skip = [idx.mark, idx.venue, idx.date];
+    let cell = cells.findIndex((c, i) => !skip.includes(i) && /^[A-Z]{3}$/.test(c));
+    return cell >= 0 ? cells[cell] : "";
+}
+
+// IOC-Kürzel → Flaggen-Emoji (Länder, die im Laufsport häufig vorkommen)
+const IOC_TO_ISO = {
+    ALG: "DZ", ARG: "AR", AUS: "AU", AUT: "AT", BAH: "BS", BEL: "BE", BHR: "BH", BRA: "BR",
+    BDI: "BI", CAN: "CA", CHI: "CL", CHN: "CN", COL: "CO", CRO: "HR", CZE: "CZ", DEN: "DK",
+    ECU: "EC", ERI: "ER", ESP: "ES", EST: "EE", ETH: "ET", FIN: "FI", FRA: "FR", GBR: "GB",
+    GER: "DE", GRE: "GR", HUN: "HU", IND: "IN", IRL: "IE", ISR: "IL", ITA: "IT", JPN: "JP",
+    KAZ: "KZ", KEN: "KE", KOR: "KR", LTU: "LT", LAT: "LV", MAR: "MA", MEX: "MX", MGL: "MN",
+    NAM: "NA", NED: "NL", NOR: "NO", NZL: "NZ", PER: "PE", POL: "PL", POR: "PT", PRK: "KP",
+    QAT: "QA", ROU: "RO", RSA: "ZA", RUS: "RU", RWA: "RW", SLO: "SI", SRB: "RS", SUI: "CH",
+    SVK: "SK", SWE: "SE", TAN: "TZ", TUN: "TN", TUR: "TR", UAE: "AE", UGA: "UG", UKR: "UA",
+    USA: "US", VEN: "VE", ZIM: "ZW", BRN: "BH", DJI: "DJ", LES: "LS", SOM: "SO", SUD: "SD",
+};
+
+function flag(ioc) {
+    let iso = IOC_TO_ISO[ioc];
+    if (!iso) return "";
+    return String.fromCodePoint(...[...iso].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
 }
 
 // Alle Listen laden – fällt eine aus, wird ihr letzter Stand verwendet
@@ -196,10 +241,11 @@ function addColumn(stack, list, white) {
         if (i > 0) col.addSpacer(5);
         let top = col.addStack();
         top.centerAlignContent();
-        addLabel(top, shortName(e.name), Font.semiboldSystemFont(13), white);
+        let emoji = WORLD ? flag(e.nat) : "";
+        addLabel(top, `${emoji ? emoji + " " : ""}${shortName(e.name)}`, Font.semiboldSystemFont(13), white);
         top.addSpacer();
         addLabel(top, e.mark, Font.mediumMonospacedSystemFont(13), white);
-        let nat = WORLD && e.nat ? `${e.nat} · ` : "";
+        let nat = WORLD && e.nat && !flag(e.nat) ? `${e.nat} · ` : "";
         addLabel(col, `${nat}${shortVenue(e.venue)} · ${shortDate(e.date)}`, Font.mediumSystemFont(10), white, 0.7);
     });
     col.addSpacer();
