@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-27T14:59:56.650Z",
+  "generated": "2026-10-27T16:51:19.711Z",
   "track": [
     {
       "id": 7242316,
@@ -11,6 +11,15 @@
       "endDate": "2027-01-10"
     },
     {
+      "id": 7240618,
+      "name": "Belgrade Indoor Meeting",
+      "venue": "Atletska dvorana, Beograd (SRB)",
+      "category": "A",
+      "group": "World Athletics Indoor Tour – Gold",
+      "startDate": "2027-01-27",
+      "endDate": "2027-01-27"
+    },
+    {
       "id": 7244483,
       "name": "International Jump-Meeting Cottbus",
       "venue": "Lausitz-Arena, Cottbus (GER)",
@@ -18,6 +27,24 @@
       "group": "World Athletics Indoor Tour – Silver",
       "startDate": "2027-01-27",
       "endDate": "2027-01-27"
+    },
+    {
+      "id": 7238588,
+      "name": "Czech Indoor Gala",
+      "venue": "Atletická hala, Ostrava (CZE)",
+      "category": "A",
+      "group": "World Athletics Indoor Tour – Gold",
+      "startDate": "2027-02-02",
+      "endDate": "2027-02-02"
+    },
+    {
+      "id": 7240482,
+      "name": "World Indoor Tour Gold Madrid",
+      "venue": "Gallur, Madrid (ESP)",
+      "category": "A",
+      "group": "World Athletics Indoor Tour – Gold",
+      "startDate": "2027-02-04",
+      "endDate": "2027-02-04"
     },
     {
       "id": 7244481,
@@ -38,6 +65,15 @@
       "endDate": "2027-02-07"
     },
     {
+      "id": 7240481,
+      "name": "Meeting Hauts-de-France Pas-de-Calais Trophée EDF",
+      "venue": "Arena Stade Couvert, Liévin (FRA)",
+      "category": "A",
+      "group": "World Athletics Indoor Tour – Gold",
+      "startDate": "2027-02-10",
+      "endDate": "2027-02-10"
+    },
+    {
       "id": 7244478,
       "name": "ISTAF INDOOR Düsseldorf",
       "venue": "PSD Bank Dome, Düsseldorf (GER)",
@@ -47,61 +83,16 @@
       "endDate": "2027-02-13"
     },
     {
-      "id": 7220873,
-      "name": "Doha Meeting",
-      "venue": "Suhaim bin Hamad Stadium, Doha (QAT)",
-      "category": "GW",
-      "group": "Wanda Diamond League Meeting",
-      "startDate": "2027-05-07",
-      "endDate": "2027-05-07"
-    },
-    {
-      "id": 7220874,
-      "name": "Wanda Diamond League Shanghai",
-      "venue": "Shanghai Stadium, Shanghai (CHN)",
-      "category": "GW",
-      "group": "Wanda Diamond League Meeting",
-      "startDate": "2027-05-15",
-      "endDate": "2027-05-15"
-    },
-    {
-      "id": 7220875,
-      "name": "Wanda Diamond League Xiamen",
-      "venue": "Egret Stadium, Xiamen (CHN)",
-      "category": "GW",
-      "group": "Wanda Diamond League Meeting",
-      "startDate": "2027-05-22",
-      "endDate": "2027-05-22"
-    },
-    {
-      "id": 7220877,
-      "name": "Golden Gala",
-      "venue": "Stadio Olimpico, Roma (ITA)",
-      "category": "GW",
-      "group": "Wanda Diamond League Meeting",
-      "startDate": "2027-05-27",
-      "endDate": "2027-05-27"
-    },
-    {
-      "id": 7220876,
-      "name": "Meeting International Mohammed VI d'Athletisme de Rabat",
-      "venue": "Complexe Sportif Prince Moulay Abdellah, Rabat (MAR)",
-      "category": "GW",
-      "group": "Wanda Diamond League Meeting",
-      "startDate": "2027-05-30",
-      "endDate": "2027-05-30"
+      "id": 7238748,
+      "name": "ORLEN Copernicus Cup Toruń",
+      "venue": "Arena Toruń, Toruń (POL)",
+      "category": "A",
+      "group": "World Athletics Indoor Tour – Gold",
+      "startDate": "2027-02-14",
+      "endDate": "2027-02-14"
     }
   ],
   "road": [
-    {
-      "id": 7235594,
-      "name": "Hangzhou Marathon",
-      "venue": "Hangzhou (CHN)",
-      "category": "A",
-      "group": "World Athletics Label Road Races – Gold",
-      "startDate": "2026-11-01",
-      "endDate": "2026-11-01"
-    },
     {
       "id": 7235596,
       "name": "Istanbul Marathon",
@@ -121,15 +112,6 @@
       "endDate": "2026-11-01"
     },
     {
-      "id": 7246459,
-      "name": "NACAC Road Running Championships",
-      "venue": "Parque Tangamanga-II, San Luis Potosi (MEX)",
-      "category": "A",
-      "group": "Area RR Championships, Area Half Marathon Championships",
-      "startDate": "2026-11-14",
-      "endDate": "2026-11-14"
-    },
-    {
       "id": 7241749,
       "name": "Bank of China Hong Kong-Zhuhai-Macao Bridge Half Marathon",
       "venue": "Hong Kong (HKG)",
@@ -139,31 +121,13 @@
       "endDate": "2026-11-15"
     },
     {
-      "id": 7247312,
-      "name": "South American Marathon Championships",
-      "venue": "E.Nacional, Santiago de Chile (CHI)",
-      "category": "A",
-      "group": "Area RR Championships, Area Marathon Championships",
-      "startDate": "2026-11-15",
-      "endDate": "2026-11-15"
-    },
-    {
-      "id": 7247311,
-      "name": "South American Road Running Championships",
-      "venue": "E.Nacional, Santiago de Chile (CHI)",
-      "category": "A",
-      "group": "Area RR Championships, Area Half Marathon Championships, Area Road Running Championships",
-      "startDate": "2026-11-15",
-      "endDate": "2026-11-15"
-    },
-    {
-      "id": 7235595,
-      "name": "BYD Singapore International Marathon presented by Adidas",
-      "venue": "Singapore (SGP)",
-      "category": "A",
-      "group": "World Athletics Label Road Races – Gold",
-      "startDate": "2026-12-06",
-      "endDate": "2026-12-06"
+      "id": 7238229,
+      "name": "Ring Running Series",
+      "venue": "Hockenheimring, Hockenheim (GER)",
+      "category": "E",
+      "group": null,
+      "startDate": "2026-11-21",
+      "endDate": "2026-11-21"
     },
     {
       "id": 7235578,
@@ -182,6 +146,42 @@
       "group": "World Athletics Label Road Races – Platinum",
       "startDate": "2026-12-06",
       "endDate": "2026-12-06"
+    },
+    {
+      "id": 7244308,
+      "name": "Sharqiyah International Race - 5km",
+      "venue": "Al Khobar (KSA)",
+      "category": "GL",
+      "group": "World Athletics Label Road Races – Platinum",
+      "startDate": "2026-12-12",
+      "endDate": "2026-12-12"
+    },
+    {
+      "id": 7238772,
+      "name": "Bangsaen21",
+      "venue": "Chon Buri (THA)",
+      "category": "GL",
+      "group": "World Athletics Label Road Races – Platinum",
+      "startDate": "2026-12-20",
+      "endDate": "2026-12-20"
+    },
+    {
+      "id": 7138986,
+      "name": "World Athletics Road Running Championships",
+      "venue": "Yangzhou (CHN)",
+      "category": "GW",
+      "group": "World Athletics Series, World Athletics Road Running Championships",
+      "startDate": "2027-03-28",
+      "endDate": "2027-03-28"
+    },
+    {
+      "id": 7203674,
+      "name": "European Running Championships",
+      "venue": "Beograd (SRB)",
+      "category": "A",
+      "group": "Area RR Championships, Area Road Running Championships",
+      "startDate": "2027-04-17",
+      "endDate": "2027-04-18"
     }
   ]
 }
