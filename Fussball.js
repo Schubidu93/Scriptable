@@ -304,18 +304,53 @@ function seasonRange() {
     return { from, to };
 }
 
-// Alle Spiele des Wettbewerbs in der laufenden Saison (einmal geladen)
+// Alle Spiele des Wettbewerbs in der laufenden Saison (einmal geladen).
+// ESPN liefert lange Zeiträume nicht zuverlässig – daher monatsweise und parallel.
 let SEASON_EVENTS = null;
 async function loadSeasonEvents() {
     if (SEASON_EVENTS) return SEASON_EVENTS;
     let { from, to } = seasonRange();
-    let json = await loadJSON(`site/v2/sports/soccer/${LEAGUE.slug}/scoreboard?dates=${ymd(from)}-${ymd(to)}&limit=1000`);
-    SEASON_EVENTS = (json.events || []).sort((a, b) => new Date(a.date) - new Date(b.date));
+    let until = new Date(Math.min(to.getTime(), Date.now() + 90 * 86400000));
+    let ranges = [];
+    for (let d = new Date(from); d <= until; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
+        ranges.push(`${ymd(d)}-${ymd(new Date(d.getFullYear(), d.getMonth() + 1, 0))}`);
+    }
+    let base = `site/v2/sports/soccer/${LEAGUE.slug}/scoreboard`;
+    let answers = await Promise.all(ranges.map(r => loadJSON(`${base}?dates=${r}&limit=200`).catch(() => null)));
+    let events = mergeEvents(answers.map(json => (json && json.events) || []));
+    if (!events.length) {
+        let sample = answers.find(Boolean);
+        DIAG.push(`Scoreboard ${ranges.length} Monate: 0 Spiele${sample ? " · " + Object.keys(sample).slice(0, 4).join(",") : ""}`);
+        // Notlösung: aktueller Spieltag
+        let current = await loadJSON(base).catch(() => null);
+        events = mergeEvents([(current && current.events) || []]);
+        DIAG.push(`Scoreboard aktuell: ${events.length} Spiele`);
+    }
+    SEASON_EVENTS = events;
     return SEASON_EVENTS;
 }
 
+// Mehrere Listen zusammenführen, doppelte Spiele entfernen, nach Datum sortieren
+function mergeEvents(lists) {
+    let byId = {};
+    lists.flat().forEach(e => { if (e && e.id) byId[e.id] = e; });
+    return Object.values(byId).sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
+// Spiele des eigenen Teams: aus dem Scoreboard und zusätzlich aus dem Team-Spielplan
 async function loadGames() {
-    return (await loadSeasonEvents()).filter(involvesTeam);
+    let fromBoard = (await loadSeasonEvents()).filter(involvesTeam);
+    let teamBase = `site/v2/sports/soccer/${LEAGUE.slug}/teams/${TEAM_ID}/schedule`;
+    let [results, fixtures] = await Promise.all([
+        loadJSON(teamBase).catch(() => null),
+        loadJSON(`${teamBase}?fixture=true`).catch(() => null),
+    ]);
+    let fromSchedule = [results, fixtures].map(json => ((json && json.events) || []).filter(involvesTeam));
+    let games = mergeEvents([fromBoard].concat(fromSchedule));
+    if (!games.length) {
+        DIAG.push(`Team ${TEAM_ID}: Scoreboard ${fromBoard.length}, Spielplan ${fromSchedule[0].length}/${fromSchedule[1].length}`);
+    }
+    return games;
 }
 
 // Spieltag = wievieltes Spiel der Heimmannschaft in dieser Phase
