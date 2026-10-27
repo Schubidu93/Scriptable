@@ -1,0 +1,120 @@
+{
+  "generated": "2026-10-27T11:04:16.513Z",
+  "days": 7,
+  "from": "2026-10-20",
+  "to": "2026-10-27",
+  "women": [
+    {
+      "rank": 1,
+      "mark": "3:14:52",
+      "wind": "",
+      "name": "Rebecca HENDERSON",
+      "nat": "AUS",
+      "venue": "Takahata Race Walk Course, Takahata (JPN)",
+      "date": "25 OCT 2026",
+      "score": 1265,
+      "event": "Marathon Gehen"
+    },
+    {
+      "rank": 2,
+      "mark": "1:03:51",
+      "wind": "",
+      "name": "Sheila CHEPKIRUI",
+      "nat": "KEN",
+      "venue": "Valencia (ESP)",
+      "date": "25 OCT 2026",
+      "score": 1260,
+      "event": "Halbmarathon"
+    },
+    {
+      "rank": 3,
+      "mark": "1:03:52",
+      "wind": "",
+      "name": "Diana WANZA",
+      "nat": "KEN",
+      "venue": "Valencia (ESP)",
+      "date": "25 OCT 2026",
+      "score": 1259,
+      "event": "Halbmarathon"
+    },
+    {
+      "rank": 4,
+      "mark": "1:04:11",
+      "wind": "",
+      "name": "Daisilah JERONO",
+      "nat": "KEN",
+      "venue": "Valencia (ESP)",
+      "date": "25 OCT 2026",
+      "score": 1252,
+      "event": "Halbmarathon"
+    },
+    {
+      "rank": 5,
+      "mark": "1:04:53",
+      "wind": "",
+      "name": "Mizan ALEM",
+      "nat": "ETH",
+      "venue": "Valencia (ESP)",
+      "date": "25 OCT 2026",
+      "score": 1237,
+      "event": "Halbmarathon"
+    }
+  ],
+  "men": [
+    {
+      "rank": 1,
+      "mark": "58:03",
+      "wind": "",
+      "name": "Rodrigue KWIZERA",
+      "nat": "BDI",
+      "venue": "Valencia (ESP)",
+      "date": "25 OCT 2026",
+      "score": 1266,
+      "event": "Halbmarathon"
+    },
+    {
+      "rank": 2,
+      "mark": "58:09",
+      "wind": "",
+      "name": "Thierry NDIKUMWENAYO",
+      "nat": "ESP",
+      "venue": "Valencia (ESP)",
+      "date": "25 OCT 2026",
+      "score": 1262,
+      "event": "Halbmarathon"
+    },
+    {
+      "rank": 3,
+      "mark": "2:55:14",
+      "wind": "",
+      "name": "Masatora KAWANO",
+      "nat": "JPN",
+      "venue": "Takahata Race Walk Course, Takahata (JPN)",
+      "date": "25 OCT 2026",
+      "score": 1262,
+      "event": "Marathon Gehen"
+    },
+    {
+      "rank": 4,
+      "mark": "58:12",
+      "wind": "",
+      "name": "Victor KIPRUTO",
+      "nat": "KEN",
+      "venue": "Valencia (ESP)",
+      "date": "25 OCT 2026",
+      "score": 1260,
+      "event": "Halbmarathon"
+    },
+    {
+      "rank": 5,
+      "mark": "2:55:55",
+      "wind": "",
+      "name": "Kazuya IWAI",
+      "nat": "JPN",
+      "venue": "Takahata Race Walk Course, Takahata (JPN)",
+      "date": "25 OCT 2026",
+      "score": 1257,
+      "event": "Marathon Gehen"
+    }
+  ]
+}
