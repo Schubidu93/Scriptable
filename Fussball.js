@@ -919,21 +919,21 @@ function buildResults(widget, data, columns, perColumn, images) {
     widget.addSpacer();
 }
 
-// Eine Zeile je Spiel: Logo Heim · Ergebnis bzw. Anstoß · Gast Logo
+// Eine Zeile je Spiel: Logo Heim · Ergebnis bzw. Anstoßzeit · Gast Logo (der Tag steht darüber)
 function addGameRow(stack, game, images) {
     let row = stack.addStack();
     row.centerAlignContent();
     row.url = `https://www.espn.com/soccer/match/_/gameId/${game.id}`;
     let played = game.state !== "pre";
     let draw = played && !game.home.winner && !game.away.winner;
-    let teamFont = team => (!played || draw ? Font.semiboldSystemFont(12)
-        : team.winner ? Font.boldSystemFont(12) : Font.mediumSystemFont(12));
+    let teamFont = team => (!played || draw ? Font.semiboldSystemFont(13)
+        : team.winner ? Font.boldSystemFont(13) : Font.mediumSystemFont(13));
     let teamOpacity = team => (played && !draw && !team.winner && game.state === "post" ? 0.55 : 1);
 
-    addLogo(row, images, game.home.logo, 14);
+    addLogo(row, images, game.home.logo, 15);
     row.addSpacer(3);
     let home = row.addStack();
-    home.size = new Size(34, 0);
+    home.size = new Size(38, 0);
     addLabel(home, game.home.abbr, teamFont(game.home), WHITE, teamOpacity(game.home));
     home.addSpacer();
 
@@ -942,24 +942,56 @@ function addGameRow(stack, game, images) {
     mid.addSpacer();
     if (game.state === "pre") {
         let df = new DateFormatter();
-        df.locale = "de_DE";
-        df.dateFormat = "EE HH:mm";
-        addLabel(mid, df.string(new Date(game.date)).replace(".", ""), Font.semiboldSystemFont(9), WHITE, 0.6);
+        df.dateFormat = "HH:mm";
+        addLabel(mid, df.string(new Date(game.date)), Font.semiboldMonospacedSystemFont(11), WHITE, 0.7);
     } else {
-        addLabel(mid, `${game.home.score}:${game.away.score}`, Font.boldRoundedSystemFont(12),
+        addLabel(mid, `${game.home.score}:${game.away.score}`, Font.boldRoundedSystemFont(13),
             game.state === "in" ? LIVE_RED : WHITE);
     }
     mid.addSpacer();
 
     let away = row.addStack();
-    away.size = new Size(34, 0);
+    away.size = new Size(38, 0);
     away.addSpacer();
     addLabel(away, game.away.abbr, teamFont(game.away), WHITE, teamOpacity(game.away));
     row.addSpacer(3);
-    addLogo(row, images, game.away.logo, 14);
+    addLogo(row, images, game.away.logo, 15);
 }
 
-// Großes Widget: ganze Spieltage, zwei Spalten mit je einem Spieltag (bzw. ein Spieltag auf beide verteilt)
+// "SA 31.10." – Tag als Zwischenzeile
+function dayKey(date) {
+    let d = new Date(date);
+    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function dayTitle(date) {
+    let df = new DateFormatter();
+    df.locale = "de_DE";
+    df.dateFormat = "EE dd.MM.";
+    return df.string(new Date(date)).replace(".", "").toUpperCase();
+}
+
+// Ein Spieltag auf zwei Spalten: ganze Tage zusammenhalten (CL: Di | Mi), sonst halbieren
+function splitByDay(games) {
+    let days = [];
+    games.forEach(g => {
+        let last = days[days.length - 1];
+        if (last && last.key === dayKey(g.date)) last.games.push(g);
+        else days.push({ key: dayKey(g.date), games: [g] });
+    });
+    let left = [], right = [];
+    for (let day of days) {
+        if (left.length < games.length / 2 && left.length + day.games.length <= Math.ceil(games.length / 2) + 2) left.push(...day.games);
+        else right.push(...day.games);
+    }
+    if (!left.length || !right.length) {
+        let half = Math.ceil(games.length / 2);
+        return [games.slice(0, half), games.slice(half)];
+    }
+    return [left, right];
+}
+
+// Großes Widget: ganze Spieltage, zwei Spalten. Zeilenabstand füllt die Höhe
 function buildMatchdays(widget, data, images) {
     let header = widget.addStack();
     header.centerAlignContent();
@@ -973,10 +1005,16 @@ function buildMatchdays(widget, data, images) {
     if (data.sections.length > 1) {
         columns = data.sections.slice(0, 2).map(sec => ({ title: sec.title, games: sec.games.slice(0, 10) }));
     } else {
-        let games = data.sections[0].games.slice(0, 20);
-        let half = Math.ceil(games.length / 2);
-        columns = [{ games: games.slice(0, half) }, { games: games.slice(half) }];
+        columns = splitByDay(data.sections[0].games.slice(0, 20)).map(games => ({ games }));
     }
+
+    // Höhe: Titel 18, Tageszeile 17, Spielzeile 17 – der Rest (Budget ~290) als Abstand zwischen den Spielen
+    let layout = columns.map(column => {
+        let days = new Set(column.games.map(g => dayKey(g.date))).size;
+        return { fixed: (column.title ? 18 : 0) + days * 15 + column.games.length * 17, rows: column.games.length };
+    });
+    let gap = Math.max(4, Math.min(14, Math.min(...layout.map(l => (290 - l.fixed) / Math.max(1, l.rows - 1)))));
+
     let row = widget.addStack();
     columns.forEach((column, c) => {
         if (c > 0) row.addSpacer();
@@ -984,10 +1022,18 @@ function buildMatchdays(widget, data, images) {
         col.layoutVertically();
         if (column.title) {
             addLabel(col, column.title.toUpperCase(), Font.semiboldSystemFont(10), WHITE, 0.55);
-            col.addSpacer(5);
+            col.addSpacer(4);
         }
+        let lastDay = null;
         column.games.forEach((game, i) => {
-            if (i > 0) col.addSpacer(column.title ? 7 : 9);
+            if (dayKey(game.date) !== lastDay) {
+                if (i > 0) col.addSpacer(gap);
+                addLabel(col, dayTitle(game.date), Font.semiboldSystemFont(9), ACCENT, 0.8);
+                col.addSpacer(4);
+                lastDay = dayKey(game.date);
+            } else {
+                col.addSpacer(gap);
+            }
             addGameRow(col, game, images);
         });
         col.addSpacer();
