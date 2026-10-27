@@ -210,7 +210,7 @@ async function createWidget() {
     widget.url = "https://www.espn.com/nfl/scoreboard";
     widget.refreshAfterDate = new Date(Date.now() + 30 * 60 * 1000);
     background(widget);
-    widget.setPadding(14, 16, 14, 16);
+    widget.setPadding(18, 16, 12, 16);
 
     if (!data) {
         buildError(widget);
