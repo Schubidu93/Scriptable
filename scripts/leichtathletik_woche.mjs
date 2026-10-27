@@ -39,7 +39,7 @@ const EVENTS = {
         ["jumps", "pole-vault", "Stabhochsprung"], ["jumps", "long-jump", "Weitsprung"], ["jumps", "triple-jump", "Dreisprung"],
         ["throws", "shot-put", "Kugelstoßen"], ["throws", "discus-throw", "Diskuswurf"], ["throws", "hammer-throw", "Hammerwurf"],
         ["throws", "javelin-throw", "Speerwurf"], ["combined-events", "decathlon", "Zehnkampf"],
-        ["combined-events", "heptathlon", "Siebenkampf", "indoor"], ["road-running", "10-kilometres", "10 km"],
+        ["road-running", "10-kilometres", "10 km"],
         ["road-running", "half-marathon", "Halbmarathon"], ["road-running", "marathon", "Marathon"],
         ["race-walks", "20-kilometres-race-walk", "20 km Gehen"], ["race-walks", "35-kilometres-race-walk", "35 km Gehen"],
         ["race-walks", "half-marathon-race-walk", "Halbmarathon Gehen"], ["race-walks", "marathon-race-walk", "Marathon Gehen"],
