@@ -13,6 +13,7 @@ const SCRIPTS = [
     { name: "Marathon Welt", file: "Marathon_GER.js", distanz: "marathon", region: "welt", glyph: "globe-europe", color: "orange" },
     { name: "Halbmarathon Welt", file: "Marathon_GER.js", distanz: "halbmarathon", region: "welt", glyph: "globe-europe", color: "purple" },
     { name: "10km Welt", file: "Marathon_GER.js", distanz: "10km", region: "welt", glyph: "globe-europe", color: "green" },
+    { name: "Radsport", file: "Radsport.js", glyph: "bicycle", color: "yellow" },
 ];
 
 function loaderCode(script) {
