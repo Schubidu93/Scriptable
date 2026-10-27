@@ -1,9 +1,14 @@
-// Straßenlauf – die 3 besten deutschen Ergebnisse der letzten 90 Tage (Frauen & Männer)
+// Straßenlauf – die 3 besten Ergebnisse der letzten 90 Tage (Frauen & Männer),
+// wahlweise nur Deutschland (Standard) oder weltweit
 // Quelle: World Athletics All-Time-Toplist. Mittleres Widget, im Stil der iOS-Widgets.
 //
 // Strecke wählen: "marathon" (Standard), "halbmarathon" oder "10km" –
 // entweder im Loader per Function("DISTANZ", code)("10km")
 // oder als Widget-Parameter (Widget bearbeiten → Parameter).
+//
+// Region wählen: "deutschland" (Standard) oder "welt" –
+// im Loader per Function("DISTANZ", "REGION", code)("10km", "welt")
+// oder im Widget-Parameter, z. B. "halbmarathon welt".
 
 const DISTANCES = {
     marathon: {
@@ -26,10 +31,21 @@ const DISTANCES = {
     },
 };
 
+const REGIONS = {
+    deutschland: { label: "🇩🇪", query: "regionType=countries&region=ger", cache: "ger" },
+    welt: { label: "🌍", query: "regionType=world", cache: "welt" },
+};
+
+const params = String(args.widgetParameter || "").trim().toLowerCase().split(/\s+/);
 const distanceKey = String(
-    (typeof DISTANZ !== "undefined" && DISTANZ) || args.widgetParameter || "marathon"
+    (typeof DISTANZ !== "undefined" && DISTANZ) || params.find(p => DISTANCES[p]) || "marathon"
+).trim().toLowerCase();
+const regionKey = String(
+    (typeof REGION !== "undefined" && REGION) || params.find(p => REGIONS[p]) || "deutschland"
 ).trim().toLowerCase();
 const DISTANCE = DISTANCES[distanceKey] || DISTANCES.marathon;
+const REGION_INFO = REGIONS[regionKey] || REGIONS.deutschland;
+const WORLD = REGION_INFO === REGIONS.welt;
 
 const CONFIG = {
     days: 90,
@@ -41,7 +57,7 @@ const CONFIG = {
 };
 
 const fm = FileManager.local();
-const cachePath = fm.joinPath(fm.cacheDirectory(), `strasse-ger-${DISTANCE.path}.json`);
+const cachePath = fm.joinPath(fm.cacheDirectory(), `strasse-${REGION_INFO.cache}-${DISTANCE.path}.json`);
 
 function isoDate(date) {
     let pad = n => String(n).padStart(2, "0");
@@ -52,7 +68,7 @@ function listUrl(list) {
     let today = new Date();
     let from = new Date(today.getTime() - CONFIG.days * 24 * 60 * 60 * 1000);
     return `https://worldathletics.org/records/all-time-toplists/road-running/${DISTANCE.path}/all/`
-        + `${list.gender}/senior?regionType=countries&region=ger&page=1&bestResultsOnly=false`
+        + `${list.gender}/senior?${REGION_INFO.query}&page=1&bestResultsOnly=false`
         + `&firstDay=${isoDate(from)}&lastDay=${isoDate(today)}&maxResultsByCountry=all`
         + `&eventId=${list.eventId}&ageCategory=senior`;
 }
@@ -75,6 +91,7 @@ function parseResults(html) {
     let headers = (table.match(/<th[\s\S]*?<\/th>/gi) || []).map(h => cleanCell(h).toLowerCase());
     let col = name => headers.findIndex(h => h.startsWith(name));
     let idx = { mark: col("mark"), name: col("competitor"), venue: col("venue"), date: col("date") };
+    idx.nat = col("nat") >= 0 ? col("nat") : col("country");
 
     let body = (table.match(/<tbody[\s\S]*?<\/tbody>/i) || [table])[0];
     return (body.match(/<tr[\s\S]*?<\/tr>/gi) || [])
@@ -85,6 +102,7 @@ function parseResults(html) {
             name: cells[idx.name],
             venue: cells[idx.venue],
             date: cells[idx.date],
+            nat: idx.nat >= 0 ? cells[idx.nat] : "",
         }))
         .slice(0, CONFIG.count);
 }
@@ -181,7 +199,8 @@ function addColumn(stack, list, white) {
         addLabel(top, shortName(e.name), Font.semiboldSystemFont(13), white);
         top.addSpacer();
         addLabel(top, e.mark, Font.mediumMonospacedSystemFont(13), white);
-        addLabel(col, `${shortVenue(e.venue)} · ${shortDate(e.date)}`, Font.mediumSystemFont(10), white, 0.7);
+        let nat = WORLD && e.nat ? `${e.nat} · ` : "";
+        addLabel(col, `${nat}${shortVenue(e.venue)} · ${shortDate(e.date)}`, Font.mediumSystemFont(10), white, 0.7);
     });
     col.addSpacer();
 }
@@ -193,7 +212,7 @@ function buildMedium(widget, results) {
     header.centerAlignContent();
     addSymbol(header, "figure.run", 13, white);
     header.addSpacer(4);
-    addLabel(header, `${DISTANCE.title} 🇩🇪`, Font.semiboldSystemFont(15), white);
+    addLabel(header, `${DISTANCE.title} ${REGION_INFO.label}`, Font.semiboldSystemFont(15), white);
     header.addSpacer();
     let offline = results.some(r => r.stale) ? " · offline" : "";
     addLabel(header, `${CONFIG.days} Tage${offline}`, Font.semiboldSystemFont(11), white, 0.7);

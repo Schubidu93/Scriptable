@@ -10,12 +10,17 @@ const SCRIPTS = [
     { name: "Marathon", file: "Marathon_GER.js", glyph: "running", color: "orange" },
     { name: "Halbmarathon", file: "Marathon_GER.js", distanz: "halbmarathon", glyph: "running", color: "purple" },
     { name: "10km", file: "Marathon_GER.js", distanz: "10km", glyph: "running", color: "green" },
+    { name: "Marathon Welt", file: "Marathon_GER.js", distanz: "marathon", region: "welt", glyph: "globe-europe", color: "orange" },
+    { name: "Halbmarathon Welt", file: "Marathon_GER.js", distanz: "halbmarathon", region: "welt", glyph: "globe-europe", color: "purple" },
+    { name: "10km Welt", file: "Marathon_GER.js", distanz: "10km", region: "welt", glyph: "globe-europe", color: "green" },
 ];
 
 function loaderCode(script) {
-    let run = script.distanz
-        ? `Function("DISTANZ", code)("${script.distanz}");`
-        : "Function(code)();";
+    let run = script.region
+        ? `Function("DISTANZ", "REGION", code)("${script.distanz}", "${script.region}");`
+        : script.distanz
+            ? `Function("DISTANZ", code)("${script.distanz}");`
+            : "Function(code)();";
     return `// Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
 // icon-color: ${script.color}; icon-glyph: ${script.glyph};
