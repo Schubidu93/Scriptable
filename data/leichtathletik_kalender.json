@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-27T12:34:25.787Z",
+  "generated": "2026-10-27T13:36:05.332Z",
   "track": [
     {
       "id": 7244483,
@@ -45,6 +45,51 @@
       "group": "Wanda Diamond League Meeting",
       "startDate": "2027-05-07",
       "endDate": "2027-05-07"
+    },
+    {
+      "id": 7220874,
+      "name": "Wanda Diamond League Shanghai",
+      "venue": "Shanghai Stadium, Shanghai (CHN)",
+      "category": "GW",
+      "group": "Wanda Diamond League Meeting",
+      "startDate": "2027-05-15",
+      "endDate": "2027-05-15"
+    },
+    {
+      "id": 7220875,
+      "name": "Wanda Diamond League Xiamen",
+      "venue": "Egret Stadium, Xiamen (CHN)",
+      "category": "GW",
+      "group": "Wanda Diamond League Meeting",
+      "startDate": "2027-05-22",
+      "endDate": "2027-05-22"
+    },
+    {
+      "id": 7220877,
+      "name": "Golden Gala",
+      "venue": "Stadio Olimpico, Roma (ITA)",
+      "category": "GW",
+      "group": "Wanda Diamond League Meeting",
+      "startDate": "2027-05-27",
+      "endDate": "2027-05-27"
+    },
+    {
+      "id": 7220876,
+      "name": "Meeting International Mohammed VI d'Athletisme de Rabat",
+      "venue": "Complexe Sportif Prince Moulay Abdellah, Rabat (MAR)",
+      "category": "GW",
+      "group": "Wanda Diamond League Meeting",
+      "startDate": "2027-05-30",
+      "endDate": "2027-05-30"
+    },
+    {
+      "id": 7220879,
+      "name": "Olso Bislett Games",
+      "venue": "Bislett Stadion, Oslo (NOR)",
+      "category": "GW",
+      "group": "Wanda Diamond League Meeting",
+      "startDate": "2027-06-03",
+      "endDate": "2027-06-03"
     }
   ],
   "road": [
@@ -92,6 +137,51 @@
       "group": "World Athletics Label Road Races – Platinum",
       "startDate": "2026-11-15",
       "endDate": "2026-11-15"
+    },
+    {
+      "id": 7247312,
+      "name": "South American Marathon Championships",
+      "venue": "E.Nacional, Santiago de Chile (CHI)",
+      "category": "A",
+      "group": "Area RR Championships, Area Marathon Championships",
+      "startDate": "2026-11-15",
+      "endDate": "2026-11-15"
+    },
+    {
+      "id": 7247311,
+      "name": "South American Road Running Championships",
+      "venue": "E.Nacional, Santiago de Chile (CHI)",
+      "category": "A",
+      "group": "Area RR Championships, Area Half Marathon Championships, Area Road Running Championships",
+      "startDate": "2026-11-15",
+      "endDate": "2026-11-15"
+    },
+    {
+      "id": 7235595,
+      "name": "BYD Singapore International Marathon presented by Adidas",
+      "venue": "Singapore (SGP)",
+      "category": "A",
+      "group": "World Athletics Label Road Races – Gold",
+      "startDate": "2026-12-06",
+      "endDate": "2026-12-06"
+    },
+    {
+      "id": 7235578,
+      "name": "Maratón Valencia Trinidad Alfonso Zurich",
+      "venue": "Valencia (ESP)",
+      "category": "GW",
+      "group": "World Athletics Label Road Races – Platinum",
+      "startDate": "2026-12-06",
+      "endDate": "2026-12-06"
+    },
+    {
+      "id": 7235577,
+      "name": "Shanghai Marathon",
+      "venue": "Shanghai (CHN)",
+      "category": "GW",
+      "group": "World Athletics Label Road Races – Platinum",
+      "startDate": "2026-12-06",
+      "endDate": "2026-12-06"
     }
   ]
 }
