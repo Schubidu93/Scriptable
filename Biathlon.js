@@ -350,6 +350,19 @@ function addTypeTag(stack, type) {
     stack.addSpacer(5);
 }
 
+// Nur der Ort: "Oslo Holmenkollen" → "Oslo", "Nove Mesto na Morave" → "Nove Mesto"
+const PLACE_NAMES = {
+    "Oslo Holmenkollen": "Oslo",
+    "Nove Mesto na Morave": "Nove Mesto",
+    "Antholz-Anterselva": "Antholz",
+    "Le Grand-Bornand": "Grand-Bornand",
+    "Soldier Hollow": "Soldier Hollow",
+};
+function shortPlace(place) {
+    let p = String(place || "").trim();
+    return PLACE_NAMES[p] || p.replace(/\s+Holmenkollen$/i, "");
+}
+
 // Schriftgröße der Athletennamen – in Rennergebnissen und Gesamtweltcup gleich
 const NAME_SIZE = 10.5;
 
@@ -360,7 +373,9 @@ function addPastRace(stack, race) {
     let title = block.addStack();
     title.centerAlignContent();
     addTypeTag(title, race.type);
-    addLabel(title, `${withFlag(race.nat, race.place)} · ${race.name}`, Font.semiboldSystemFont(13), WHITE);
+    // Alle Wettkampfnamen gleich groß – nicht automatisch verkleinern
+    addLabel(title, `${withFlag(race.nat, shortPlace(race.place))} · ${race.name}`, Font.semiboldSystemFont(12), WHITE)
+        .minimumScaleFactor = 1;
     title.addSpacer(6);
     title.addSpacer();
     addLabel(title, formatDate(race.start), Font.mediumSystemFont(10), WHITE, 0.6);
@@ -386,7 +401,8 @@ function addUpcomingRace(stack, race) {
     addSymbol(row, "calendar", 11, WHITE);
     row.addSpacer(5);
     addTypeTag(row, race.type);
-    addLabel(row, `${withFlag(race.nat, race.place)} · ${race.name}`, Font.mediumSystemFont(12), WHITE);
+    addLabel(row, `${withFlag(race.nat, shortPlace(race.place))} · ${race.name}`, Font.mediumSystemFont(12), WHITE)
+        .minimumScaleFactor = 1;
     row.addSpacer(6);
     row.addSpacer();
     addLabel(row, formatStart(race.start), Font.mediumSystemFont(10), WHITE, 0.6);
