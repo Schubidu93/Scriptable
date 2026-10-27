@@ -593,15 +593,6 @@ function background(widget) {
     widget.backgroundGradient = gradient;
 }
 
-function addRecord(stack, record) {
-    if (!record) return;
-    let pill = stack.addStack();
-    pill.backgroundColor = new Color("#ffffff", 0.12);
-    pill.cornerRadius = 7;
-    pill.setPadding(2, 7, 2, 7);
-    addLabel(pill, record, Font.semiboldRoundedSystemFont(12), WHITE, 0.85);
-}
-
 function addSectionTitle(stack, text, color = WHITE, opacity = 0.6) {
     addLabel(stack, text.toUpperCase(), Font.semiboldSystemFont(10), color, opacity);
 }
@@ -945,7 +936,6 @@ function buildMedium(widget, data, images) {
         addLabel(header, "offline", Font.semiboldSystemFont(10), WHITE, 0.6);
         header.addSpacer(6);
     }
-    addRecord(header, data.record);
 
     widget.addSpacer(4);
 
@@ -976,7 +966,6 @@ function buildSmall(widget, data, images) {
     header.addSpacer(5);
     addLabel(header, LEAGUE_KEY === "cl" ? "CL" : "BL", Font.semiboldSystemFont(15), WHITE);
     header.addSpacer();
-    addRecord(header, data.record);
     widget.addSpacer(6);
     addLastGame(widget, data.last, images, true);
     widget.addSpacer();
