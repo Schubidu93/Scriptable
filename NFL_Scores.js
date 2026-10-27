@@ -165,14 +165,15 @@ function background(widget) {
 // Eine Zeile je Spiel – Logo Gast · Ergebnis bzw. Anstoß · Heim Logo (kompakt: kleiner, mit Wochentag)
 function addGameRow(stack, game, images, compact = false) {
     let fontSize = compact ? 10.5 : 13;
-    let logoSize = compact ? 11 : 15;
+    let logoSize = compact ? 12 : 15;
     let row = stack.addStack();
     row.centerAlignContent();
     let played = game.state !== "pre";
     let tie = game.state === "post" && !game.home.winner && !game.away.winner;
     let team = (side, alignRight) => {
         let box = row.addStack();
-        box.size = new Size(compact ? 35 : 36, 0);
+        // Spalten breit genug, dass in der Mitte nur ein schmaler Abstand bleibt (wie bei den Fußball-Ergebnissen)
+        box.size = new Size(compact ? 37 : 36, 0);
         if (alignRight) box.addSpacer();
         let loser = game.state === "post" && !side.winner && !tie;
         let font = !played || tie ? Font.semiboldSystemFont(fontSize) : side.winner ? Font.boldSystemFont(fontSize) : Font.mediumSystemFont(fontSize);
