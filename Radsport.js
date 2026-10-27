@@ -20,6 +20,32 @@ const CONFIG = {
 
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), `radsport-pcs${WOMEN ? "-frauen" : ""}.json`);
+// Ergebnisse beendeter Rennen ändern sich nicht – einmal gefunden, dauerhaft gespeichert
+const resultsPath = fm.joinPath(fm.documentsDirectory(), `radsport-ergebnisse${WOMEN ? "-frauen" : ""}.json`);
+
+// Zeitbudget: Widgets werden von iOS nach rund 30 s abgebrochen („Received timeout“).
+// Teure Wege (Browser, weitere Seiten) nur, solange genug Zeit bleibt; in der App großzügiger.
+const STARTED = Date.now();
+const BUDGET = config.runsInWidget ? 22000 : 90000;
+function timeLeft() {
+    return BUDGET - (Date.now() - STARTED);
+}
+
+function loadSavedResults() {
+    try {
+        return fm.fileExists(resultsPath) ? JSON.parse(fm.readString(resultsPath)) : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function saveResults(saved) {
+    // Nur die jüngsten 40 Rennen behalten
+    let keys = Object.keys(saved).sort((a, b) => (saved[b].savedAt || 0) - (saved[a].savedAt || 0)).slice(0, 40);
+    let slim = {};
+    keys.forEach(k => { slim[k] = saved[k]; });
+    fm.writeString(resultsPath, JSON.stringify(slim));
+}
 
 // Was beim Abruf passiert ist – wird angezeigt, wenn keine Daten kommen
 const DIAG = [];
@@ -61,7 +87,7 @@ async function loadInWebView(url, ready = html => !isChallenge(html) && /<table/
     let wv = new WebView();
     await wv.loadURL(url);
     let html = "";
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 12 && (i === 0 || timeLeft() > 3000); i++) {
         html = await wv.evaluateJavaScript("document.documentElement.outerHTML");
         if (ready(html)) break;
         await sleep(1000);
@@ -73,7 +99,7 @@ async function loadInWebView(url, ready = html => !isChallenge(html) && /<table/
 // erst per JavaScript nachgeladen), die Seite im unsichtbaren Browser öffnen.
 async function loadResultPage(path, hasResults) {
     let html = await load(path);
-    if (hasResults(html)) return html;
+    if (hasResults(html) || timeLeft() < 12000) return html;
     try {
         let rendered = await loadInWebView(PCS + path, hasResults);
         if (hasResults(rendered)) return rendered;
@@ -307,7 +333,7 @@ async function loadGCInBrowser(path, stage) {
     let wv = new WebView();
     await wv.loadURL(PCS + path);
     let before = [];
-    for (let i = 0; i < 8 && !before.length; i++) {
+    for (let i = 0; i < 8 && !before.length && timeLeft() > 2000; i++) {
         before = await visiblePodium(wv);
         if (!before.length) await sleep(1000);
     }
@@ -334,7 +360,7 @@ async function loadGCInBrowser(path, stage) {
             (hit.closest("a, li, button") || hit).click();
             return true;
         })()`);
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < 8 && timeLeft() > 2000; i++) {
             await sleep(1000);
             let rows = await visiblePodium(wv);
             if (isGC(rows, stage)) return { stage, gc: rows };
@@ -359,6 +385,7 @@ async function loadGC(race, path, html, stageNumber, stage) {
     let classic = base.replace(/-(\d{4})$/, "/$1");
     if (/\/\d{4}$/.test(classic)) candidates.push(`${classic}/gc`);
     for (let candidate of candidates) {
+        if (timeLeft() < 8000) return null;
         try {
             let page = await load(candidate);
             let rows = parseTab(page, "GC");
@@ -372,6 +399,7 @@ async function loadGC(race, path, html, stageNumber, stage) {
             console.log(`GC über ${candidate}: ${e}`);
         }
     }
+    if (timeLeft() < 12000) return null;
     try {
         return (await loadGCInBrowser(path, stage)).gc;
     } catch (e) {
@@ -440,16 +468,37 @@ async function loadData() {
     // Laufende Rundfahrten zuerst, dann die beendeten Rennen – bis 3 Ergebnisse beisammen sind
     let running = upcoming.filter(r => r.stageRace && r.start <= today);
     let entries = [];
+    let saved = loadSavedResults();
+    let revive = e => ({ ...e, start: new Date(e.start), end: new Date(e.end), date: e.date ? new Date(e.date) : undefined });
     for (let race of running.concat(finished)) {
         let need = CONFIG.past - entries.length;
         if (need <= 0) break;
+        let key = resultPath(race);
+        if (race.finished && saved[key]) {
+            entries = entries.concat(saved[key].entries.map(revive).slice(0, need));
+            continue;
+        }
+        if (timeLeft() < 5000) {
+            entries.push({ ...race, label: "", date: race.end, path: key, podium: [], debug: "Wird beim nächsten Aktualisieren geladen" });
+            continue;
+        }
         try {
+            let found;
             if (race.stageRace) {
-                entries = entries.concat(await loadStageEntries(race, today, need));
+                found = await loadStageEntries(race, today, 2);
             } else {
-                let podium = parsePodium(await loadResultPage(resultPath(race), hasPodium));
-                entries.push({ ...race, label: "", date: race.end, path: resultPath(race), podium, debug: podium.debug });
+                let podium = parsePodium(await loadResultPage(key, hasPodium));
+                found = [{ ...race, label: "", date: race.end, path: key, podium, debug: podium.debug }];
             }
+            // Vollständig (Eintagesrennen mit Podium, Rundfahrt mit GC und Etappe): dauerhaft merken
+            let complete = race.stageRace
+                ? found.some(e => e.isGC) && found.some(e => !e.isGC && e.podium.length)
+                : found[0].podium.length > 0;
+            if (race.finished && complete) {
+                saved[key] = { entries: found, savedAt: Date.now() };
+                saveResults(saved);
+            }
+            entries = entries.concat(found.slice(0, need));
         } catch (e) {
             console.log(`${race.name}: Ergebnis nicht geladen: ${e}`);
             entries.push({ ...race, label: "", date: race.end, path: resultPath(race), podium: [], debug: String(e) });
