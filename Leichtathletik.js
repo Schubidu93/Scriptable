@@ -364,7 +364,7 @@ function addCentered(stack, text, font, color, opacity = 1) {
 function addEvent(stack, event, track) {
     let row = stack.addStack();
     row.topAlignContent();
-    let start = dayOf(event.startDate), end = dayOf(event.endDate || event.startDate);
+    let start = dayOf(event.startDate);
     let soon = countdown(event);
     let live = soon === "läuft" || soon === "heute";
 
