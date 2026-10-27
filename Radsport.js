@@ -244,21 +244,79 @@ function parsePodium(html) {
     return empty;
 }
 
-// Tabelle eines bestimmten Reiters (z. B. "STAGE" oder "GC") lesen.
+// Reiter (z. B. "STAGE" oder "GC") finden und seine Tabelle lesen.
 // PCS: <ul class="tabs … resultTabs"><li><a data-id="123">GC</a></li> … <div class="resTab" data-id="123">
-function parseTab(html, tabName) {
+// Versteckte Reiter werden oft erst beim Anklicken gefüllt – daher nur innerhalb des eigenen
+// Bereichs suchen (bis zum nächsten Reiter), nie in der Tabelle eines anderen Reiters.
+function findTab(html, tabName) {
     for (let m of html.matchAll(/<a[^>]*data-id=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
         if (cleanText(m[2]).toUpperCase() !== tabName) continue;
-        let id = m[1];
-        let idAttr = new RegExp(`data-id=["']${id.replace(/[^\w-]/g, "")}["']`);
-        let divs = [...html.matchAll(/<div[^>]*>/gi)].filter(d => /resTab/.test(d[0]) && idAttr.test(d[0]));
-        for (let d of divs) {
-            let table = /<table[^>]*>[\s\S]*?<\/table>/i.exec(html.slice(d.index));
-            let rows = table ? parseRankedRows(table[0]) : [];
-            if (rows.length) return rows;
-        }
+        let id = m[1].replace(/[^\w-]/g, "");
+        let href = /href=["']([^"'#][^"']*)["']/i.exec(m[0].slice(0, m[0].indexOf(">") + 1));
+        let idAttr = new RegExp(`data-id=["']${id}["']`);
+        let starts = [...html.matchAll(/<div[^>]*>/gi)].filter(d => /resTab/.test(d[0]));
+        let rows = [];
+        starts.forEach((d, i) => {
+            if (rows.length || !idAttr.test(d[0])) return;
+            let end = i + 1 < starts.length ? starts[i + 1].index : html.length;
+            let table = /<table[^>]*>[\s\S]*?<\/table>/i.exec(html.slice(d.index, end));
+            if (table) rows = parseRankedRows(table[0]);
+        });
+        let path = href && /race\//.test(href[1]) ? href[1].replace(/^https?:\/\/[^/]+\//, "").replace(/^\//, "") : null;
+        return { rows, path };
     }
     return null; // Reiter nicht gefunden
+}
+
+function parseTab(html, tabName) {
+    let tab = findTab(html, tabName);
+    return tab ? tab.rows : null;
+}
+
+// Reiter im unsichtbaren Browser anklicken und warten, bis seine Tabelle gefüllt ist
+async function loadTabInBrowser(path, tabName) {
+    let wv = new WebView();
+    await wv.loadURL(PCS + path);
+    await wv.evaluateJavaScript(`(function () {
+        var a = Array.prototype.slice.call(document.querySelectorAll("a[data-id]"))
+            .find(function (x) { return x.textContent.trim().toUpperCase() === "${tabName}"; });
+        if (a) a.click();
+        return !!a;
+    })()`);
+    for (let i = 0; i < 10; i++) {
+        let html = await wv.evaluateJavaScript("document.documentElement.outerHTML");
+        let rows = parseTab(html, tabName);
+        if (rows && rows.length) return rows;
+        await sleep(1000);
+    }
+    return [];
+}
+
+// Gesamtwertung, wenn der GC-Reiter auf der Seite leer ist:
+// eigener Link des Reiters, dann übliche Adressen, zuletzt Klick im Browser
+async function loadGC(race, path, html, stageNumber) {
+    let tab = findTab(html, "GC");
+    if (tab && tab.rows.length) return tab.rows;
+    let base = race.path.replace(/[-\/](gc|result)$/, "");
+    let candidates = [];
+    if (tab && tab.path && tab.path !== path) candidates.push(tab.path);
+    if (stageNumber) candidates.push(`${base}-stage-${stageNumber}-gc`, `${base}/stage-${stageNumber}-gc`);
+    for (let candidate of candidates) {
+        try {
+            let rows = parseTab(await load(candidate), "GC");
+            if (rows && rows.length) return rows;
+        } catch (e) {
+            console.log(`GC über ${candidate}: ${e}`);
+        }
+    }
+    if (tab) {
+        try {
+            return await loadTabInBrowser(path, "GC");
+        } catch (e) {
+            console.log(`GC im Browser: ${e}`);
+        }
+    }
+    return null;
 }
 
 // Etappennummer aus Titel oder Überschrift: "… Stage 21 results" / "Prologue"
@@ -351,14 +409,16 @@ async function loadStageEntries(race, today, need) {
     let html = await loadResultPage(path, hasStageOrGC);
     let isRunning = !race.finished;
 
+    let number = parseStageNumber(html);
     let stagePodium = parseTab(html, "STAGE");
-    let gcPodium = parseTab(html, "GC");
-    if (stagePodium === null && gcPodium === null) {
+    let gcPodium = null;
+    if (stagePodium === null && findTab(html, "GC") === null) {
         // Keine Reiter (z. B. alte Seitenstruktur): sichtbare Tabelle als Gesamtwertung
         gcPodium = parsePodium(html);
+    } else if (!isRunning) {
+        gcPodium = await loadGC(race, path, html, number);
     }
 
-    let number = parseStageNumber(html);
     let stageLabel = number === 0 ? "Prolog" : number ? `Etappe ${number}` : "Letzte Etappe";
     let date = parseDate(html) || (isRunning ? today : race.end);
 
