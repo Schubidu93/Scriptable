@@ -491,14 +491,14 @@ function addCupColumn(stack, title, cup, compact) {
 function addRankRow(col, r) {
     let row = col.addStack();
     row.centerAlignContent();
+    // Platz in fester Breite, ohne Abstandhalter darin (der kostet selbst Platz – sonst „1…“ statt „14“)
     let rank = row.addStack();
-    rank.size = new Size(16, 0);
-    addLabel(rank, `${r.rank}`, Font.mediumMonospacedSystemFont(NAME_SIZE), WHITE, 0.6).minimumScaleFactor = 1;
-    rank.addSpacer();
-    row.addSpacer(2);
+    rank.size = new Size(18, 0);
+    let rankText = addLabel(rank, `${r.rank}`, Font.mediumMonospacedSystemFont(NAME_SIZE), WHITE, 0.6);
+    rankText.minimumScaleFactor = 1;
+    rankText.leftAlignText();
     addLabel(row, withFlag(r.nat, r.name), Font.mediumSystemFont(NAME_SIZE), r.nat === "GER" ? GERMAN : WHITE)
         .minimumScaleFactor = 1;
-    row.addSpacer(4);
     row.addSpacer();
     addLabel(row, `${r.score}`, Font.semiboldMonospacedSystemFont(NAME_SIZE), WHITE, 0.85).minimumScaleFactor = 1;
 }
@@ -507,7 +507,7 @@ function addRankRow(col, r) {
 function addTwoColumns(widget, left, right) {
     let row = widget.addStack();
     [left, right].forEach(([title, rows], i) => {
-        if (i > 0) row.addSpacer(16);
+        if (i > 0) row.addSpacer(10);
         let col = row.addStack();
         col.layoutVertically();
         addLabel(col, title.toUpperCase(), Font.semiboldSystemFont(9), WHITE, 0.5);
