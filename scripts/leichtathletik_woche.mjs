@@ -85,23 +85,26 @@ function parseTable(html) {
     let headers = (table.match(/<th[\s\S]*?<\/th>/gi) || []).map(h => cleanCell(h).toLowerCase());
     let col = name => headers.findIndex(h => h.startsWith(name));
     let idx = {
-        mark: col("mark"), wind: col("wind"), name: col("competitor"), nat: col("nat") >= 0 ? col("nat") : col("country"),
+        mark: col("mark"), wind: col("wind"), name: col("competitor"),
+        nat: col("nat") >= 0 ? col("nat") : col("country") >= 0 ? col("country") : col("dob") >= 0 ? col("dob") + 1 : -1,
         venue: col("venue"), date: col("date"), score: headers.findIndex(h => h.includes("score")),
     };
     let body = (table.match(/<tbody[\s\S]*?<\/tbody>/i) || [table])[0];
-    if (DEBUG && !parseTable.shown) {
-        parseTable.shown = true;
-        console.log(`Beispielzeile (HTML): ${((body.match(/<tr[\s\S]*?<\/tr>/i) || [""])[0]).replace(/\s+/g, " ").slice(0, 1500)}`);
-    }
     let rows = (body.match(/<tr[\s\S]*?<\/tr>/gi) || []).map(row => {
         let raw = row.match(/<td[\s\S]*?<\/td>/gi) || [];
         let cells = raw.map(cleanCell);
         let get = i => (i >= 0 && i < cells.length ? cells[i] : "");
+        if (DEBUG && !parseTable.shown && raw.length > 5) {
+            parseTable.shown = true;
+            console.log(`Beispiel Nationalität (HTML): ${(raw[idx.nat] || "").replace(/\s+/g, " ").slice(0, 400)}`);
+        }
+        let nat = idx.nat >= 0 && raw[idx.nat] ? natFromHtml(raw[idx.nat]) : "";
+        if (!nat) nat = (cells.find((c, i) => i !== idx.mark && /^[A-Z]{3}$/.test(c)) || "");
         return {
             mark: get(idx.mark),
             wind: get(idx.wind),
             name: get(idx.name),
-            nat: idx.nat >= 0 && raw[idx.nat] ? natFromHtml(raw[idx.nat]) : "",
+            nat,
             venue: get(idx.venue),
             date: get(idx.date),
             score: Number(get(idx.score).replace(/[^\d.]/g, "")) || 0,
@@ -127,6 +130,17 @@ async function loadEvent(gender, [group, slug, label], from, to) {
         let { status, html } = await fetchPage(url);
         if (status !== 200) return { label, status, rows: [] };
         let { rows, headers } = parseTable(html);
+        if (!rows.length && /<table/i.test(html) === false) {
+            await new Promise(r => setTimeout(r, 1500));
+            ({ status, html } = await fetchPage(url));
+            ({ rows, headers } = parseTable(html));
+        }
+        if (DEBUG && !rows.length) {
+            let title = (/<title[^>]*>([\s\S]*?)<\/title>/i.exec(html) || ["", ""])[1].trim();
+            let tables = (html.match(/<table/gi) || []).length;
+            let note = /no results|keine/i.test(html) ? " · Hinweis 'no results'" : "";
+            console.log(`  ${gender} ${label}: leer · Titel "${title}" · ${tables} Tabellen · ${html.length} Zeichen${note}`);
+        }
         if (DEBUG && rows.length) console.log(`  ${gender} ${label}: Spalten ${headers.join(" | ")} · Beispiel ${JSON.stringify(rows[0])}`);
         return { label, status, rows: rows.map(r => ({ ...r, event: label })) };
     } catch (e) {
