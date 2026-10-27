@@ -217,7 +217,20 @@ async function loadCup(season, gender) {
     rows.sort((a, b) => a.rank - b.rank);
     let top = rows.slice(0, CONFIG.podium);
     let germans = rows.filter(r => r.nat === "GER" && r.rank > CONFIG.podium).slice(0, CONFIG.germans);
-    return { top, germans };
+    // Großes Widget: die drei besten Deutschen insgesamt (auch wenn sie in den Top 3 stehen)
+    let bestGermans = rows.filter(r => r.nat === "GER").slice(0, CONFIG.germans);
+    return { top, germans, bestGermans };
+}
+
+// Nationenwertung: Top 3, Deutschland zusätzlich, falls nicht darunter
+async function loadNations(season, gender) {
+    let json = await api("CupResults", { CupId: `BT${season}SWRLCP__${gender}NC` });
+    let rows = (json.Rows || []).map(r => ({ rank: Number(r.Rank), nat: r.Nat, name: r.Nat, score: r.Score }))
+        .filter(r => r.rank > 0).sort((a, b) => a.rank - b.rank);
+    let list = rows.slice(0, 3);
+    let ger = rows.find(r => r.nat === "GER");
+    if (ger && !list.includes(ger)) list.push(ger);
+    return list;
 }
 
 async function loadCupData() {
@@ -232,6 +245,8 @@ async function loadCupData() {
         women = await loadCup(season, "SW");
         men = await loadCup(season, "SM");
     }
+    women.nations = await loadNations(season, "SW").catch(() => []);
+    men.nations = await loadNations(season, "SM").catch(() => []);
     return { season, final, women, men };
 }
 
@@ -472,21 +487,68 @@ function addCupColumn(stack, title, cup, compact) {
     col.addSpacer();
 }
 
+// Eine Ranglisten-Zeile: Platz · Flagge Name · Punkte
+function addRankRow(col, r) {
+    let row = col.addStack();
+    row.centerAlignContent();
+    let rank = row.addStack();
+    rank.size = new Size(16, 0);
+    addLabel(rank, `${r.rank}`, Font.mediumMonospacedSystemFont(NAME_SIZE), WHITE, 0.6).minimumScaleFactor = 1;
+    rank.addSpacer();
+    row.addSpacer(2);
+    addLabel(row, withFlag(r.nat, r.name), Font.mediumSystemFont(NAME_SIZE), r.nat === "GER" ? GERMAN : WHITE)
+        .minimumScaleFactor = 1;
+    row.addSpacer(4);
+    row.addSpacer();
+    addLabel(row, `${r.score}`, Font.semiboldMonospacedSystemFont(NAME_SIZE), WHITE, 0.85).minimumScaleFactor = 1;
+}
+
+// Zwei Spalten nebeneinander mit Titel und Zeilen
+function addTwoColumns(widget, left, right) {
+    let row = widget.addStack();
+    [left, right].forEach(([title, rows], i) => {
+        if (i > 0) row.addSpacer(16);
+        let col = row.addStack();
+        col.layoutVertically();
+        addLabel(col, title.toUpperCase(), Font.semiboldSystemFont(9), WHITE, 0.5);
+        (rows || []).forEach(r => {
+            col.addSpacer(4);
+            addRankRow(col, r);
+        });
+        if (!rows || !rows.length) {
+            col.addSpacer(4);
+            addLabel(col, "–", Font.mediumSystemFont(NAME_SIZE), WHITE, 0.6);
+        }
+        col.addSpacer();
+    });
+}
+
+// Großes Widget: je Geschlecht links Top 3 gesamt, rechts die besten Deutschen; darunter Nationenwertung
+function buildCupLarge(widget, data) {
+    for (let [title, cup] of [["Männer", data.men], ["Frauen", data.women]]) {
+        addSectionTitle(widget, title);
+        widget.addSpacer(4);
+        addTwoColumns(widget, ["Gesamt", cup.top], ["Beste Deutsche", cup.bestGermans || cup.germans]);
+        widget.addSpacer(12);
+    }
+    addSectionTitle(widget, "Nationenwertung");
+    widget.addSpacer(4);
+    addTwoColumns(widget, ["Männer", data.men.nations], ["Frauen", data.women.nations]);
+    widget.addSpacer();
+}
+
 function buildCup(widget, data, compact) {
     let season = `${data.season.slice(0, 2)}/${data.season.slice(2)}`;
     addHeader(widget, "Gesamtweltcup", data.final ? `Endstand ${season}` : `Saison ${season}`, data.stale);
-    widget.addSpacer(compact ? 5 : 12);
-    let row = widget.addStack();
-    if (compact) {
-        addCupColumn(row, "Frauen", data.women, true);
-        row.addSpacer(16);
-        addCupColumn(row, "Männer", data.men, true);
-    } else {
-        row.layoutVertically();
-        addCupColumn(row, "Frauen", data.women, false);
-        row.addSpacer(14);
-        addCupColumn(row, "Männer", data.men, false);
+    widget.addSpacer(compact ? 5 : 10);
+    if (!compact) {
+        buildCupLarge(widget, data);
+        return;
     }
+    let row = widget.addStack();
+    addCupColumn(row, "Frauen", data.women, true);
+    row.addSpacer(16);
+    addCupColumn(row, "Männer", data.men, true);
 }
 
 function buildError(widget) {
