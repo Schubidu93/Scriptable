@@ -15,6 +15,7 @@ const SCRIPTS = [
     { name: "10km Welt", file: "Marathon_GER.js", distanz: "10km", region: "welt", glyph: "globe-europe", color: "green" },
     { name: "Leichtathletik Woche", file: "Leichtathletik.js", glyph: "running", color: "teal" },
     { name: "Leichtathletik Deutschland", file: "Leichtathletik.js", params: { REGION: "deutschland" }, glyph: "running", color: "teal" },
+    { name: "Leichtathletik Rekorde", file: "Leichtathletik.js", params: { ANSICHT: "rekorde" }, glyph: "trophy", color: "yellow" },
     { name: "Radsport", file: "Radsport.js", glyph: "bicycle", color: "yellow" },
     { name: "Radsport Frauen", file: "Radsport.js", params: { GESCHLECHT: "frauen" }, glyph: "bicycle", color: "pink" },
     { name: "Biathlon Männer", file: "Biathlon.js", params: { ANSICHT: "rennen", GESCHLECHT: "maenner" }, glyph: "skiing-nordic", color: "blue" },
