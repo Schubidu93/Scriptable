@@ -1,15 +1,15 @@
 // NFL – Ergebnisse der aktuellen Woche (inkl. laufender Spiele)
 // Quelle: ESPN (öffentliche Schnittstelle). Im Stil der iOS-Widgets.
-// Großes Widget (Standard): die ganze Woche, ein Spiel pro Zeile wie bei den Fußball-Ergebnissen.
-// Mittleres Widget: die letzten 9 Ergebnisse.
+// Großes Widget: die ganze Woche, ein Spiel pro Zeile wie bei den Fußball-Ergebnissen.
+// Mittleres Widget (Standard): die letzten 9 Ergebnisse.
 
 const ESPN = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/";
 const FAVORITE = String(
     (typeof TEAM !== "undefined" && TEAM) || args.widgetParameter || "cle"
 ).trim().toUpperCase();
 
-// Größe: auf dem Homescreen die gewählte, in der App groß
-const FAMILY = config.widgetFamily || "large";
+// Größe: auf dem Homescreen die gewählte, in der App mittel
+const FAMILY = config.widgetFamily || "medium";
 const LARGE = FAMILY === "large" || FAMILY === "extraLarge";
 
 const fm = FileManager.local();
