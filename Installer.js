@@ -30,6 +30,7 @@ const SCRIPTS = [
     { name: "DFB-Pokal", file: "Fussball.js", params: { ANSICHT: "pokal" }, glyph: "trophy", color: "green" },
     { name: "Browns", file: "NFL_Team.js", glyph: "football-ball", color: "orange" },
     { name: "NFL Ergebnisse", file: "NFL_Scores.js", glyph: "football-ball", color: "deep-blue" },
+    { name: "Strava", file: "Strava.js", glyph: "running", color: "orange" },
 ];
 
 function loaderCode(script) {
