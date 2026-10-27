@@ -293,7 +293,8 @@ function buildMedium(widget, results) {
 async function createWidget() {
     let results = await loadResults();
     let widget = new ListWidget();
-    widget.url = listUrl(CONFIG.lists[0]);
+    // Antippen startet das Skript in Scriptable (frische Daten) statt eine Website zu öffnen
+    widget.url = URLScheme.forRunningScript();
     widget.refreshAfterDate = new Date(Date.now() + 6 * 60 * 60 * 1000);
     background(widget);
     widget.setPadding(16, 16, 6, 16);
