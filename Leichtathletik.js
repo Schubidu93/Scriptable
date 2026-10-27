@@ -344,6 +344,11 @@ function displayName(event, track) {
         name = name.replace(SPONSOR_PREFIX, "");
     }
     return name
+        // Bekannte lange Namen mit gängiger Abkürzung
+        .replace(/Hong Kong-Zhuhai-Macao Bridge/i, "HZMB")
+        .replace(/\bCombined Events\b/g, "Multi-Events")
+        .replace(/\bPole Vault\b/g, "PV")
+        .replace(/\s+and\s+/g, " & ")
         .replace(/\bChampionships\b/g, "Champs")
         .replace(/\bInternational\b/g, "Int.")
         .replace(/\s+/g, " ")
@@ -384,7 +389,8 @@ function addEvent(stack, event, track) {
     right.size = new Size(115, 0);
     // Gleiche Schrift wie die Athletennamen in den Straßenlauf-Widgets
     let name = addLabel(right, displayName(event, track), Font.semiboldSystemFont(11), WHITE);
-    name.lineLimit = 2;
+    // Voller Name statt „…“: bei Bedarf bis zu drei Zeilen
+    name.lineLimit = 3;
     name.minimumScaleFactor = 1;
     right.addSpacer(2);
 
@@ -420,7 +426,7 @@ function nameLines(event, track) {
             width += (width ? 1 : 0) + word.length;
         }
     }
-    return Math.min(2, lines);
+    return Math.min(3, lines);
 }
 
 // So viele Termine, wie in die Höhe passen – lange Namen brauchen zwei, drei Zeilen
