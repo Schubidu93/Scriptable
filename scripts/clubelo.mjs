@@ -1,10 +1,10 @@
 // ClubElo-Rangliste: aktuelle Top 10 und der Stand vor einem Monat (Rang und Elo-Punkte).
 // Läuft täglich per GitHub Actions und schreibt data/clubelo.json.
-// Ist ClubElo nicht erreichbar, bleibt die alte Datei stehen.
+// Ist ClubElo nicht erreichbar, bleibt die alte Datei stehen (kein Fehler – der nächste Lauf holt nach).
 
 import { writeFile, mkdir } from "node:fs/promises";
 
-const API = "http://api.clubelo.com/";
+const APIS = ["http://api.clubelo.com/", "https://api.clubelo.com/"];
 const OUTPUT = "data/clubelo.json";
 const TOP = 10;
 const COMPARE_DAYS = 30;
@@ -13,11 +13,14 @@ function isoDate(date) {
     return date.toISOString().slice(0, 10);
 }
 
-// CSV: Rank,Club,Country,Level,Elo,From,To – Vereine ohne Rang ("None") werden nach Elo eingeordnet
+// CSV: Rank,Club,Country,Level,Elo,From,To – Vereine ohne Rang ("None") werden nach Elo eingeordnet.
+// Probiert http und https, bei Bedarf auch den Vortag.
 async function loadRanking(date) {
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    let dates = [date, new Date(date.getTime() - 86400000)];
+    let attempts = dates.flatMap(d => APIS.map(api => api + isoDate(d)));
+    for (let [attempt, url] of attempts.entries()) {
         try {
-            let res = await fetch(API + isoDate(date));
+            let res = await fetch(url, { signal: AbortSignal.timeout(20000) });
             if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
             let lines = (await res.text()).trim().split(/\r?\n/);
             let header = lines.shift().split(",");
@@ -32,8 +35,8 @@ async function loadRanking(date) {
             if (!clubs.length) throw new Error("leere Liste");
             return clubs;
         } catch (e) {
-            console.log(`ClubElo ${isoDate(date)}, Versuch ${attempt}: ${e.message}`);
-            await new Promise(r => setTimeout(r, 5000 * attempt));
+            console.log(`ClubElo ${url}: ${e.message}`);
+            await new Promise(r => setTimeout(r, 3000 * (attempt + 1)));
         }
     }
     return null;
@@ -44,8 +47,7 @@ async function main() {
     let before = new Date(today.getTime() - COMPARE_DAYS * 86400000);
     let [now, then] = await Promise.all([loadRanking(today), loadRanking(before)]);
     if (!now) {
-        console.error("ClubElo nicht erreichbar – Datei bleibt unverändert.");
-        process.exitCode = 1;
+        console.log("::warning::ClubElo nicht erreichbar – Datei bleibt unverändert, nächster Lauf versucht es erneut.");
         return;
     }
     let previous = {};

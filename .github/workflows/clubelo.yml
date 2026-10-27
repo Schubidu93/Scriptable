@@ -1,9 +1,10 @@
 name: ClubElo
 
-# Täglich die ClubElo-Rangliste speichern (Top 10 und Stand vor einem Monat)
+# Alle 6 Stunden die ClubElo-Rangliste speichern (Top 10 und Stand vor einem Monat).
+# Mehrere Läufe am Tag überbrücken Ausfälle von ClubElo.
 on:
   schedule:
-    - cron: "43 5 * * *"
+    - cron: "43 */6 * * *"
   workflow_dispatch:
   push:
     branches-ignore: [main]
@@ -30,5 +31,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          test -f data/clubelo.json || exit 0
           git add data/clubelo.json
           git diff --staged --quiet || (git commit -m "ClubElo: Rangliste aktualisiert" && git pull --rebase && git push)
