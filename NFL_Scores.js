@@ -157,22 +157,27 @@ function background(widget) {
     widget.backgroundGradient = gradient;
 }
 
+// Mittleres Widget mit 9 Spielen: etwas kleinere Zeilen, damit alles samt Kopfzeile passt
+let COMPACT = false;
+
 function addTeamLine(stack, team, game, images) {
+    let size = COMPACT ? 14 : 16;
+    let fontSize = COMPACT ? 12 : 13;
     let row = stack.addStack();
     row.centerAlignContent();
     if (images[team.logo]) {
         let img = row.addImage(images[team.logo]);
-        img.imageSize = new Size(16, 16);
+        img.imageSize = new Size(size, size);
     } else {
-        row.addSpacer(16);
+        row.addSpacer(size);
     }
     row.addSpacer(5);
     let favorite = team.abbr === FAVORITE;
     let loser = game.state === "post" && !team.winner;
-    let font = team.winner ? Font.boldSystemFont(13) : Font.mediumSystemFont(13);
+    let font = team.winner ? Font.boldSystemFont(fontSize) : Font.mediumSystemFont(fontSize);
     addLabel(row, team.abbr, font, favorite ? ACCENT : WHITE, loser ? 0.55 : 1);
     row.addSpacer();
-    let scoreFont = team.winner ? Font.boldMonospacedSystemFont(13) : Font.mediumMonospacedSystemFont(13);
+    let scoreFont = team.winner ? Font.boldMonospacedSystemFont(fontSize) : Font.mediumMonospacedSystemFont(fontSize);
     addLabel(row, team.score, scoreFont, WHITE, loser ? 0.55 : 1);
 }
 
@@ -197,7 +202,7 @@ function build(widget, data, columns, perColumn, images) {
     let info = [data.label, data.stale ? "offline" : ""].filter(Boolean).join(" · ");
     addLabel(header, info, Font.semiboldSystemFont(11), WHITE, 0.6);
 
-    widget.addSpacer(8);
+    widget.addSpacer(COMPACT ? 5 : 8);
 
     let games = data.games.slice(0, columns * perColumn);
     let row = widget.addStack();
@@ -206,7 +211,7 @@ function build(widget, data, columns, perColumn, images) {
         let col = row.addStack();
         col.layoutVertically();
         games.slice(c * perColumn, (c + 1) * perColumn).forEach((game, i) => {
-            if (i > 0) col.addSpacer(7);
+            if (i > 0) col.addSpacer(COMPACT ? 4 : 7);
             addGame(col, game, images);
         });
         col.addSpacer();
@@ -229,6 +234,7 @@ function buildError(widget) {
 async function createWidget() {
     let large = config.widgetFamily === "large" || config.widgetFamily === "extraLarge";
     let columns = large ? 2 : 3;
+    COMPACT = !large;
     let perColumn = large ? 7 : 3;
 
     let data = await loadWithCache(columns * perColumn);
@@ -236,7 +242,7 @@ async function createWidget() {
     widget.url = "https://www.espn.com/nfl/scoreboard";
     widget.refreshAfterDate = new Date(Date.now() + 30 * 60 * 1000);
     background(widget);
-    widget.setPadding(18, 16, 4, 16);
+    widget.setPadding(COMPACT ? 14 : 18, 16, 4, 16);
 
     if (!data) {
         buildError(widget);
