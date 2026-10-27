@@ -305,25 +305,31 @@ function seasonRange() {
 }
 
 // Alle Spiele des Wettbewerbs in der laufenden Saison (einmal geladen).
-// ESPN lehnt manche Abfragen ab (Antwort mit "message"/"code" statt Spielen) – je Monat wird daher
-// abgestuft probiert: mit Limit, ohne Limit, zuletzt wochenweise.
+// ESPN lehnt Datumsbereiche ("20261001-20261031") inzwischen ab – ganze Monate ("202610") und
+// Jahre ("2026") gehen. Je Monat wird daher zuerst das Monatsformat probiert, zuletzt der Bereich.
 let SEASON_EVENTS = null;
 let SCOREBOARD_ERROR = "";
 
 async function loadRange(base, from, to) {
+    let month = `${from.getFullYear()}${String(from.getMonth() + 1).padStart(2, "0")}`;
     let range = `${ymd(from)}-${ymd(to)}`;
-    for (let query of [`dates=${range}&limit=200`, `dates=${range}`]) {
-        let json = await loadJSON(`${base}?${query}`).catch(() => null);
+    for (let query of [`dates=${month}&limit=200`, `dates=${month}`, `dates=${range}&limit=200`]) {
+        let json = await loadJSON(`${base}?${query}`).catch(e => {
+            if (!SCOREBOARD_ERROR) SCOREBOARD_ERROR = String(e.message || e);
+            return null;
+        });
         if (json && Array.isArray(json.events)) return json.events;
         if (json && json.message && !SCOREBOARD_ERROR) SCOREBOARD_ERROR = `${json.code || ""} ${json.message}`.trim();
     }
-    // Wochenweise
-    let weeks = [];
-    for (let d = new Date(from); d <= to; d = new Date(d.getTime() + 7 * 86400000)) {
-        let end = new Date(Math.min(d.getTime() + 6 * 86400000, to.getTime()));
-        weeks.push(loadJSON(`${base}?dates=${ymd(d)}-${ymd(end)}`).catch(() => null));
-    }
-    return (await Promise.all(weeks)).flatMap(json => (json && json.events) || []);
+    return [];
+}
+
+// Notlösung: ganze Kalenderjahre der Saison
+async function loadYears(base, from, to) {
+    let years = [...new Set([from.getFullYear(), to.getFullYear()])];
+    let lists = await Promise.all(years.map(y => loadJSON(`${base}?dates=${y}&limit=1000`).catch(() => null)));
+    return lists.flatMap(json => (json && json.events) || [])
+        .filter(e => new Date(e.date) >= from && new Date(e.date) <= to);
 }
 
 async function loadSeasonEvents() {
@@ -339,6 +345,10 @@ async function loadSeasonEvents() {
     let events = mergeEvents(lists);
     if (!events.length) {
         DIAG.push(`Scoreboard ${months.length} Monate: 0 Spiele${SCOREBOARD_ERROR ? " · " + SCOREBOARD_ERROR.slice(0, 80) : ""}`);
+        events = mergeEvents([await loadYears(base, from, until)]);
+        DIAG.push(`Scoreboard Jahre: ${events.length} Spiele`);
+    }
+    if (!events.length) {
         // Notlösung: aktueller Spieltag
         let current = await loadJSON(base).catch(() => null);
         events = mergeEvents([(current && current.events) || []]);
@@ -393,15 +403,15 @@ function stat(entry, name) {
     return s ? Number(s.value) : 0;
 }
 
-// Tabellen-Ausschnitt mit 6 Zeilen:
-//   Platz 1–4:  Plätze 1–6
-//   sonst:      Platz 1, …, Platz davor, eigenes Team, Platz danach, …
+// Tabellen-Ausschnitt mit 7 Zeilen:
+//   Platz 1–5:  Plätze 1–7
+//   sonst:      Platz 1, 2, …, Platz davor, eigenes Team, Platz danach, …
 function standingsWindow(rows, pos) {
-    if (pos < 0) return rows.slice(0, 6);
-    if (pos <= 3) return rows.slice(0, 6);
-    // Am Tabellenende statt der hinteren Lücke ein Platz mehr
-    if (pos + 1 >= rows.length - 1) return [rows[0], { gap: true }].concat(rows.slice(-4));
-    return [rows[0], { gap: true }].concat(rows.slice(pos - 1, pos + 2), [{ gap: true }]);
+    if (pos <= 4) return rows.slice(0, 7);
+    // Am Tabellenende statt der hinteren Lücke die letzten fünf
+    if (pos + 1 >= rows.length - 1) return [rows[0], { gap: true }].concat(rows.slice(-5));
+    let before = pos - 1 > 2 ? [{ gap: true }] : [];
+    return rows.slice(0, 2).concat(before, rows.slice(pos - 1, pos + 2), [{ gap: true }]);
 }
 
 function parseStandings(json) {
@@ -714,7 +724,7 @@ function addNextGame(stack, next, images) {
     addLabel(stack, formatKickoff(next.date), Font.mediumSystemFont(10), WHITE, 0.6);
 }
 
-// 6 Zeilen: kompakt, damit sie ins mittlere Widget passen; Lücken als „···“
+// 7 Zeilen: kompakt, damit sie ins mittlere Widget passen; Lücken als „···“
 function addStandings(stack, data, images) {
     let standings = data.standings;
     addSectionTitle(stack, LEAGUE.table);
