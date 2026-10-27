@@ -13,13 +13,61 @@ const CONFIG = {
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), "radsport-pcs.json");
 
+// Was beim Abruf passiert ist – wird angezeigt, wenn keine Daten kommen
+const DIAG = [];
+
+function pageTitle(html) {
+    let m = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html || "");
+    return m ? m[1].replace(/\s+/g, " ").trim().slice(0, 40) : "ohne Titel";
+}
+
+// Cloudflare-Prüfseite statt Inhalt?
+function isChallenge(html) {
+    return /Just a moment|cf-chl|challenge-platform|Attention Required/i.test(html || "");
+}
+
+function sleep(ms) {
+    return new Promise(resolve => Timer.schedule(ms, false, resolve));
+}
+
+// Fallback: Seite in einem unsichtbaren Browser laden, bis die Cloudflare-Prüfung durch ist
+async function loadInWebView(url) {
+    let wv = new WebView();
+    await wv.loadURL(url);
+    let html = "";
+    for (let i = 0; i < 12; i++) {
+        html = await wv.evaluateJavaScript("document.documentElement.outerHTML");
+        if (!isChallenge(html) && /<table/i.test(html)) break;
+        await sleep(1000);
+    }
+    return html;
+}
+
 async function load(path) {
-    let req = new Request(PCS + path);
+    let url = PCS + path;
+    let req = new Request(url);
     req.headers = {
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
         "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
     };
-    return await req.loadString();
+    let html = "";
+    try {
+        html = await req.loadString();
+    } catch (e) {
+        DIAG.push(`${path.split("?")[0]}: ${e}`);
+    }
+    let status = req.response ? req.response.statusCode : "?";
+    if (status === 200 && !isChallenge(html)) return html;
+
+    DIAG.push(`${path.split("?")[0]}: HTTP ${status} · ${pageTitle(html)}`);
+    try {
+        let viaBrowser = await loadInWebView(url);
+        DIAG.push(`Browser: ${isChallenge(viaBrowser) ? "Prüfung nicht bestanden" : "ok"} · ${pageTitle(viaBrowser)}`);
+        return viaBrowser;
+    } catch (e) {
+        DIAG.push(`Browser: ${e}`);
+        return html;
+    }
 }
 
 // PCS kennzeichnet Länder mit <span class="flag ke"> (ISO-Code) → "🇰🇪"
@@ -116,7 +164,12 @@ function parsePodium(html) {
 
 async function loadCalendar(year) {
     let html = await load(`races.php?year=${year}&circuit=${CONFIG.circuit}&filter=Filter`);
-    return parseCalendar(html, year);
+    let races = parseCalendar(html, year);
+    if (!races.length) {
+        let rows = (html.match(/<tr/gi) || []).length;
+        DIAG.push(`Kalender ${year}: ${rows} Zeilen, 0 Rennen erkannt · ${pageTitle(html)}`);
+    }
+    return races;
 }
 
 async function loadData() {
@@ -178,7 +231,9 @@ async function loadWithCache() {
         }
     } catch (e) {
         console.log(`Abruf fehlgeschlagen: ${e}`);
+        DIAG.push(`Fehler: ${e}`);
     }
+    DIAG.forEach(line => console.log(line));
     if (fm.fileExists(cachePath)) {
         let data = deserialize(fm.readString(cachePath));
         data.stale = true;
@@ -294,6 +349,11 @@ function buildLarge(widget, data) {
 
     if (!data) {
         addLabel(widget, "Keine Daten – später erneut versuchen", Font.mediumSystemFont(13), WHITE, 0.8);
+        widget.addSpacer(8);
+        DIAG.slice(0, 6).forEach(line => {
+            let t = addLabel(widget, line, Font.regularMonospacedSystemFont(10), WHITE, 0.6);
+            t.lineLimit = 2;
+        });
         widget.addSpacer();
         return;
     }
