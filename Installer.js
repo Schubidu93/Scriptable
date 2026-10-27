@@ -14,6 +14,8 @@ const SCRIPTS = [
     { name: "Halbmarathon Welt", file: "Marathon_GER.js", distanz: "halbmarathon", region: "welt", glyph: "globe-europe", color: "purple" },
     { name: "10km Welt", file: "Marathon_GER.js", distanz: "10km", region: "welt", glyph: "globe-europe", color: "green" },
     { name: "Radsport", file: "Radsport.js", glyph: "bicycle", color: "yellow" },
+    { name: "Browns", file: "NFL_Team.js", glyph: "football-ball", color: "orange" },
+    { name: "NFL Ergebnisse", file: "NFL_Scores.js", glyph: "football-ball", color: "deep-blue" },
 ];
 
 function loaderCode(script) {
