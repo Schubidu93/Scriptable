@@ -486,7 +486,7 @@ async function loadStageEntries(race, today, need) {
     let entries = [];
     // Gleicht die „Gesamtwertung“ der Etappe, ist sie nicht geladen worden – dann lieber weglassen
     if (!isRunning && isGC(gcPodium, stagePodium)) {
-        entries.push({ ...race, label: "Gesamtwertung", date: race.end, path, podium: gcPodium, isGC: true });
+        entries.push({ ...race, label: "GC", date: race.end, path, podium: gcPodium, isGC: true });
     }
     if (stagePodium && stagePodium.length) {
         entries.push({ ...race, label: stageLabel, date, path, podium: stagePodium, running: isRunning });
