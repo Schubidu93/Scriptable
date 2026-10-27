@@ -256,9 +256,9 @@ function countdown(event) {
     let today = new Date();
     today.setHours(0, 0, 0, 0);
     let start = dayOf(event.startDate), end = dayOf(event.endDate || event.startDate);
-    if (start <= today && today <= end) return "läuft";
     let days = Math.round((start - today) / 86400000);
     if (days === 0) return "heute";
+    if (start < today && today <= end) return "läuft";
     if (days === 1) return "morgen";
     return `in ${days} T`;
 }
