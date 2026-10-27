@@ -351,11 +351,14 @@ function displayName(event, track) {
 // Kürzel, Flagge und Ort. Mehrtägige Wettkämpfe: „bis 10.01.“ in der Ortszeile.
 const MONTHS_DE = ["JAN", "FEB", "MÄR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEZ"];
 
+// Zentriert in fester Breite – ohne Abstandhalter, die selbst Platz kosten (sonst „…“ statt „27“)
 function addCentered(stack, text, font, color, opacity = 1) {
     let line = stack.addStack();
-    line.addSpacer();
-    addLabel(line, text, font, color, opacity);
-    line.addSpacer();
+    line.size = new Size(28, 0);
+    line.centerAlignContent();
+    let t = addLabel(line, text, font, color, opacity);
+    t.centerAlignText();
+    t.minimumScaleFactor = 1;
 }
 
 function addEvent(stack, event, track) {
@@ -372,8 +375,10 @@ function addEvent(stack, event, track) {
     addCentered(date, MONTHS_DE[start.getMonth()], Font.semiboldSystemFont(8), GOLD, 0.9);
 
     row.addSpacer(7);
+    // Feste Breite (Spalte 150 − Datum 28 − Abstand 7), damit lange Namen umbrechen statt „…“
     let right = row.addStack();
     right.layoutVertically();
+    right.size = new Size(115, 0);
     // Gleiche Schrift wie die Athletennamen in den Straßenlauf-Widgets
     let name = addLabel(right, displayName(event, track), Font.semiboldSystemFont(11), WHITE);
     name.lineLimit = 2;
@@ -394,7 +399,6 @@ function addEvent(stack, event, track) {
     let pad = n => String(n).padStart(2, "0");
     let extra = live ? soon : end.getTime() !== start.getTime() ? `bis ${pad(end.getDate())}.${pad(end.getMonth() + 1)}.` : "";
     addLabel(info, `${f ? f + " " : ""}${city(event.venue)}${extra ? " · " + extra : ""}`, Font.mediumSystemFont(10), WHITE, 0.65);
-    right.addSpacer();
 }
 
 // Geschätzte Zeilen des Namens (ca. 18 Zeichen je Zeile neben dem Kürzel, Umbruch an Wortgrenzen)
