@@ -1,7 +1,6 @@
 // Radsport – die letzten 3 WorldTour-Ergebnisse mit Top 3 und die nächsten 3 Rennen.
 // Rundfahrten erscheinen als zwei Einträge: letzte Etappe und – wenn beendet – Gesamtwertung.
 // Quelle: ProCyclingStats (procyclingstats.com). Großes Widget, im Stil der iOS-Widgets.
-// Ein Tipp auf ein Rennen öffnet dessen Ergebnisse bei ProCyclingStats.
 //
 // Männer (Standard) oder Frauen: im Loader per Function("GESCHLECHT", code)("frauen")
 // oder als Widget-Parameter "frauen".
@@ -465,45 +464,82 @@ async function loadData() {
     finished.sort((a, b) => b.end - a.end);
     upcoming.sort((a, b) => a.start - b.start);
 
-    // Laufende Rundfahrten zuerst, dann die beendeten Rennen – bis 3 Ergebnisse beisammen sind
+    // Laufende Rundfahrten zuerst, dann die beendeten Rennen – bis 3 Ergebnisse beisammen sind.
+    // Zwei Durchgänge, damit das Zeitlimit reicht: zuerst alle Ergebnisse schnell (Podium, Etappe),
+    // danach mit der Restzeit die aufwendige Suche nach der Gesamtwertung (GC).
     let running = upcoming.filter(r => r.stageRace && r.start <= today);
-    let entries = [];
     let saved = loadSavedResults();
     let revive = e => ({ ...e, start: new Date(e.start), end: new Date(e.end), date: e.date ? new Date(e.date) : undefined });
+    let collected = []; // { race, entries }
+    let pending = [];   // beendete Rundfahrten ohne GC: { item, ctx }
+    let count = () => collected.reduce((n, c) => n + c.entries.length, 0);
+    let GC_RETRY = 12 * 60 * 60 * 1000; // fehlgeschlagene GC-Suche frühestens nach 12 Stunden wiederholen
+
     for (let race of running.concat(finished)) {
-        let need = CONFIG.past - entries.length;
-        if (need <= 0) break;
+        if (count() >= CONFIG.past) break;
         let key = resultPath(race);
-        if (race.finished && saved[key]) {
-            entries = entries.concat(saved[key].entries.map(revive).slice(0, need));
+        let stored = race.finished && saved[key];
+        if (stored && stored.complete !== false) {
+            collected.push({ race, entries: stored.entries.map(revive) });
+            continue;
+        }
+        if (stored) {
+            // Etappe schon bekannt, GC fehlte – anzeigen und ggf. später erneut suchen
+            let item = { race, entries: stored.entries.map(revive) };
+            collected.push(item);
+            if (Date.now() - (stored.gcTriedAt || 0) > GC_RETRY) pending.push({ item, ctx: null });
             continue;
         }
         if (timeLeft() < 5000) {
-            entries.push({ ...race, label: "", date: race.end, path: key, podium: [], debug: "Wird beim nächsten Aktualisieren geladen" });
+            collected.push({ race, entries: [{ ...race, label: "", date: race.end, path: key, podium: [], debug: "Wird beim nächsten Aktualisieren geladen" }] });
             continue;
         }
         try {
-            let found;
             if (race.stageRace) {
-                found = await loadStageEntries(race, today, 2);
+                let result = await loadStageEntries(race, today, false);
+                let item = { race, entries: result.entries };
+                collected.push(item);
+                if (race.finished) {
+                    let complete = result.entries.some(e => e.isGC);
+                    saved[key] = { entries: result.entries, savedAt: Date.now(), complete, gcTriedAt: 0 };
+                    saveResults(saved);
+                    if (!complete) pending.push({ item, ctx: result.ctx });
+                }
             } else {
                 let podium = parsePodium(await loadResultPage(key, hasPodium));
-                found = [{ ...race, label: "", date: race.end, path: key, podium, debug: podium.debug }];
+                let entries = [{ ...race, label: "", date: race.end, path: key, podium, debug: podium.debug }];
+                collected.push({ race, entries });
+                if (race.finished && podium.length) {
+                    saved[key] = { entries, savedAt: Date.now(), complete: true };
+                    saveResults(saved);
+                }
             }
-            // Vollständig (Eintagesrennen mit Podium, Rundfahrt mit GC und Etappe): dauerhaft merken
-            let complete = race.stageRace
-                ? found.some(e => e.isGC) && found.some(e => !e.isGC && e.podium.length)
-                : found[0].podium.length > 0;
-            if (race.finished && complete) {
-                saved[key] = { entries: found, savedAt: Date.now() };
-                saveResults(saved);
-            }
-            entries = entries.concat(found.slice(0, need));
         } catch (e) {
             console.log(`${race.name}: Ergebnis nicht geladen: ${e}`);
-            entries.push({ ...race, label: "", date: race.end, path: resultPath(race), podium: [], debug: String(e) });
+            collected.push({ race, entries: [{ ...race, label: "", date: race.end, path: key, podium: [], debug: String(e) }] });
         }
     }
+
+    // Zweiter Durchgang: Gesamtwertungen, solange Zeit bleibt
+    for (let { item, ctx } of pending) {
+        if (timeLeft() < 14000) break;
+        let race = item.race, key = resultPath(race);
+        try {
+            if (!ctx) ctx = (await loadStageEntries(race, today, false)).ctx;
+            let gc = await loadGC(race, ctx.path, ctx.html, ctx.number, ctx.stagePodium);
+            let stageEntries = item.entries.filter(e => !e.isGC && e.podium.length);
+            if (isGC(gc, ctx.stagePodium)) {
+                item.entries = [{ ...race, label: "GC", date: race.end, path: ctx.path, podium: gc, isGC: true }].concat(stageEntries);
+                saved[key] = { entries: item.entries, savedAt: Date.now(), complete: true };
+            } else {
+                saved[key] = { entries: item.entries, savedAt: Date.now(), complete: false, gcTriedAt: Date.now() };
+            }
+            saveResults(saved);
+        } catch (e) {
+            console.log(`${race.name}: GC nicht geladen: ${e}`);
+        }
+    }
+    let entries = collected.flatMap(c => c.entries);
 
     return {
         past: entries.slice(0, CONFIG.past),
@@ -513,8 +549,9 @@ async function loadData() {
 }
 
 // Rundfahrt in zwei Einträge aufteilen: letzte Etappe und – wenn beendet – Gesamtwertung.
-// Die verlinkte Seite enthält beide als Reiter "STAGE" und "GC".
-async function loadStageEntries(race, today, need) {
+// Ohne searchGC nur, was die Seite direkt hergibt (schnell); die GC-Suche übernimmt loadData.
+// Ergebnis: { entries, ctx } – ctx enthält die geladene Seite für die spätere GC-Suche.
+async function loadStageEntries(race, today, searchGC) {
     let path = resultPath(race);
     let html = await loadResultPage(path, hasStageOrGC);
     let isRunning = !race.finished;
@@ -523,14 +560,14 @@ async function loadStageEntries(race, today, need) {
     let stagePodium = parseTab(html, "STAGE");
     let gcPodium = null;
     if (stagePodium === null && findTab(html, "GC") === null) {
-        // Reiter nicht im HTML erkannt (z. B. Symbol-Reiter): die sichtbare Tabelle ist die Etappe,
-        // die Gesamtwertung kommt per Klick auf „GC“ im Browser
+        // Reiter nicht im HTML erkannt (z. B. Symbol-Reiter): die sichtbare Tabelle ist die Etappe
         let visible = parsePodium(html);
         stagePodium = visible.length ? visible : null;
-        if (!isRunning) gcPodium = await loadGC(race, path, html, number, stagePodium);
-    } else if (!isRunning) {
-        gcPodium = await loadGC(race, path, html, number, stagePodium);
+    } else {
+        let tab = findTab(html, "GC");
+        if (tab && isGC(tab.rows, stagePodium)) gcPodium = tab.rows;
     }
+    if (!isRunning && !gcPodium && searchGC) gcPodium = await loadGC(race, path, html, number, stagePodium);
 
     let stageLabel = number === 0 ? "Prolog" : number ? `Etappe ${number}` : "Letzte Etappe";
     let date = parseDate(html) || (isRunning ? today : race.end);
@@ -547,7 +584,7 @@ async function loadStageEntries(race, today, need) {
         let debug = (gcPodium && gcPodium.debug) || `${pageTitle(html)} · keine Etappen-/GC-Tabelle`;
         entries.push({ ...race, label: "", date: race.end, path, podium: [], debug });
     }
-    return entries.slice(0, need);
+    return { entries, ctx: { path, html, number, stagePodium } };
 }
 
 function serialize(data) {
@@ -648,7 +685,6 @@ function addSectionTitle(stack, text) {
 function addPastRace(stack, race, podiumSize) {
     let block = stack.addStack();
     block.layoutVertically();
-    block.url = PCS + (race.path || resultPath(race));
 
     let title = block.addStack();
     title.centerAlignContent();
@@ -690,7 +726,6 @@ function addPastRace(stack, race, podiumSize) {
 function addUpcomingRace(stack, race, today) {
     let row = stack.addStack();
     row.centerAlignContent();
-    row.url = PCS + resultPath(race);
     let running = race.start <= today;
     addSymbol(row, running ? "dot.radiowaves.left.and.right" : "calendar", 11, WHITE);
     row.addSpacer(5);
@@ -752,7 +787,6 @@ function buildMedium(widget, data) {
         left.addSpacer(4);
         let block = left.addStack();
         block.layoutVertically();
-        block.url = PCS + (race.path || resultPath(race));
         addLabel(block, withFlag(race.flag, race.label ? `${race.name} · ${race.label}` : race.name), Font.semiboldSystemFont(12), WHITE);
         let winner = block.addStack();
         winner.centerAlignContent();
@@ -772,7 +806,6 @@ function buildMedium(widget, data) {
         right.addSpacer(4);
         let block = right.addStack();
         block.layoutVertically();
-        block.url = PCS + resultPath(race);
         addLabel(block, withFlag(race.flag, race.name), Font.semiboldSystemFont(12), WHITE);
         let running = race.start <= today;
         addLabel(block, running ? "läuft" : formatRange(race), Font.regularSystemFont(11), WHITE, 0.6);
@@ -783,7 +816,8 @@ function buildMedium(widget, data) {
 async function createWidget() {
     let data = await loadWithCache();
     let widget = new ListWidget();
-    widget.url = `${PCS}races.php?year=${new Date().getFullYear()}&circuit=${CONFIG.circuit}&filter=Filter`;
+    // Antippen startet das Skript in Scriptable (frische Daten) statt eine Website zu öffnen
+    widget.url = URLScheme.forRunningScript();
     widget.refreshAfterDate = new Date(Date.now() + 3 * 60 * 60 * 1000);
     background(widget);
     widget.setPadding(14, 16, 6, 16);
