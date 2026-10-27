@@ -209,7 +209,9 @@ function fullDate(date) {
 function badgesOf(item) {
     let badges = item.badges && item.badges.length ? item.badges
         : (item.records && item.records.length ? item.records : [item.type]).map(type => ({ type, rank: item.rank }));
-    return badges.slice(0, 3);
+    // Reihenfolge von links nach rechts: Deutschland, Europa, Welt (Welt steht ganz rechts an der Leistung)
+    let order = { DR: 0, DT: 0, ER: 1, ET: 1, WR: 2, WT: 2 };
+    return badges.slice(0, 3).sort((a, b) => (order[a.type] ?? 1) - (order[b.type] ?? 1));
 }
 
 // Höhe eines Eintrags: immer zwei Textzeilen (Abzeichen stehen nebeneinander)
@@ -228,7 +230,8 @@ function addHighlight(stack, item, compact) {
     let f = flag(item.nat);
     addLabel(left, `${f ? f + " " : ""}${shortName(item.name)}`, Font.semiboldSystemFont(12), WHITE);
     let gender = item.gender === "women" ? "Frauen" : "Männer";
-    let details = compact
+    // Bei drei Abzeichen ist links wenig Platz – dann ohne Ort, damit die Zeile nicht schrumpft
+    let details = compact || badgesOf(item).length >= 3
         ? `${item.event} ${gender} · ${fullDate(item.date)}`
         : `${item.event} ${gender} · ${city(item.venue)} · ${fullDate(item.date)}`;
     addLabel(left, details, Font.mediumSystemFont(9), WHITE, 0.65);
