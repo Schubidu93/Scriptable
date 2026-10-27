@@ -208,10 +208,12 @@ function fullDate(date) {
 function addHighlight(stack, item, compact) {
     let top = stack.addStack();
     top.centerAlignContent();
-    let records = item.records && item.records.length ? item.records : [item.type];
-    records.forEach((type, i) => {
+    // Mehrere Auszeichnungen nebeneinander (z. B. EU 8 · DE 2); ältere Daten: nur Rekorde bzw. Hauptauszeichnung
+    let badges = item.badges && item.badges.length ? item.badges
+        : (item.records && item.records.length ? item.records : [item.type]).map(type => ({ type, rank: item.rank }));
+    badges.slice(0, 3).forEach((badge, i) => {
         if (i > 0) top.addSpacer(3);
-        addBadge(top, type, item.rank);
+        addBadge(top, badge.type, badge.rank);
     });
     top.addSpacer(5);
     let f = flag(item.nat);
