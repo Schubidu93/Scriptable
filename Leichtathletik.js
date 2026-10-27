@@ -5,12 +5,17 @@
 //
 // Region: weltweit (Standard) oder nur deutsche Athleten – im Loader per
 // Function("REGION", code)("deutschland") oder als Widget-Parameter "deutschland".
+// Ansicht "rekorde": Rekorde und Bestleistungen der letzten Tage (Weltrekord, Deutscher Rekord,
+// Jahresbestleistungen …) – im Loader per Function("ANSICHT", code)("rekorde") oder Parameter "rekorde".
 
-const GERMANY = String((typeof REGION !== "undefined" && REGION) || args.widgetParameter || "").trim().toLowerCase() === "deutschland";
-const DATA_URL = `https://raw.githubusercontent.com/Schubidu93/Scriptable/main/data/leichtathletik_woche${GERMANY ? "_ger" : ""}.json`;
+const params = String(args.widgetParameter || "").trim().toLowerCase().split(/\s+/);
+const GERMANY = String((typeof REGION !== "undefined" && REGION) || params.find(p => p === "deutschland") || "") === "deutschland";
+const RECORDS = String((typeof ANSICHT !== "undefined" && ANSICHT) || params.find(p => p === "rekorde") || "") === "rekorde";
+const FILE = RECORDS ? "leichtathletik_highlights" : `leichtathletik_woche${GERMANY ? "_ger" : ""}`;
+const DATA_URL = `https://raw.githubusercontent.com/Schubidu93/Scriptable/main/data/${FILE}.json`;
 
 const fm = FileManager.local();
-const cachePath = fm.joinPath(fm.cacheDirectory(), `leichtathletik-woche${GERMANY ? "-ger" : ""}.json`);
+const cachePath = fm.joinPath(fm.cacheDirectory(), `${FILE}.json`);
 
 // Zeitpunkt der angezeigten Daten (bei Offline-Anzeige der des Zwischenspeichers)
 let UPDATED = Date.now();
@@ -31,7 +36,7 @@ function addUpdated(widget, note) {
 async function loadData() {
     try {
         let data = await new Request(DATA_URL).loadJSON();
-        if (data && (data.women || data.men)) {
+        if (data && (data.women || data.men || data.items)) {
             fm.writeString(cachePath, JSON.stringify(data));
             if (data.generated) UPDATED = new Date(data.generated).getTime();
             return data;
@@ -167,6 +172,66 @@ function addSection(stack, title, list, count, compact) {
     });
 }
 
+// Auszeichnungen: Kürzel und Farbe
+const BADGES = {
+    WR: { text: "WR", color: new Color("#FFD66B"), dark: true },
+    DR: { text: "DR", color: new Color("#E0303A") },
+    AT: { text: "ewig", color: new Color("#8E6CEF") },
+    DA: { text: "DE ewig", color: new Color("#B4475A") },
+    WL: { text: "WL", color: new Color("#2F8FEA") },
+    DL: { text: "DL", color: new Color("#2DB37A") },
+    DT: { text: "DE Top 3", color: new Color("#5F7D8C") },
+};
+
+function addBadge(stack, type) {
+    let badge = BADGES[type] || { text: type, color: new Color("#5F7D8C") };
+    let pill = stack.addStack();
+    pill.backgroundColor = badge.color;
+    pill.cornerRadius = 4;
+    pill.setPadding(1, 4, 1, 4);
+    addLabel(pill, badge.text, Font.boldSystemFont(9), badge.dark ? new Color("#3A2A00") : WHITE);
+}
+
+// Zwei Zeilen: Auszeichnung, Name, Leistung – darunter Bedeutung, Disziplin, Ort, Datum
+function addHighlight(stack, item, compact) {
+    let top = stack.addStack();
+    top.centerAlignContent();
+    addBadge(top, item.type);
+    top.addSpacer(5);
+    let f = flag(item.nat);
+    addLabel(top, `${f ? f + " " : ""}${shortName(item.name)}`, Font.semiboldSystemFont(compact ? 12 : 13), WHITE);
+    top.addSpacer(4);
+    top.addSpacer();
+    addLabel(top, item.mark, Font.boldRoundedSystemFont(compact ? 12 : 13), GOLD);
+
+    let gender = item.gender === "women" ? "Frauen" : "Männer";
+    let details = compact
+        ? `${item.label} · ${item.event} ${gender}`
+        : `${item.label} · ${item.event} ${gender} · ${city(item.venue)} · ${shortDate(item.date)}`;
+    addLabel(stack, details, Font.mediumSystemFont(compact ? 9 : 10), WHITE, 0.65);
+}
+
+function buildRecords(widget, data, count, compact) {
+    let header = widget.addStack();
+    header.centerAlignContent();
+    addSymbol(header, "trophy.fill", 14, GOLD);
+    header.addSpacer(5);
+    addLabel(header, "Rekorde & Bestleistungen", Font.semiboldSystemFont(compact ? 14 : 15), WHITE);
+    header.addSpacer();
+    addLabel(header, `${data.days} Tage${data.stale ? " · offline" : ""}`, Font.semiboldSystemFont(11), WHITE, 0.6);
+    widget.addSpacer(compact ? 5 : 8);
+
+    let items = data.items || [];
+    if (!items.length) {
+        addLabel(widget, "Keine Rekorde oder Bestleistungen im Zeitraum", Font.mediumSystemFont(12), WHITE, 0.7);
+    }
+    items.slice(0, count).forEach((item, i) => {
+        if (i > 0) widget.addSpacer(compact ? 4 : 7);
+        addHighlight(widget, item, compact);
+    });
+    widget.addSpacer();
+}
+
 function buildLarge(widget, data) {
     addHeader(widget, data);
     widget.addSpacer(8);
@@ -206,7 +271,8 @@ async function createWidget() {
         widget.addSpacer();
         return widget;
     }
-    if (config.widgetFamily === "medium") buildMedium(widget, data);
+    if (RECORDS) buildRecords(widget, data, config.widgetFamily === "medium" ? 3 : 7, config.widgetFamily === "medium");
+    else if (config.widgetFamily === "medium") buildMedium(widget, data);
     else buildLarge(widget, data);
     addUpdated(widget);
     return widget;
