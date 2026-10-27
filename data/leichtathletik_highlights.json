@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-27T14:43:28.875Z",
+  "generated": "2026-10-27T14:59:45.006Z",
   "items": [
     {
       "type": "WT",
@@ -7,6 +7,12 @@
       "priority": 65,
       "rank": 5,
       "records": [],
+      "badges": [
+        {
+          "type": "WT",
+          "rank": 5
+        }
+      ],
       "lists": [
         "world"
       ],
@@ -26,6 +32,12 @@
       "priority": 63,
       "rank": 7,
       "records": [],
+      "badges": [
+        {
+          "type": "WT",
+          "rank": 7
+        }
+      ],
       "lists": [
         "world"
       ],
@@ -45,6 +57,12 @@
       "priority": 62,
       "rank": 8,
       "records": [],
+      "badges": [
+        {
+          "type": "WT",
+          "rank": 8
+        }
+      ],
       "lists": [
         "world"
       ],
@@ -64,6 +82,12 @@
       "priority": 48,
       "rank": 2,
       "records": [],
+      "badges": [
+        {
+          "type": "ET",
+          "rank": 2
+        }
+      ],
       "lists": [
         "europe"
       ],
@@ -83,6 +107,16 @@
       "priority": 42,
       "rank": 8,
       "records": [],
+      "badges": [
+        {
+          "type": "ET",
+          "rank": 8
+        },
+        {
+          "type": "DT",
+          "rank": 2
+        }
+      ],
       "lists": [
         "europe",
         "germany"
@@ -103,6 +137,12 @@
       "priority": 66,
       "rank": 4,
       "records": [],
+      "badges": [
+        {
+          "type": "WT",
+          "rank": 4
+        }
+      ],
       "lists": [
         "world"
       ],
@@ -122,6 +162,12 @@
       "priority": 65,
       "rank": 5,
       "records": [],
+      "badges": [
+        {
+          "type": "WT",
+          "rank": 5
+        }
+      ],
       "lists": [
         "world"
       ],
@@ -141,6 +187,12 @@
       "priority": 44,
       "rank": 6,
       "records": [],
+      "badges": [
+        {
+          "type": "ET",
+          "rank": 6
+        }
+      ],
       "lists": [
         "europe"
       ],
@@ -161,6 +213,20 @@
       "rank": 1,
       "records": [
         "DR"
+      ],
+      "badges": [
+        {
+          "type": "DR",
+          "rank": 1
+        },
+        {
+          "type": "WT",
+          "rank": 9
+        },
+        {
+          "type": "ET",
+          "rank": 2
+        }
       ],
       "lists": [
         "germany",
@@ -183,6 +249,12 @@
       "priority": 67,
       "rank": 3,
       "records": [],
+      "badges": [
+        {
+          "type": "WT",
+          "rank": 3
+        }
+      ],
       "lists": [
         "world"
       ],
@@ -205,6 +277,12 @@
         "priority": 65,
         "rank": 5,
         "records": [],
+        "badges": [
+          {
+            "type": "WT",
+            "rank": 5
+          }
+        ],
         "lists": [
           "world"
         ],
@@ -224,6 +302,12 @@
         "priority": 63,
         "rank": 7,
         "records": [],
+        "badges": [
+          {
+            "type": "WT",
+            "rank": 7
+          }
+        ],
         "lists": [
           "world"
         ],
@@ -243,6 +327,12 @@
         "priority": 62,
         "rank": 8,
         "records": [],
+        "badges": [
+          {
+            "type": "WT",
+            "rank": 8
+          }
+        ],
         "lists": [
           "world"
         ],
@@ -262,6 +352,12 @@
         "priority": 66,
         "rank": 4,
         "records": [],
+        "badges": [
+          {
+            "type": "WT",
+            "rank": 4
+          }
+        ],
         "lists": [
           "world"
         ],
@@ -281,6 +377,12 @@
         "priority": 65,
         "rank": 5,
         "records": [],
+        "badges": [
+          {
+            "type": "WT",
+            "rank": 5
+          }
+        ],
         "lists": [
           "world"
         ],
@@ -300,6 +402,12 @@
         "priority": 62,
         "rank": 8,
         "records": [],
+        "badges": [
+          {
+            "type": "WT",
+            "rank": 8
+          }
+        ],
         "lists": [
           "world"
         ],
@@ -320,6 +428,16 @@
         "rank": 1,
         "records": [
           "ER"
+        ],
+        "badges": [
+          {
+            "type": "ER",
+            "rank": 1
+          },
+          {
+            "type": "WT",
+            "rank": 10
+          }
         ],
         "lists": [
           "europe",
@@ -343,6 +461,20 @@
         "records": [
           "DR"
         ],
+        "badges": [
+          {
+            "type": "DR",
+            "rank": 1
+          },
+          {
+            "type": "WT",
+            "rank": 9
+          },
+          {
+            "type": "ET",
+            "rank": 2
+          }
+        ],
         "lists": [
           "germany",
           "world",
@@ -364,6 +496,12 @@
         "priority": 67,
         "rank": 3,
         "records": [],
+        "badges": [
+          {
+            "type": "WT",
+            "rank": 3
+          }
+        ],
         "lists": [
           "world"
         ],
@@ -383,6 +521,12 @@
         "priority": 63,
         "rank": 7,
         "records": [],
+        "badges": [
+          {
+            "type": "WT",
+            "rank": 7
+          }
+        ],
         "lists": [
           "world"
         ],
@@ -404,6 +548,12 @@
         "priority": 48,
         "rank": 2,
         "records": [],
+        "badges": [
+          {
+            "type": "ET",
+            "rank": 2
+          }
+        ],
         "lists": [
           "europe"
         ],
@@ -423,6 +573,12 @@
         "priority": 44,
         "rank": 6,
         "records": [],
+        "badges": [
+          {
+            "type": "ET",
+            "rank": 6
+          }
+        ],
         "lists": [
           "europe"
         ],
@@ -442,6 +598,16 @@
         "priority": 42,
         "rank": 8,
         "records": [],
+        "badges": [
+          {
+            "type": "ET",
+            "rank": 8
+          },
+          {
+            "type": "DT",
+            "rank": 2
+          }
+        ],
         "lists": [
           "europe",
           "germany"
@@ -462,6 +628,12 @@
         "priority": 44,
         "rank": 6,
         "records": [],
+        "badges": [
+          {
+            "type": "ET",
+            "rank": 6
+          }
+        ],
         "lists": [
           "europe"
         ],
@@ -483,6 +655,20 @@
         "records": [
           "DR"
         ],
+        "badges": [
+          {
+            "type": "DR",
+            "rank": 1
+          },
+          {
+            "type": "WT",
+            "rank": 9
+          },
+          {
+            "type": "ET",
+            "rank": 2
+          }
+        ],
         "lists": [
           "germany",
           "world",
@@ -504,6 +690,12 @@
         "priority": 44,
         "rank": 6,
         "records": [],
+        "badges": [
+          {
+            "type": "ET",
+            "rank": 6
+          }
+        ],
         "lists": [
           "europe"
         ],
@@ -523,6 +715,16 @@
         "priority": 68,
         "rank": 2,
         "records": [],
+        "badges": [
+          {
+            "type": "WT",
+            "rank": 2
+          },
+          {
+            "type": "ET",
+            "rank": 2
+          }
+        ],
         "lists": [
           "world",
           "europe"
@@ -543,6 +745,16 @@
         "priority": 67,
         "rank": 3,
         "records": [],
+        "badges": [
+          {
+            "type": "WT",
+            "rank": 3
+          },
+          {
+            "type": "ET",
+            "rank": 3
+          }
+        ],
         "lists": [
           "world",
           "europe"
@@ -563,6 +775,16 @@
         "priority": 61,
         "rank": 9,
         "records": [],
+        "badges": [
+          {
+            "type": "WT",
+            "rank": 9
+          },
+          {
+            "type": "ET",
+            "rank": 5
+          }
+        ],
         "lists": [
           "world",
           "europe"
@@ -583,6 +805,12 @@
         "priority": 41,
         "rank": 9,
         "records": [],
+        "badges": [
+          {
+            "type": "ET",
+            "rank": 9
+          }
+        ],
         "lists": [
           "europe"
         ],
@@ -604,6 +832,16 @@
         "priority": 42,
         "rank": 8,
         "records": [],
+        "badges": [
+          {
+            "type": "ET",
+            "rank": 8
+          },
+          {
+            "type": "DT",
+            "rank": 2
+          }
+        ],
         "lists": [
           "europe",
           "germany"
@@ -624,6 +862,12 @@
         "priority": 27,
         "rank": 3,
         "records": [],
+        "badges": [
+          {
+            "type": "DT",
+            "rank": 3
+          }
+        ],
         "lists": [
           "germany"
         ],
@@ -644,6 +888,20 @@
         "rank": 1,
         "records": [
           "DR"
+        ],
+        "badges": [
+          {
+            "type": "DR",
+            "rank": 1
+          },
+          {
+            "type": "WT",
+            "rank": 9
+          },
+          {
+            "type": "ET",
+            "rank": 2
+          }
         ],
         "lists": [
           "germany",
@@ -666,6 +924,12 @@
         "priority": 27,
         "rank": 3,
         "records": [],
+        "badges": [
+          {
+            "type": "DT",
+            "rank": 3
+          }
+        ],
         "lists": [
           "germany"
         ],
@@ -685,6 +949,12 @@
         "priority": 28,
         "rank": 2,
         "records": [],
+        "badges": [
+          {
+            "type": "DT",
+            "rank": 2
+          }
+        ],
         "lists": [
           "germany"
         ],
@@ -704,6 +974,12 @@
         "priority": 22,
         "rank": 8,
         "records": [],
+        "badges": [
+          {
+            "type": "DT",
+            "rank": 8
+          }
+        ],
         "lists": [
           "germany"
         ],
@@ -723,6 +999,12 @@
         "priority": 25,
         "rank": 5,
         "records": [],
+        "badges": [
+          {
+            "type": "DT",
+            "rank": 5
+          }
+        ],
         "lists": [
           "germany"
         ],
@@ -742,6 +1024,12 @@
         "priority": 20,
         "rank": 10,
         "records": [],
+        "badges": [
+          {
+            "type": "DT",
+            "rank": 10
+          }
+        ],
         "lists": [
           "germany"
         ],
@@ -761,6 +1049,12 @@
         "priority": 25,
         "rank": 5,
         "records": [],
+        "badges": [
+          {
+            "type": "DT",
+            "rank": 5
+          }
+        ],
         "lists": [
           "germany"
         ],
@@ -780,6 +1074,12 @@
         "priority": 23,
         "rank": 7,
         "records": [],
+        "badges": [
+          {
+            "type": "DT",
+            "rank": 7
+          }
+        ],
         "lists": [
           "germany"
         ],
