@@ -391,6 +391,7 @@ function iocFlag(code) {
 async function wikiJSON(params) {
     let req = new Request(WIKI + params);
     req.timeoutInterval = 8;
+    req.headers = { "User-Agent": "Scriptable-Radsport-Widget/1.0" };
     return req.loadJSON();
 }
 
@@ -435,11 +436,14 @@ function parseWikiGC(text) {
 // Artikel suchen ("2026 La Vuelta Ciclista a España" → "2026 Vuelta a España"), dann Etappenseiten
 async function wikiGC(race) {
     let year = (race.end || race.start || new Date()).getFullYear();
-    let query = `${year} ${race.name}${WOMEN && !/women|femmes|donne/i.test(race.name) ? " Women" : ""}`;
-    let search = await wikiJSON(`action=query&list=search&srlimit=8&srsearch=${encodeURIComponent(query)}`);
+    // PCS-Namen auf die Wikipedia-Schreibweise bringen: "La Vuelta Ciclista a España" → "Vuelta a España"
+    let name = race.name.replace(/^(La|Le|Il)\s+(?=Vuelta|Tour)/i, "").replace(/\bCiclista\s+/i, "");
+    let female = /women|femmes|donne|ladies|femenina|feminin/i;
+    let query = `${year} ${name}${WOMEN && !female.test(name) ? " Women" : ""} stage`;
+    let search = await wikiJSON(`action=query&list=search&srlimit=10&srsearch=${encodeURIComponent(query)}`);
     let titles = ((search.query && search.query.search) || []).map(x => x.title)
-        .filter(t => t.startsWith(String(year)))
-        .filter(t => WOMEN ? /women|femmes|donne|ladies/i.test(t) : !/women|femmes|donne|ladies/i.test(t));
+        .filter(t => t.startsWith(String(year)) && !/^\d{4} .*teams? and cyclists/i.test(t))
+        .filter(t => WOMEN ? female.test(t) : !female.test(t));
     let main = titles.filter(t => !/stage/i.test(t)).slice(0, 1);
     let stagePages = titles.filter(t => /stage/i.test(t))
         .sort((a, b) => (Number((/(\d+)\D*$/.exec(b) || [])[1]) || 0) - (Number((/(\d+)\D*$/.exec(a) || [])[1]) || 0));
