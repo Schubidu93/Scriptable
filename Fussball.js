@@ -62,6 +62,95 @@ function ymd(date) {
     return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`;
 }
 
+// Deutsche Vereinsnamen und Kürzel – ESPN liefert englische Namen.
+// [deutscher Name, Kürzel, englische Schreibweisen bei ESPN …]
+const GERMAN_NAMES = [
+    ["FC Bayern", "FCB", "Bayern Munich", "Bayern München", "FC Bayern Munich"],
+    ["Dortmund", "BVB", "Borussia Dortmund", "Dortmund"],
+    ["Leverkusen", "B04", "Bayer Leverkusen", "Leverkusen"],
+    ["RB Leipzig", "RBL", "RB Leipzig", "Leipzig"],
+    ["Frankfurt", "SGE", "Eintracht Frankfurt", "Frankfurt"],
+    ["Stuttgart", "VfB", "VfB Stuttgart", "Stuttgart"],
+    ["Gladbach", "BMG", "Borussia Monchengladbach", "Monchengladbach", "Mgladbach", "Borussia Mgladbach", "Gladbach"],
+    ["Wolfsburg", "WOB", "VfL Wolfsburg", "Wolfsburg"],
+    ["Freiburg", "SCF", "SC Freiburg", "Freiburg"],
+    ["Hoffenheim", "TSG", "TSG Hoffenheim", "Hoffenheim", "TSG 1899 Hoffenheim"],
+    ["Union Berlin", "FCU", "1 FC Union Berlin", "Union Berlin", "FC Union Berlin"],
+    ["Werder Bremen", "SVW", "Werder Bremen", "Bremen", "SV Werder Bremen"],
+    ["Augsburg", "FCA", "FC Augsburg", "Augsburg"],
+    ["Mainz 05", "M05", "1 FSV Mainz 05", "Mainz", "Mainz 05", "FSV Mainz 05"],
+    ["Heidenheim", "FCH", "1 FC Heidenheim 1846", "Heidenheim", "1 FC Heidenheim"],
+    ["St. Pauli", "STP", "FC St Pauli", "St Pauli"],
+    ["1. FC Köln", "KOE", "1 FC Koln", "FC Cologne", "Cologne", "Koln", "FC Koln"],
+    ["Hamburger SV", "HSV", "Hamburg SV", "Hamburg", "Hamburger SV"],
+    ["Bochum", "BOC", "VfL Bochum", "Bochum"],
+    ["Holstein Kiel", "KSV", "Holstein Kiel", "Kiel"],
+    ["Hertha BSC", "BSC", "Hertha Berlin", "Hertha BSC"],
+    ["Schalke 04", "S04", "Schalke 04", "FC Schalke 04", "Schalke"],
+    ["Darmstadt", "D98", "SV Darmstadt 98", "Darmstadt"],
+    ["Düsseldorf", "F95", "Fortuna Dusseldorf", "Dusseldorf"],
+    ["Hannover 96", "H96", "Hannover 96", "Hannover"],
+    ["Paderborn", "SCP", "SC Paderborn 07", "Paderborn"],
+    ["Kaiserslautern", "FCK", "1 FC Kaiserslautern", "Kaiserslautern"],
+    ["Real Madrid", "RMA", "Real Madrid"],
+    ["FC Barcelona", "BAR", "Barcelona", "FC Barcelona"],
+    ["Atlético Madrid", "ATM", "Atletico Madrid", "Atletico de Madrid"],
+    ["Athletic Bilbao", "ATH", "Athletic Club", "Athletic Bilbao"],
+    ["Man City", "MCI", "Manchester City", "Man City"],
+    ["Man United", "MUN", "Manchester United", "Man United"],
+    ["FC Liverpool", "LIV", "Liverpool"],
+    ["FC Arsenal", "ARS", "Arsenal"],
+    ["FC Chelsea", "CHE", "Chelsea"],
+    ["Tottenham", "TOT", "Tottenham Hotspur", "Tottenham"],
+    ["Newcastle", "NEW", "Newcastle United", "Newcastle"],
+    ["Aston Villa", "AVL", "Aston Villa"],
+    ["Paris SG", "PSG", "Paris Saint-Germain", "Paris Saint Germain", "PSG"],
+    ["Marseille", "OM", "Marseille", "Olympique Marseille", "Olympique de Marseille"],
+    ["AS Monaco", "ASM", "AS Monaco", "Monaco"],
+    ["OSC Lille", "LIL", "Lille", "LOSC Lille"],
+    ["Inter Mailand", "INT", "Internazionale", "Inter Milan", "Inter"],
+    ["AC Mailand", "ACM", "AC Milan", "Milan"],
+    ["Juventus Turin", "JUV", "Juventus"],
+    ["SSC Neapel", "NAP", "Napoli", "SSC Napoli"],
+    ["Atalanta Bergamo", "ATA", "Atalanta"],
+    ["AS Rom", "ROM", "AS Roma", "Roma"],
+    ["Benfica Lissabon", "BEN", "Benfica", "SL Benfica"],
+    ["Sporting Lissabon", "SPO", "Sporting CP", "Sporting Lisbon"],
+    ["FC Porto", "POR", "Porto", "FC Porto"],
+    ["PSV Eindhoven", "PSV", "PSV Eindhoven", "PSV"],
+    ["Ajax Amsterdam", "AJA", "Ajax", "Ajax Amsterdam"],
+    ["Feyenoord", "FEY", "Feyenoord", "Feyenoord Rotterdam"],
+    ["Celtic Glasgow", "CEL", "Celtic"],
+    ["FC Brügge", "BRU", "Club Brugge"],
+    ["RB Salzburg", "SAL", "Red Bull Salzburg", "RB Salzburg", "Salzburg"],
+    ["Schachtar Donezk", "SHA", "Shakhtar Donetsk"],
+    ["FC Kopenhagen", "KOP", "FC Copenhagen", "Copenhagen"],
+    ["Slavia Prag", "SLA", "Slavia Prague"],
+    ["Sparta Prag", "SPA", "Sparta Prague"],
+    ["Roter Stern Belgrad", "CZV", "Crvena Zvezda", "Red Star Belgrade"],
+    ["Olympiakos Piräus", "OLY", "Olympiacos"],
+    ["Galatasaray", "GAL", "Galatasaray"],
+    ["Young Boys Bern", "YB", "BSC Young Boys", "Young Boys"],
+];
+
+function normalizeName(name) {
+    return String(name || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[.'’]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+const GERMAN_LOOKUP = {};
+GERMAN_NAMES.forEach(([name, abbr, ...aliases]) => {
+    aliases.concat(name).forEach(alias => { GERMAN_LOOKUP[normalizeName(alias)] = { name, abbr }; });
+});
+
+function germanTeam(team) {
+    for (let key of [team.displayName, team.shortDisplayName, team.name, team.location]) {
+        let hit = GERMAN_LOOKUP[normalizeName(key)];
+        if (hit) return hit;
+    }
+    return { name: team.shortDisplayName || team.displayName, abbr: team.abbreviation || team.shortDisplayName };
+}
+
 function logoUrl(team) {
     if (!team) return null;
     if (team.logo) return team.logo;
@@ -113,8 +202,8 @@ function gameInfo(event) {
         id: String(event.id),
         date: comp.date || event.date,
         home: us.homeAway === "home",
-        opponent: them.team.abbreviation || them.team.shortDisplayName,
-        opponentName: them.team.shortDisplayName || them.team.displayName,
+        opponent: germanTeam(them.team).abbr,
+        opponentName: germanTeam(them.team).name,
         opponentLogo: logoUrl(them.team),
         ourScore,
         theirScore,
@@ -166,7 +255,7 @@ function parseStandings(json) {
     if (!group) return null;
     let rows = group.standings.entries.map((e, i) => ({
         id: String(e.team.id),
-        abbr: e.team.abbreviation || e.team.shortDisplayName,
+        abbr: germanTeam(e.team).abbr,
         logo: logoUrl(e.team),
         rank: stat(e, "rank") || i + 1,
         points: stat(e, "points"),
@@ -201,7 +290,7 @@ async function loadData() {
     }
 
     return {
-        name: TEAM_ID === "132" ? "FC Bayern" : team ? (team.shortDisplayName || team.displayName) : "",
+        name: team ? germanTeam(team).name : "FC Bayern",
         logo: team ? logoUrl(team) : null,
         record: standings && standings.own ? `${standings.own.points} Pkt` : "",
         last,
