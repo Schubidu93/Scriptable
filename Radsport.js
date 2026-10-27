@@ -22,6 +22,18 @@ async function load(path) {
     return await req.loadString();
 }
 
+// PCS kennzeichnet Länder mit <span class="flag ke"> (ISO-Code) → "🇰🇪"
+function flagEmoji(html) {
+    let m = /class="[^"]*\bflag\s+([a-z]{2})\b/i.exec(html || "");
+    if (!m) return "";
+    let iso = m[1].toUpperCase() === "UK" ? "GB" : m[1].toUpperCase();
+    return String.fromCodePoint(...[...iso].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+}
+
+function withFlag(flag, text) {
+    return flag ? `${flag} ${text}` : text;
+}
+
 function cleanText(html) {
     return html
         .replace(/<[^>]+>/g, " ")
@@ -43,6 +55,7 @@ function parseCalendar(html, year) {
         let cls = (/\b([12]\.[A-Za-z0-9.]+)/.exec(cleanText(row)) || [])[1] || "";
         return {
             name: cleanText(link[4]),
+            flag: flagEmoji(row.slice(0, link.index)),
             slug: link[2],
             year: link[3],
             start: dates[0],
@@ -90,7 +103,12 @@ function parsePodium(html) {
         .map(row => {
             let rider = /<a[^>]*href="\/?rider\/[^"]*"[^>]*>([\s\S]*?)<\/a>/i.exec(row);
             let team = /<a[^>]*href="\/?team\/[^"]*"[^>]*>([\s\S]*?)<\/a>/i.exec(row);
-            return rider ? { rider: shortRider(rider[1]), team: team ? cleanText(team[1]) : "" } : null;
+            if (!rider) return null;
+            return {
+                rider: shortRider(rider[1]),
+                flag: flagEmoji(row.slice(0, rider.index + rider[0].length)),
+                team: team ? cleanText(team[1]) : "",
+            };
         })
         .filter(Boolean)
         .slice(0, CONFIG.podium);
@@ -232,7 +250,7 @@ function addPastRace(stack, race, podiumSize) {
 
     let title = block.addStack();
     title.centerAlignContent();
-    addLabel(title, race.name, Font.semiboldSystemFont(14), WHITE);
+    addLabel(title, withFlag(race.flag, race.name), Font.semiboldSystemFont(14), WHITE);
     title.addSpacer(6);
     title.addSpacer();
     addLabel(title, formatRange(race), Font.mediumSystemFont(10), WHITE, 0.6);
@@ -247,7 +265,7 @@ function addPastRace(stack, race, podiumSize) {
         row.centerAlignContent();
         addSymbol(row, `${i + 1}.circle.fill`, 12, MEDALS[i]);
         row.addSpacer(5);
-        addLabel(row, p.rider, Font.mediumSystemFont(12), WHITE);
+        addLabel(row, withFlag(p.flag, p.rider), Font.mediumSystemFont(12), WHITE);
         row.addSpacer(6);
         row.addSpacer();
         addLabel(row, p.team, Font.regularSystemFont(10), WHITE, 0.55);
@@ -261,7 +279,7 @@ function addUpcomingRace(stack, race, today) {
     let running = race.start <= today;
     addSymbol(row, running ? "dot.radiowaves.left.and.right" : "calendar", 11, WHITE);
     row.addSpacer(5);
-    addLabel(row, race.name, Font.mediumSystemFont(12), WHITE);
+    addLabel(row, withFlag(race.flag, race.name), Font.mediumSystemFont(12), WHITE);
     row.addSpacer(6);
     row.addSpacer();
     addLabel(row, running ? "läuft" : formatRange(race), Font.mediumSystemFont(10), WHITE, running ? 1 : 0.6);
@@ -316,12 +334,12 @@ function buildMedium(widget, data) {
         let block = left.addStack();
         block.layoutVertically();
         block.url = PCS + resultPath(race);
-        addLabel(block, race.name, Font.semiboldSystemFont(12), WHITE);
+        addLabel(block, withFlag(race.flag, race.name), Font.semiboldSystemFont(12), WHITE);
         let winner = block.addStack();
         winner.centerAlignContent();
         addSymbol(winner, "trophy.fill", 10, MEDALS[0]);
         winner.addSpacer(4);
-        addLabel(winner, race.podium[0] ? race.podium[0].rider : "–", Font.regularSystemFont(11), WHITE, 0.8);
+        addLabel(winner, race.podium[0] ? withFlag(race.podium[0].flag, race.podium[0].rider) : "–", Font.regularSystemFont(11), WHITE, 0.8);
     });
     left.addSpacer();
 
@@ -336,7 +354,7 @@ function buildMedium(widget, data) {
         let block = right.addStack();
         block.layoutVertically();
         block.url = `${PCS}race/${race.slug}/${race.year}`;
-        addLabel(block, race.name, Font.semiboldSystemFont(12), WHITE);
+        addLabel(block, withFlag(race.flag, race.name), Font.semiboldSystemFont(12), WHITE);
         let running = race.start <= today;
         addLabel(block, running ? "läuft" : formatRange(race), Font.regularSystemFont(11), WHITE, 0.6);
     });
