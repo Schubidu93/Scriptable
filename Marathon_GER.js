@@ -59,6 +59,22 @@ const CONFIG = {
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), `strasse-${REGION_INFO.cache}-${DISTANCE.path}.json`);
 
+// Zeitpunkt der angezeigten Daten (bei Offline-Anzeige der des Zwischenspeichers)
+let UPDATED = Date.now();
+
+// Kleine Zeile „aktualisiert 10:42“ unten rechts – in allen Widgets gleich
+function addUpdated(widget, note) {
+    let date = new Date(UPDATED);
+    let df = new DateFormatter();
+    df.dateFormat = date.toDateString() === new Date().toDateString() ? "HH:mm" : "dd.MM. HH:mm";
+    let row = widget.addStack();
+    row.addSpacer();
+    let t = row.addText(`${note ? note + " · " : ""}aktualisiert ${df.string(date)}`);
+    t.font = Font.mediumSystemFont(8);
+    t.textColor = Color.white();
+    t.textOpacity = 0.5;
+}
+
 function isoDate(date) {
     let pad = n => String(n).padStart(2, "0");
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -167,6 +183,8 @@ async function loadResults() {
             return { ...list, entries: cache[list.gender] || null, stale: true };
         }
     }));
+    if (results.some(r => !r.stale)) cache.updated = Date.now();
+    else if (cache.updated) UPDATED = cache.updated;
     fm.writeString(cachePath, JSON.stringify(cache));
     return results;
 }
@@ -278,8 +296,9 @@ async function createWidget() {
     widget.url = listUrl(CONFIG.lists[0]);
     widget.refreshAfterDate = new Date(Date.now() + 6 * 60 * 60 * 1000);
     background(widget);
-    widget.setPadding(16, 16, 16, 16);
+    widget.setPadding(16, 16, 6, 16);
     buildMedium(widget, results);
+    addUpdated(widget);
     return widget;
 }
 

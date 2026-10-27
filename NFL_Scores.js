@@ -10,6 +10,22 @@ const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), "nfl-scores.json");
 const DIAG = [];
 
+// Zeitpunkt der angezeigten Daten (bei Offline-Anzeige der des Zwischenspeichers)
+let UPDATED = Date.now();
+
+// Kleine Zeile „aktualisiert 10:42“ unten rechts – in allen Widgets gleich
+function addUpdated(widget, note) {
+    let date = new Date(UPDATED);
+    let df = new DateFormatter();
+    df.dateFormat = date.toDateString() === new Date().toDateString() ? "HH:mm" : "dd.MM. HH:mm";
+    let row = widget.addStack();
+    row.addSpacer();
+    let t = row.addText(`${note ? note + " · " : ""}aktualisiert ${df.string(date)}`);
+    t.font = Font.mediumSystemFont(8);
+    t.textColor = Color.white();
+    t.textOpacity = 0.5;
+}
+
 async function loadJSON(path) {
     try {
         return await new Request(ESPN + path).loadJSON();
@@ -82,6 +98,7 @@ async function loadWithCache(count) {
     try {
         let data = await loadData(count);
         if (data.games.length) {
+            data.updated = Date.now();
             fm.writeString(cachePath, JSON.stringify(data));
             return data;
         }
@@ -93,6 +110,7 @@ async function loadWithCache(count) {
     if (fm.fileExists(cachePath)) {
         let data = JSON.parse(fm.readString(cachePath));
         data.stale = true;
+        if (data.updated) UPDATED = data.updated;
         return data;
     }
     return null;
@@ -210,7 +228,7 @@ async function createWidget() {
     widget.url = "https://www.espn.com/nfl/scoreboard";
     widget.refreshAfterDate = new Date(Date.now() + 30 * 60 * 1000);
     background(widget);
-    widget.setPadding(18, 16, 12, 16);
+    widget.setPadding(18, 16, 4, 16);
 
     if (!data) {
         buildError(widget);
@@ -219,6 +237,7 @@ async function createWidget() {
     let shown = data.games.slice(0, columns * perColumn);
     let images = await loadLogos(shown.flatMap(g => [g.away.logo, g.home.logo]));
     build(widget, data, columns, perColumn, images);
+    addUpdated(widget);
     return widget;
 }
 

@@ -1,4 +1,4 @@
-// NFL – Lieblingsteam: letztes Ergebnis, nächstes Spiel, Division-Tabelle
+// NFL – Lieblingsteam: letztes Ergebnis, nächstes Spiel (am Spieltag live), Division-Tabelle
 // Quelle: ESPN (öffentliche Schnittstelle). Mittleres Widget, im Stil der iOS-Widgets.
 //
 // Team wählen: Standard "cle" (Cleveland Browns) – im Loader per
@@ -18,6 +18,22 @@ const DEFAULT_COLORS = ["#2B3A55", "#14213D", "#FCA311"];
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), `nfl-team-${teamKey}.json`);
 const DIAG = [];
+
+// Zeitpunkt der angezeigten Daten (bei Offline-Anzeige der des Zwischenspeichers)
+let UPDATED = Date.now();
+
+// Kleine Zeile „aktualisiert 10:42“ unten rechts – in allen Widgets gleich
+function addUpdated(widget, note) {
+    let date = new Date(UPDATED);
+    let df = new DateFormatter();
+    df.dateFormat = date.toDateString() === new Date().toDateString() ? "HH:mm" : "dd.MM. HH:mm";
+    let row = widget.addStack();
+    row.addSpacer();
+    let t = row.addText(`${note ? note + " · " : ""}aktualisiert ${df.string(date)}`);
+    t.font = Font.mediumSystemFont(8);
+    t.textColor = Color.white();
+    t.textOpacity = 0.5;
+}
 
 async function loadJSON(path) {
     let req = new Request(ESPN + path);
@@ -43,6 +59,22 @@ function logoUrl(team) {
     return team.abbreviation
         ? `https://a.espncdn.com/i/teamlogos/nfl/500/${team.abbreviation.toLowerCase()}.png`
         : null;
+}
+
+function statusOf(event) {
+    let comp = event.competitions && event.competitions[0];
+    return (comp && comp.status) || event.status || { type: {} };
+}
+
+// "3. Viertel · 5:32", "Halbzeit", "Verlängerung · 2:10"
+function liveDetail(status) {
+    let detail = (status.type && (status.type.shortDetail || status.type.detail)) || "";
+    if (/half/i.test(detail)) return "Halbzeit";
+    let period = Number(status.period) || 0;
+    let quarter = period > 4 ? "Verlängerung" : period ? `${period}. Viertel` : "";
+    if (/end/i.test(detail)) return quarter ? `Ende ${quarter}` : detail;
+    let clock = status.displayClock && status.displayClock !== "0:00" ? status.displayClock : "";
+    return [quarter, clock].filter(Boolean).join(" · ") || detail;
 }
 
 function isCompleted(event) {
@@ -126,12 +158,35 @@ async function loadData() {
     let schedule = await loadJSON(`site/v2/sports/football/nfl/teams/${teamKey}/schedule`).catch(() => ({ events: [] }));
     let events = (schedule.events || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
 
+    let upcoming = (team.nextEvent || []).filter(e => !isCompleted(e));
+    if (!upcoming.length) upcoming = events.filter(e => !isCompleted(e));
+
+    // Spieltag: Ist der Anstoß vorbei, den aktuellen Stand vom Scoreboard holen
+    let live = null;
+    let kickedOff = upcoming.find(e => new Date(e.date) <= new Date());
+    if (kickedOff) {
+        let current = kickedOff;
+        try {
+            let board = await loadJSON("site/v2/sports/football/nfl/scoreboard");
+            current = (board.events || []).find(e => String(e.id) === String(kickedOff.id)) || kickedOff;
+        } catch (e) {
+            console.log(`Scoreboard nicht geladen: ${e}`);
+        }
+        if (isCompleted(current)) {
+            // Gerade beendet, Spielplan aber noch nicht aktualisiert
+            events = events.filter(e => String(e.id) !== String(current.id)).concat([current]);
+        } else if (statusOf(current).type.state === "in") {
+            live = { ...gameInfo(current, team.id), detail: liveDetail(statusOf(current)) };
+        }
+        upcoming = upcoming.filter(e => String(e.id) !== String(current.id));
+        if (!upcoming.length) {
+            upcoming = events.filter(e => !isCompleted(e) && String(e.id) !== String(current.id) && new Date(e.date) > new Date());
+        }
+    }
+
     let finished = events.filter(isCompleted);
     let last = finished.length ? gameInfo(finished[finished.length - 1], team.id) : null;
     let form = finished.slice(-5).map(e => gameInfo(e, team.id));
-
-    let upcoming = (team.nextEvent || []).filter(e => !isCompleted(e));
-    if (!upcoming.length) upcoming = events.filter(e => !isCompleted(e));
     let next = upcoming.length ? gameInfo(upcoming[0], team.id) : null;
 
     let standings = null;
@@ -152,6 +207,7 @@ async function loadData() {
         summary: team.standingSummary || "",
         last,
         form,
+        live,
         next,
         standings,
     };
@@ -160,6 +216,7 @@ async function loadData() {
 async function loadWithCache() {
     try {
         let data = await loadData();
+        data.updated = Date.now();
         fm.writeString(cachePath, JSON.stringify(data));
         return data;
     } catch (e) {
@@ -169,6 +226,7 @@ async function loadWithCache() {
     if (fm.fileExists(cachePath)) {
         let data = JSON.parse(fm.readString(cachePath));
         data.stale = true;
+        if (data.updated) UPDATED = data.updated;
         return data;
     }
     return null;
@@ -188,6 +246,7 @@ async function loadLogos(urls) {
 }
 
 const WHITE = Color.white();
+const LIVE_RED = new Color("#FF6B5E");
 const RESULT_COLORS = { W: new Color("#34C759"), L: new Color("#FF453A"), T: new Color("#8E8E93") };
 
 function addLabel(stack, text, font, color, opacity = 1) {
@@ -308,6 +367,24 @@ function addForm(stack, data, images) {
     });
 }
 
+// Live-Spielstand: eigener Score groß, Viertel und Uhr in Rot
+function addLiveGame(stack, live, images) {
+    let title = stack.addStack();
+    title.centerAlignContent();
+    addLabel(title, "● LIVE", Font.boldSystemFont(10), LIVE_RED);
+    stack.addSpacer(2);
+    let row = stack.addStack();
+    row.centerAlignContent();
+    addLabel(row, `${live.ourScore || 0}:${live.theirScore || 0}`, Font.boldRoundedSystemFont(22), WHITE);
+    row.addSpacer(8);
+    addLabel(row, live.home ? "vs" : "@", Font.mediumSystemFont(11), WHITE, 0.6);
+    row.addSpacer(3);
+    addLogo(row, images, live.opponentLogo, 16);
+    row.addSpacer(3);
+    addLabel(row, live.opponent, Font.semiboldSystemFont(12), WHITE);
+    addLabel(stack, live.detail, Font.semiboldSystemFont(10), LIVE_RED);
+}
+
 function addNextGame(stack, next, images) {
     addSectionTitle(stack, "Nächstes Spiel");
     stack.addSpacer(3);
@@ -376,7 +453,8 @@ function buildMedium(widget, data, images) {
     left.layoutVertically();
     addLastGame(left, data.last, images);
     left.addSpacer(6);
-    addNextGame(left, data.next, images);
+    if (data.live) addLiveGame(left, data.live, images);
+    else addNextGame(left, data.next, images);
     left.addSpacer();
 
     body.addSpacer(14);
@@ -400,7 +478,8 @@ function buildSmall(widget, data, images) {
     widget.addSpacer(6);
     addLastGame(widget, data.last, images, true);
     widget.addSpacer();
-    addNextGame(widget, data.next, images);
+    if (data.live) addLiveGame(widget, data.live, images);
+    else addNextGame(widget, data.next, images);
 }
 
 function buildError(widget) {
@@ -415,13 +494,26 @@ function buildError(widget) {
     widget.addSpacer();
 }
 
+// Live: alle 5 Minuten. Spieltag vor dem Anstoß: zum Anstoß. Sonst stündlich.
+function nextRefresh(data) {
+    let minute = 60 * 1000;
+    let now = Date.now();
+    if (data && data.live && !data.stale) return new Date(now + 5 * minute);
+    if (data && data.next) {
+        let kickoff = new Date(data.next.date).getTime();
+        if (kickoff > now && kickoff - now < 60 * minute) return new Date(Math.max(kickoff, now + 5 * minute));
+        if (kickoff <= now && now - kickoff < 5 * 60 * minute) return new Date(now + 5 * minute);
+    }
+    return new Date(now + 60 * minute);
+}
+
 async function createWidget() {
     let data = await loadWithCache();
     let widget = new ListWidget();
     widget.url = `https://www.espn.com/nfl/team/_/name/${teamKey}`;
-    widget.refreshAfterDate = new Date(Date.now() + 60 * 60 * 1000);
+    widget.refreshAfterDate = nextRefresh(data);
     background(widget);
-    widget.setPadding(12, 16, 12, 16);
+    widget.setPadding(12, 16, 4, 16);
 
     if (!data) {
         buildError(widget);
@@ -432,6 +524,7 @@ async function createWidget() {
     if (data.last) urls.push(data.last.opponentLogo);
     (data.form || []).forEach(g => urls.push(g.opponentLogo));
     if (data.next) urls.push(data.next.opponentLogo);
+    if (data.live) urls.push(data.live.opponentLogo);
     if (data.standings) data.standings.rows.forEach(r => urls.push(r.logo));
     let images = await loadLogos(urls);
 
@@ -440,6 +533,7 @@ async function createWidget() {
     } else {
         buildMedium(widget, data, images);
     }
+    addUpdated(widget);
     return widget;
 }
 

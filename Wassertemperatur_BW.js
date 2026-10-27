@@ -31,6 +31,22 @@ const SOURCES = [
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), "wassertemperatur.json");
 
+// Zeitpunkt der angezeigten Daten (bei Offline-Anzeige der des Zwischenspeichers)
+let UPDATED = Date.now();
+
+// Kleine Zeile „aktualisiert 10:42“ unten rechts – in allen Widgets gleich
+function addUpdated(widget, note) {
+    let date = new Date(UPDATED);
+    let df = new DateFormatter();
+    df.dateFormat = date.toDateString() === new Date().toDateString() ? "HH:mm" : "dd.MM. HH:mm";
+    let row = widget.addStack();
+    row.addSpacer();
+    let t = row.addText(`${note ? note + " · " : ""}aktualisiert ${df.string(date)}`);
+    t.font = Font.mediumSystemFont(8);
+    t.textColor = Color.white();
+    t.textOpacity = 0.5;
+}
+
 // Alle Quellen parallel laden – fällt eine aus, wird ihr letzter Wert verwendet
 async function loadTemperatures() {
     let cache = fm.fileExists(cachePath) ? JSON.parse(fm.readString(cachePath)) : {};
@@ -47,6 +63,8 @@ async function loadTemperatures() {
         let cached = cache[source.name];
         return { name: source.name, temp: cached ?? null, stale: cached != null };
     }));
+    if (results.some(r => r.temp !== null && !r.stale)) cache._updated = Date.now();
+    else if (cache._updated) UPDATED = cache._updated;
     fm.writeString(cachePath, JSON.stringify(cache));
     return results;
 }
@@ -101,14 +119,6 @@ function addHeader(stack, white) {
     header.addSpacer();
 }
 
-function stamp(results) {
-    let time = new DateFormatter();
-    time.useNoDateStyle();
-    time.useShortTimeStyle();
-    let offline = results.some(r => r.stale) ? " · offline" : "";
-    return `Stand ${time.string(new Date())}${offline}`;
-}
-
 function buildSmall(widget, results) {
     let white = Color.white();
     addHeader(widget, white);
@@ -124,7 +134,6 @@ function buildSmall(widget, results) {
     });
 
     widget.addSpacer();
-    addLabel(widget, stamp(results), Font.semiboldSystemFont(11), white, 0.7);
 }
 
 function buildMedium(widget, results) {
@@ -132,7 +141,6 @@ function buildMedium(widget, results) {
     let top = widget.addStack();
     top.centerAlignContent();
     addHeader(top, white);
-    addLabel(top, stamp(results), Font.semiboldSystemFont(11), white, 0.7);
 
     widget.addSpacer();
 
@@ -185,13 +193,15 @@ async function createWidget() {
         case "large":
         case "extraLarge":
             background(widget);
-            widget.setPadding(16, 16, 16, 16);
+            widget.setPadding(16, 16, 6, 16);
             buildMedium(widget, results);
+            addUpdated(widget, results.some(r => r.stale) ? "offline" : "");
             break;
         default:
             background(widget);
-            widget.setPadding(16, 16, 16, 16);
+            widget.setPadding(16, 16, 6, 16);
             buildSmall(widget, results);
+            addUpdated(widget, results.some(r => r.stale) ? "offline" : "");
     }
     return widget;
 }
