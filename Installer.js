@@ -27,6 +27,8 @@ const SCRIPTS = [
     { name: "Bayern CL", file: "Fussball.js", params: { LIGA: "cl" }, glyph: "futbol", color: "deep-blue" },
     { name: "Bundesliga Ergebnisse", file: "Fussball.js", params: { ANSICHT: "ergebnisse", LIGA: "bundesliga" }, glyph: "futbol", color: "red" },
     { name: "CL Ergebnisse", file: "Fussball.js", params: { ANSICHT: "ergebnisse", LIGA: "cl" }, glyph: "futbol", color: "deep-blue" },
+    { name: "EL Ergebnisse", file: "Fussball.js", params: { ANSICHT: "ergebnisse", LIGA: "el" }, glyph: "futbol", color: "orange" },
+    { name: "ECL Ergebnisse", file: "Fussball.js", params: { ANSICHT: "ergebnisse", LIGA: "ecl" }, glyph: "futbol", color: "green" },
     { name: "DFB-Pokal", file: "Fussball.js", params: { ANSICHT: "pokal" }, glyph: "trophy", color: "green" },
     { name: "DFB-Pokal Ergebnisse", file: "Fussball.js", params: { ANSICHT: "ergebnisse", LIGA: "pokal" }, glyph: "futbol", color: "green" },
     { name: "Browns", file: "NFL_Team.js", glyph: "football-ball", color: "orange" },
