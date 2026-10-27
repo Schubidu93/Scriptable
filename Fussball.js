@@ -459,7 +459,6 @@ async function loadData() {
     return {
         name: team ? germanTeam(team).name : "FC Bayern",
         logo: team ? logoUrl(team) : null,
-        record: LEAGUE_KEY !== "pokal" && !knockout && standings && standings.own ? `${standings.own.points} Pkt` : "",
         last,
         form,
         live,
