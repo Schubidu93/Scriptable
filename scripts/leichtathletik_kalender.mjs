@@ -1,8 +1,8 @@
 // Wettkampfkalender: die nächsten großen Wettkämpfe aus dem öffentlichen World-Athletics-Kalender.
 // Läuft täglich im Leichtathletik-Workflow und schreibt data/leichtathletik_kalender.json (je 10 Termine).
-//   Bahn (Track and Field): weltweit ab Gold Label (OW, DF, GW, GL),
-//                           in Deutschland ab Kategorie B (OW, DF, GW, GL, A, B)
-//   Straße (Road Running):  weltweit ab Kategorie A (OW, DF, GW, GL, A)
+//   Bahn (Track and Field): weltweit ab Gold Label (OW, DF, GW, GL), in Europa ab Kategorie A,
+//                           in Deutschland ab Kategorie B
+//   Straße (Road Running):  weltweit ab Gold Label, in Europa ab Kategorie A, in Deutschland ab Kategorie E
 // Die Kalenderseite enthält ihre Daten eingebettet (__NEXT_DATA__); je Kategorie ein Abruf.
 
 import { writeFile, mkdir } from "node:fs/promises";
@@ -12,18 +12,23 @@ const OUTPUT = "data/leichtathletik_kalender.json";
 const COUNT = 10; // mittleres Widget zeigt 5, großes 10
 const DAYS_AHEAD = 365;
 const GERMANY = "regionType=country&regionId=13188422";
+const EUROPE = "regionType=area&regionId=3";
 
 // Kategorie-Kennungen des Kalenders
-const CATEGORY_IDS = { OW: 4, DF: 11, GW: 5, GL: 6, A: 1, B: 2 };
+const CATEGORY_IDS = { OW: 4, DF: 11, GW: 5, GL: 6, A: 1, B: 2, C: 3, D: 9, E: 7 };
 const DISCIPLINES = { track: 5, road: 2 };
 
+// Höhere Kategorien sind in den weiteren Regionen schon enthalten – je Region nur die zusätzlichen
 const QUERIES = {
     track: [
         { region: "", categories: ["OW", "DF", "GW", "GL"] },
-        { region: GERMANY, categories: ["OW", "DF", "GW", "GL", "A", "B"] },
+        { region: EUROPE, categories: ["A"] },
+        { region: GERMANY, categories: ["B"] },
     ],
     road: [
-        { region: "", categories: ["OW", "DF", "GW", "GL", "A"] },
+        { region: "", categories: ["OW", "DF", "GW", "GL"] },
+        { region: EUROPE, categories: ["A"] },
+        { region: GERMANY, categories: ["B", "C", "D", "E"] },
     ],
 };
 
@@ -67,7 +72,7 @@ async function main() {
                     (await loadCategory(discipline, region, category, today, to)).forEach(e => { byId[e.id] = e; });
                 } catch (e) {
                     failures++;
-                    console.log(`${discipline} ${category}${region ? " (DE)" : ""}: ${e.message}`);
+                    console.log(`${discipline} ${category}${region === GERMANY ? " (DE)" : region === EUROPE ? " (EU)" : ""}: ${e.message}`);
                 }
             }
         }
