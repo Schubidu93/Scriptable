@@ -949,18 +949,20 @@ function addGameRow(stack, game, images) {
     addLabel(home, game.home.abbr, teamFont(game.home), WHITE, teamOpacity(game.home));
     home.addSpacer();
 
+    // Feste Breite, Inhalt zentriert – ohne Abstandhalter, die selbst Platz kosten (sonst „15:…“)
     let mid = row.addStack();
     mid.size = new Size(42, 0);
-    mid.addSpacer();
+    mid.centerAlignContent();
+    let text;
     if (game.state === "pre") {
         let df = new DateFormatter();
         df.dateFormat = "HH:mm";
-        addLabel(mid, df.string(new Date(game.date)), Font.semiboldMonospacedSystemFont(10), WHITE, 0.7).minimumScaleFactor = 0.8;
+        text = addLabel(mid, df.string(new Date(game.date)), Font.semiboldMonospacedSystemFont(10), WHITE, 0.7);
     } else {
-        addLabel(mid, `${game.home.score}:${game.away.score}`, Font.boldRoundedSystemFont(13),
+        text = addLabel(mid, `${game.home.score}:${game.away.score}`, Font.boldRoundedSystemFont(13),
             game.state === "in" ? LIVE_RED : WHITE);
     }
-    mid.addSpacer();
+    text.centerAlignText();
 
     let away = row.addStack();
     away.size = new Size(35, 0);
