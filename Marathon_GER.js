@@ -1,4 +1,4 @@
-// Straßenlauf – die 3 besten deutschen Ergebnisse der letzten 30 Tage (Frauen & Männer)
+// Straßenlauf – die 3 besten deutschen Ergebnisse der letzten 90 Tage (Frauen & Männer)
 // Quelle: World Athletics All-Time-Toplist. Mittleres Widget, im Stil der iOS-Widgets.
 //
 // Strecke wählen: "marathon" (Standard), "halbmarathon" oder "10km" –
@@ -32,7 +32,7 @@ const distanceKey = String(
 const DISTANCE = DISTANCES[distanceKey] || DISTANCES.marathon;
 
 const CONFIG = {
-    days: 30,
+    days: 90,
     count: 3,
     lists: [
         { title: "Frauen", gender: "women", eventId: DISTANCE.eventIds.women },
