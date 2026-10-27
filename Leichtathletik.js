@@ -392,13 +392,15 @@ function addEvent(stack, event, track) {
     pill.backgroundColor = badge.color;
     pill.cornerRadius = 3;
     pill.setPadding(0, 3, 0, 3);
-    addLabel(pill, badge.text, Font.boldSystemFont(8), badge.dark ? new Color("#3A2A00") : WHITE);
+    addLabel(pill, badge.text, Font.boldSystemFont(8), badge.dark ? new Color("#3A2A00") : WHITE).minimumScaleFactor = 1;
     info.addSpacer(4);
     let nat = (/\(([A-Z]{3})\)\s*$/.exec(event.venue || "") || [])[1];
     let f = nat ? flag(nat) : "";
     let pad = n => String(n).padStart(2, "0");
     let extra = live ? soon : end.getTime() !== start.getTime() ? `bis ${pad(end.getDate())}.${pad(end.getMonth() + 1)}.` : "";
-    addLabel(info, `${f ? f + " " : ""}${city(event.venue)}${extra ? " · " + extra : ""}`, Font.mediumSystemFont(10), WHITE, 0.65);
+    // Nicht automatisch verkleinern – alle Ortszeilen gleich groß
+    addLabel(info, `${f ? f + " " : ""}${city(event.venue)}${extra ? " · " + extra : ""}`, Font.mediumSystemFont(10), WHITE, 0.65)
+        .minimumScaleFactor = 1;
 }
 
 // Geschätzte Zeilen des Namens (ca. 18 Zeichen je Zeile neben dem Kürzel, Umbruch an Wortgrenzen)
