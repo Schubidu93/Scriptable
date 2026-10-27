@@ -6,7 +6,7 @@
 //   "ergebnisse":      letzte Ergebnisse und laufende Spiele des Wettbewerbs
 //   "pokal":           DFB-Pokal – letzte zwei Spiele und nächste Runde
 //   "ergebnisse" mit LIGA "pokal": alle Spiele der aktuellen Pokalrunde (bzw. Vorschau auf die ausgeloste nächste)
-// Wettbewerb (LIGA): "bundesliga" (Standard) oder "cl".
+// Wettbewerb (LIGA): "bundesliga" (Standard), "cl", "el" (Europa League) oder "ecl" (Conference League).
 //
 // Im Loader per Function("ANSICHT", "LIGA", code)("ergebnisse", "cl")
 // oder als Widget-Parameter, z. B. "ergebnisse cl" oder "pokal".
@@ -15,7 +15,7 @@ const ESPN = "https://site.api.espn.com/apis/";
 const params = String(args.widgetParameter || "").trim().toLowerCase().split(/\s+/);
 const VIEW = String((typeof ANSICHT !== "undefined" && ANSICHT) || params.find(p => ["team", "ergebnisse", "pokal"].includes(p)) || "team").toLowerCase();
 const LEAGUE_KEY = VIEW === "pokal" ? "pokal"
-    : String((typeof LIGA !== "undefined" && LIGA) || params.find(p => p === "cl" || p === "bundesliga") || "bundesliga").toLowerCase();
+    : String((typeof LIGA !== "undefined" && LIGA) || params.find(p => ["cl", "el", "ecl", "bundesliga"].includes(p)) || "bundesliga").toLowerCase();
 const TEAM_ID = String((typeof TEAM !== "undefined" && TEAM) || "132"); // 132 = FC Bayern München
 
 const LEAGUES = {
@@ -33,6 +33,20 @@ const LEAGUES = {
         colors: ["#1B2A6B", "#070F33"],
         url: "https://www.espn.com/soccer/standings/_/league/uefa.champions",
     },
+    el: {
+        slug: "uefa.europa",
+        title: "Europa League",
+        table: "Ligaphase",
+        colors: ["#E8601C", "#2A1206"],
+        url: "https://www.espn.com/soccer/standings/_/league/uefa.europa",
+    },
+    ecl: {
+        slug: "uefa.europa.conf",
+        title: "Conference League",
+        table: "Ligaphase",
+        colors: ["#14A06B", "#062B1D"],
+        url: "https://www.espn.com/soccer/standings/_/league/uefa.europa.conf",
+    },
     pokal: {
         slug: "ger.dfb_pokal",
         title: "DFB-Pokal",
@@ -42,6 +56,11 @@ const LEAGUES = {
     },
 };
 const LEAGUE = LEAGUES[LEAGUE_KEY] || LEAGUES.bundesliga;
+// Europapokale (CL, EL, ECL): Ligaphase mit 36 Teams, danach K.-o.-Runden
+const EUROPE = ["cl", "el", "ecl"].includes(LEAGUE_KEY);
+// Kürzel für Kopfzeilen
+const SHORT = { bundesliga: "BL", cl: "CL", el: "EL", ecl: "ECL", pokal: "DFB" };
+const HEADER_NAME = { cl: "UCL", el: "UEL", ecl: "UECL" };
 
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), `fussball-${VIEW}-${LEAGUE_KEY}-${TEAM_ID}.json`);
@@ -282,7 +301,7 @@ function roundOf(event) {
     let text = eventTexts(event);
     let hit = ROUND_WORDS.find(([re]) => re.test(text));
     if (hit) return hit[1];
-    if (LEAGUE_KEY === "cl") {
+    if (EUROPE) {
         let month = new Date(event.date).getMonth(); // Ligaphase: September bis Januar
         return month >= 6 || month === 0 ? "Ligaphase" : "K.-o.-Runde";
     }
@@ -452,7 +471,7 @@ async function loadData() {
 
     // CL: Nach der Ligaphase statt Tabelle die aktuelle K.-o.-Runde mit Hin- und Rückspiel
     let knockout = null;
-    if (LEAGUE_KEY === "cl") {
+    if (EUROPE) {
         let current = live || next || last;
         if (current && current.round && current.round !== "Ligaphase") {
             knockout = { round: current.round, legs: games.map(info).filter(g => g.round === current.round) };
@@ -589,7 +608,7 @@ async function loadMatchdays() {
     groups.forEach((g, i) => { if (g.events.some(e => stateOf(e) !== "pre")) current = i; });
     if (current < 0) current = 0;
     let picked;
-    if (LEAGUE_KEY === "cl") {
+    if (EUROPE) {
         picked = [groups[current]];
     } else if (pokal) {
         // Runde beendet und die nächste schon ausgelost (Spiele angesetzt): Vorschau auf die nächste
@@ -1136,7 +1155,7 @@ function addTeamHeader(widget, data, images) {
     addForm(header, data, images);
     header.addSpacer();
     // Champions League als „UCL“, damit es neben der Form passt
-    let competition = LEAGUE_KEY === "cl" ? "UCL" : LEAGUE.title;
+    let competition = HEADER_NAME[LEAGUE_KEY] || LEAGUE.title;
     addLabel(header, `${competition}${data.stale ? " · offline" : ""}`, Font.semiboldSystemFont(11), WHITE, 0.6);
 }
 
@@ -1197,7 +1216,7 @@ function buildSmall(widget, data, images) {
     header.centerAlignContent();
     addLogo(header, images, data.logo, 20);
     header.addSpacer(5);
-    addLabel(header, LEAGUE_KEY === "cl" ? "CL" : "BL", Font.semiboldSystemFont(15), WHITE);
+    addLabel(header, SHORT[LEAGUE_KEY] || "BL", Font.semiboldSystemFont(15), WHITE);
     header.addSpacer();
     widget.addSpacer(6);
     addLastGame(widget, data.last, images, true);
