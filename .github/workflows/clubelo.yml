@@ -1,0 +1,36 @@
+name: ClubElo
+
+# Alle 6 Stunden die ClubElo-Rangliste speichern (Top 10 und Stand vor einem Monat).
+# Mehrere Läufe am Tag überbrücken Ausfälle von ClubElo.
+on:
+  schedule:
+    - cron: "43 */6 * * *"
+  workflow_dispatch:
+  push:
+    branches-ignore: [main]
+    paths:
+      - "scripts/clubelo.mjs"
+      - ".github/workflows/clubelo.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Rangliste laden
+        run: node scripts/clubelo.mjs
+      - name: Ergebnis speichern
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          test -f data/clubelo.json || exit 0
+          git add data/clubelo.json
+          git diff --staged --quiet || (git commit -m "ClubElo: Rangliste aktualisiert" && git pull --rebase && git push)
