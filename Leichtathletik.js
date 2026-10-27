@@ -397,8 +397,12 @@ function addEvent(stack, event, track) {
     let nat = (/\(([A-Z]{3})\)\s*$/.exec(event.venue || "") || [])[1];
     let f = nat ? flag(nat) : "";
     let extra = live ? soon : "";
-    // Nicht automatisch verkleinern – alle Ortszeilen gleich groß
-    addLabel(info, `${f ? f + " " : ""}${city(event.venue)}${extra ? " · " + extra : ""}`, Font.mediumSystemFont(10), WHITE, 0.65)
+    // Flagge in voller Farbe (eigenes Textfeld), nur der Ort gedämpft; nicht automatisch verkleinern
+    if (f) {
+        addLabel(info, f, Font.mediumSystemFont(10), WHITE).minimumScaleFactor = 1;
+        info.addSpacer(4);
+    }
+    addLabel(info, `${city(event.venue)}${extra ? " · " + extra : ""}`, Font.mediumSystemFont(10), WHITE, 0.65)
         .minimumScaleFactor = 1;
 }
 
