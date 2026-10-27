@@ -273,8 +273,20 @@ function parseTab(html, tabName) {
     return tab ? tab.rows : null;
 }
 
+// Gleiche Fahrer in gleicher Reihenfolge? PCS zeigt Etappe und Gesamtwertung teils im selben
+// Bereich – solange der GC-Reiter nicht geladen ist, steht dort die Etappe.
+function samePodium(a, b) {
+    return Boolean(a && b && a.length && a.length === b.length && a.every((r, i) => r.rider === b[i].rider));
+}
+
+// Brauchbare Gesamtwertung: gefüllt und nicht bloß die Etappenwertung
+function isGC(rows, stage) {
+    return Boolean(rows && rows.length && !samePodium(rows, stage));
+}
+
 // Reiter im unsichtbaren Browser anklicken und warten, bis seine Tabelle gefüllt ist
-async function loadTabInBrowser(path, tabName) {
+// (und sich von der Etappenwertung unterscheidet)
+async function loadTabInBrowser(path, tabName, stage) {
     let wv = new WebView();
     await wv.loadURL(PCS + path);
     await wv.evaluateJavaScript(`(function () {
@@ -286,7 +298,7 @@ async function loadTabInBrowser(path, tabName) {
     for (let i = 0; i < 10; i++) {
         let html = await wv.evaluateJavaScript("document.documentElement.outerHTML");
         let rows = parseTab(html, tabName);
-        if (rows && rows.length) return rows;
+        if (isGC(rows, stage)) return rows;
         await sleep(1000);
     }
     return [];
@@ -294,24 +306,33 @@ async function loadTabInBrowser(path, tabName) {
 
 // Gesamtwertung, wenn der GC-Reiter auf der Seite leer ist:
 // eigener Link des Reiters, dann übliche Adressen, zuletzt Klick im Browser
-async function loadGC(race, path, html, stageNumber) {
+async function loadGC(race, path, html, stageNumber, stage) {
     let tab = findTab(html, "GC");
-    if (tab && tab.rows.length) return tab.rows;
+    if (tab && isGC(tab.rows, stage)) return tab.rows;
     let base = race.path.replace(/[-\/](gc|result)$/, "");
     let candidates = [];
     if (tab && tab.path && tab.path !== path) candidates.push(tab.path);
     if (stageNumber) candidates.push(`${base}-stage-${stageNumber}-gc`, `${base}/stage-${stageNumber}-gc`);
+    // Klassische Adresse der Schlusswertung: race/vuelta-a-espana/2026/gc
+    let classic = base.replace(/-(\d{4})$/, "/$1");
+    if (/\/\d{4}$/.test(classic)) candidates.push(`${classic}/gc`);
     for (let candidate of candidates) {
         try {
-            let rows = parseTab(await load(candidate), "GC");
-            if (rows && rows.length) return rows;
+            let page = await load(candidate);
+            let rows = parseTab(page, "GC");
+            if (isGC(rows, stage)) return rows;
+            // Seite ohne Reiter: sichtbare Tabelle
+            if (rows === null && /\/gc$/.test(candidate)) {
+                let podium = parsePodium(page);
+                if (isGC(podium, stage)) return podium;
+            }
         } catch (e) {
             console.log(`GC über ${candidate}: ${e}`);
         }
     }
     if (tab) {
         try {
-            return await loadTabInBrowser(path, "GC");
+            return await loadTabInBrowser(path, "GC", stage);
         } catch (e) {
             console.log(`GC im Browser: ${e}`);
         }
@@ -416,14 +437,15 @@ async function loadStageEntries(race, today, need) {
         // Keine Reiter (z. B. alte Seitenstruktur): sichtbare Tabelle als Gesamtwertung
         gcPodium = parsePodium(html);
     } else if (!isRunning) {
-        gcPodium = await loadGC(race, path, html, number);
+        gcPodium = await loadGC(race, path, html, number, stagePodium);
     }
 
     let stageLabel = number === 0 ? "Prolog" : number ? `Etappe ${number}` : "Letzte Etappe";
     let date = parseDate(html) || (isRunning ? today : race.end);
 
     let entries = [];
-    if (!isRunning && gcPodium && gcPodium.length) {
+    // Gleicht die „Gesamtwertung“ der Etappe, ist sie nicht geladen worden – dann lieber weglassen
+    if (!isRunning && isGC(gcPodium, stagePodium)) {
         entries.push({ ...race, label: "Gesamtwertung", date: race.end, path, podium: gcPodium, isGC: true });
     }
     if (stagePodium && stagePodium.length) {
