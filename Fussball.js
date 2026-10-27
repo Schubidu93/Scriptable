@@ -1125,22 +1125,22 @@ function addPokalNext(stack, data, images) {
     }
 }
 
-function buildPokal(widget, data, images) {
+// Kopfzeile aller Bayern-Widgets (Bundesliga, CL, Pokal): Logo, Name, Form – rechts der Wettbewerb
+function addTeamHeader(widget, data, images) {
     let header = widget.addStack();
     header.centerAlignContent();
-    let cup = SFSymbol.named("trophy.fill");
-    cup.applyFont(Font.systemFont(16));
-    let cupImg = header.addImage(cup.image);
-    cupImg.imageSize = new Size(18, 18);
-    cupImg.tintColor = ACCENT;
+    addLogo(header, images, data.logo, 22);
     header.addSpacer(6);
-    addLabel(header, "DFB-Pokal", Font.semiboldSystemFont(15), WHITE);
-    header.addSpacer(8);
-    addLogo(header, images, data.logo, 18);
+    addLabel(header, data.name, Font.semiboldSystemFont(15), WHITE);
+    header.addSpacer(10);
+    addForm(header, data, images);
     header.addSpacer();
-    if (data.stale) addLabel(header, "offline", Font.semiboldSystemFont(10), WHITE, 0.6);
+    addLabel(header, `${LEAGUE.title}${data.stale ? " · offline" : ""}`, Font.semiboldSystemFont(11), WHITE, 0.6);
+}
 
-    widget.addSpacer(8);
+function buildPokal(widget, data, images) {
+    addTeamHeader(widget, data, images);
+    widget.addSpacer(6);
 
     let body = widget.addStack();
     let left = body.addStack();
@@ -1167,19 +1167,7 @@ function buildPokal(widget, data, images) {
 }
 
 function buildMedium(widget, data, images) {
-    let header = widget.addStack();
-    header.centerAlignContent();
-    addLogo(header, images, data.logo, 22);
-    header.addSpacer(6);
-    addLabel(header, data.name, Font.semiboldSystemFont(15), WHITE);
-    header.addSpacer(10);
-    addForm(header, data, images);
-    header.addSpacer();
-    if (data.stale) {
-        addLabel(header, "offline", Font.semiboldSystemFont(10), WHITE, 0.6);
-        header.addSpacer(6);
-    }
-
+    addTeamHeader(widget, data, images);
     widget.addSpacer(4);
 
     let body = widget.addStack();
