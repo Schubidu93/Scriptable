@@ -374,7 +374,8 @@ function addEvent(stack, event, track) {
     row.addSpacer(7);
     let right = row.addStack();
     right.layoutVertically();
-    let name = addLabel(right, displayName(event, track), Font.semiboldSystemFont(12), WHITE);
+    // Gleiche Schrift wie die Athletennamen in den Straßenlauf-Widgets
+    let name = addLabel(right, displayName(event, track), Font.semiboldSystemFont(11), WHITE);
     name.lineLimit = 2;
     name.minimumScaleFactor = 1;
     right.addSpacer(2);
@@ -396,11 +397,11 @@ function addEvent(stack, event, track) {
     right.addSpacer();
 }
 
-// Geschätzte Zeilen des Namens (ca. 17 Zeichen je Zeile neben dem Kürzel, Umbruch an Wortgrenzen)
+// Geschätzte Zeilen des Namens (ca. 18 Zeichen je Zeile neben dem Kürzel, Umbruch an Wortgrenzen)
 function nameLines(event, track) {
     let lines = 1, width = 0;
     for (let word of displayName(event, track).split(" ")) {
-        if (width && width + 1 + word.length > 17) {
+        if (width && width + 1 + word.length > 18) {
             lines++;
             width = word.length;
         } else {
@@ -414,7 +415,7 @@ function nameLines(event, track) {
 function fitEvents(events, track, large) {
     let budget = large ? 335 : 115, gap = large ? 8 : 5, used = 0, list = [];
     for (let event of events || []) {
-        let height = nameLines(event, track) * 14.5 + 15 + (list.length ? gap : 0);
+        let height = nameLines(event, track) * 13.5 + 15 + (list.length ? gap : 0);
         if (used + height > budget) break;
         used += height;
         list.push(event);
