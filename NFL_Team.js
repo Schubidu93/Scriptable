@@ -145,6 +145,7 @@ async function loadData() {
     return {
         id: String(team.id),
         name: team.displayName,
+        shortName: team.name || team.shortDisplayName,
         abbr: team.abbreviation,
         logo: logoUrl(team),
         record: record ? record.summary : "",
@@ -257,37 +258,54 @@ function addBadge(stack, result, size) {
     addLabel(badge, result || "–", Font.boldSystemFont(size * 0.65), WHITE);
 }
 
-// Form: Gegner-Logo über W/L-Badge, ältestes Spiel links, neuestes rechts
-function addForm(stack, data, images) {
-    addSectionTitle(stack, "Form");
-    stack.addSpacer(3);
-    let form = data.form || (data.last ? [data.last] : []);
-    if (!form.length) {
+// Letztes Spiel groß: Badge, Ergebnis, darunter Gegner und Datum
+function addLastGame(stack, last, images, compact = false) {
+    addSectionTitle(stack, "Letztes Spiel");
+    stack.addSpacer(2);
+    if (!last) {
         addLabel(stack, "–", Font.mediumSystemFont(13), WHITE, 0.7);
         return;
     }
     let row = stack.addStack();
+    row.centerAlignContent();
+    addBadge(row, last.result, 22);
+    row.addSpacer(8);
+    addLabel(row, `${last.ourScore}:${last.theirScore}`, Font.boldRoundedSystemFont(compact ? 24 : 28), WHITE);
+    // Im kleinen Widget stehen Gegner und Datum unter dem Ergebnis
+    let info;
+    if (compact) {
+        info = stack.addStack();
+    } else {
+        row.addSpacer(8);
+        info = row.addStack();
+    }
+    info.layoutVertically();
+    let opponent = info.addStack();
+    opponent.centerAlignContent();
+    addLabel(opponent, last.home ? "vs" : "@", Font.mediumSystemFont(11), WHITE, 0.6);
+    opponent.addSpacer(3);
+    addLogo(opponent, images, last.opponentLogo, 16);
+    opponent.addSpacer(3);
+    addLabel(opponent, last.opponent, Font.semiboldSystemFont(12), WHITE);
+    addLabel(info, formatDay(last.date), Font.mediumSystemFont(10), WHITE, 0.6);
+}
+
+// Form klein: Gegner-Logo über W/L-Badge, ältestes Spiel links, neuestes rechts
+function addForm(stack, data, images) {
+    let form = data.form || [];
+    if (!form.length) return;
+    let row = stack.addStack();
+    row.centerAlignContent();
     form.forEach((game, i) => {
-        if (i > 0) row.addSpacer(6);
+        if (i > 0) row.addSpacer(3);
         let item = row.addStack();
         item.layoutVertically();
-        item.centerAlignContent();
         let logo = item.addStack();
         logo.addSpacer(1);
-        addLogo(logo, images, game.opponentLogo, 14);
+        addLogo(logo, images, game.opponentLogo, 11);
         item.addSpacer(1);
-        addBadge(item, game.result, 16);
+        addBadge(item, game.result, 13);
     });
-
-    // Daneben das letzte Ergebnis
-    let last = data.last;
-    if (last) {
-        row.addSpacer(10);
-        let score = row.addStack();
-        score.layoutVertically();
-        addLabel(score, `${last.ourScore}:${last.theirScore}`, Font.semiboldMonospacedSystemFont(14), WHITE);
-        addLabel(score, `${last.home ? "vs" : "@"} ${last.opponent} · ${formatDay(last.date)}`, Font.mediumSystemFont(9), WHITE, 0.6);
-    }
 }
 
 function addNextGame(stack, next, images) {
@@ -341,7 +359,9 @@ function buildMedium(widget, data, images) {
     header.centerAlignContent();
     addLogo(header, images, data.logo, 22);
     header.addSpacer(6);
-    addLabel(header, data.name, Font.semiboldSystemFont(15), WHITE);
+    addLabel(header, data.shortName || data.name.split(" ").pop(), Font.semiboldSystemFont(15), WHITE);
+    header.addSpacer(10);
+    addForm(header, data, images);
     header.addSpacer();
     if (data.stale) {
         addLabel(header, "offline", Font.semiboldSystemFont(10), WHITE, 0.6);
@@ -354,7 +374,7 @@ function buildMedium(widget, data, images) {
     let body = widget.addStack();
     let left = body.addStack();
     left.layoutVertically();
-    addForm(left, data, images);
+    addLastGame(left, data.last, images);
     left.addSpacer(6);
     addNextGame(left, data.next, images);
     left.addSpacer();
@@ -376,8 +396,8 @@ function buildSmall(widget, data, images) {
     addLabel(header, data.abbr, Font.semiboldSystemFont(15), WHITE);
     header.addSpacer();
     addRecord(header, data.record);
-    widget.addSpacer(8);
-    addForm(widget, data, images);
+    widget.addSpacer(6);
+    addLastGame(widget, data.last, images, true);
     widget.addSpacer();
     addNextGame(widget, data.next, images);
 }
