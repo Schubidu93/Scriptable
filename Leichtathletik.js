@@ -348,7 +348,7 @@ function displayName(event, track) {
 }
 
 // Wie im iOS-Kalender: links das Datum als Block (Tag groß, Monat klein), rechts Name und darunter
-// Kürzel, Flagge und Ort. Mehrtägige Wettkämpfe: „bis 10.01.“ in der Ortszeile.
+// Kürzel, Flagge und Ort (läuft der Wettkampf gerade: „läuft“ bzw. „heute“).
 const MONTHS_DE = ["JAN", "FEB", "MÄR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEZ"];
 
 // Zentriert in fester Breite – ohne Abstandhalter, die selbst Platz kosten (sonst „…“ statt „27“)
@@ -396,8 +396,7 @@ function addEvent(stack, event, track) {
     info.addSpacer(4);
     let nat = (/\(([A-Z]{3})\)\s*$/.exec(event.venue || "") || [])[1];
     let f = nat ? flag(nat) : "";
-    let pad = n => String(n).padStart(2, "0");
-    let extra = live ? soon : end.getTime() !== start.getTime() ? `bis ${pad(end.getDate())}.${pad(end.getMonth() + 1)}.` : "";
+    let extra = live ? soon : "";
     // Nicht automatisch verkleinern – alle Ortszeilen gleich groß
     addLabel(info, `${f ? f + " " : ""}${city(event.venue)}${extra ? " · " + extra : ""}`, Font.mediumSystemFont(10), WHITE, 0.65)
         .minimumScaleFactor = 1;
