@@ -1,17 +1,25 @@
-// Radsport – die letzten 3 WorldTour-Rennen mit Top 3 und die nächsten 3 Rennen
+// Radsport – die letzten 3 WorldTour-Rennen mit Top 3 und die nächsten 3 Rennen.
+// Läuft gerade eine Rundfahrt, zeigt es oben die letzte Etappe und die Gesamtwertung.
 // Quelle: ProCyclingStats (procyclingstats.com). Großes Widget, im Stil der iOS-Widgets.
 // Ein Tipp auf ein Rennen öffnet dessen Ergebnisse bei ProCyclingStats.
+//
+// Männer (Standard) oder Frauen: im Loader per Function("GESCHLECHT", code)("frauen")
+// oder als Widget-Parameter "frauen".
 
 const PCS = "https://www.procyclingstats.com/";
+const WOMEN = String(
+    (typeof GESCHLECHT !== "undefined" && GESCHLECHT) || args.widgetParameter || ""
+).trim().toLowerCase() === "frauen";
 const CONFIG = {
-    circuit: 1, // 1 = UCI WorldTour
+    circuit: WOMEN ? 24 : 1, // 1 = UCI WorldTour, 24 = UCI Women's WorldTour
+    title: WOMEN ? "Women's WorldTour" : "WorldTour",
     past: 3,
     upcoming: 3,
     podium: 3,
 };
 
 const fm = FileManager.local();
-const cachePath = fm.joinPath(fm.cacheDirectory(), "radsport-pcs.json");
+const cachePath = fm.joinPath(fm.cacheDirectory(), `radsport-pcs${WOMEN ? "-frauen" : ""}.json`);
 
 // Was beim Abruf passiert ist – wird angezeigt, wenn keine Daten kommen
 const DIAG = [];
@@ -109,7 +117,7 @@ function parseCalendar(html, year) {
         if (!dates.length) return null;
         let cls = (/\b([12]\.[A-Za-z0-9.]+)/.exec(cleanText(row)) || [])[1] || "";
         return {
-            name: cleanText(link[2]),
+            name: cleanText(link[2]).replace(/\s*[-–]\s*(Men|Women|ME|WE)$|\s+(ME|WE)$/i, ""),
             flag: flagEmoji(row.slice(0, link.index)),
             path: link[1].replace(/\/$/, ""),
             start: dates[0],
@@ -209,7 +217,19 @@ async function loadData() {
     finished.sort((a, b) => b.end - a.end);
     upcoming.sort((a, b) => a.start - b.start);
 
-    let past = await Promise.all(finished.slice(0, CONFIG.past).map(async race => {
+    // Laufende Rundfahrt: letzte Etappe + aktuelle Gesamtwertung, dafür ein Rennen weniger
+    let runningRace = upcoming.find(r => r.stageRace && r.start <= today);
+    let live = null;
+    if (runningRace) {
+        live = await loadStageRace(runningRace, today).catch(e => {
+            console.log(`${runningRace.name}: Etappe nicht geladen: ${e}`);
+            return { ...runningRace, podium: [], stage: null };
+        });
+        upcoming = upcoming.filter(r => r !== runningRace);
+    }
+    let pastCount = live ? CONFIG.past - 1 : CONFIG.past;
+
+    let past = await Promise.all(finished.slice(0, pastCount).map(async race => {
         let podium = [];
         try {
             podium = parsePodium(await load(resultPath(race)));
@@ -220,10 +240,37 @@ async function loadData() {
     }));
 
     return {
+        live,
         past,
         upcoming: upcoming.slice(0, CONFIG.upcoming),
         stale: false,
     };
+}
+
+// Gesamtwertung laden und darin die Links zu den Etappen suchen
+async function loadStageRace(race, today) {
+    let gcHtml = await load(resultPath(race));
+    let podium = parsePodium(gcHtml);
+
+    // Etappen-Links: "race/tour-de-france-2026-stage-12" oder "race/tour-de-france/2026/stage-12"
+    let base = race.path.replace(/[-\/](gc|result)$/, "");
+    let stages = {};
+    for (let m of gcHtml.matchAll(/href=["'][^"']*?\b(race\/[^"'?#]*?[-\/]stage-(\d+))["']/gi)) {
+        if (m[1].startsWith(base)) stages[Number(m[2])] = m[1];
+    }
+
+    // Grobe Schätzung der heutigen Etappe; Ruhetage → rückwärts probieren
+    let estimate = Math.floor((today - race.start) / 86400000) + 1;
+    let candidates = Object.keys(stages).map(Number).filter(n => n <= estimate).sort((a, b) => b - a).slice(0, 3);
+    let stage = null;
+    for (let n of candidates) {
+        let result = parsePodium(await load(stages[n]));
+        if (result.length) {
+            stage = { number: n, path: stages[n], winner: result[0] };
+            break;
+        }
+    }
+    return { ...race, podium, stage };
 }
 
 function serialize(data) {
@@ -235,6 +282,7 @@ function deserialize(json) {
     let revive = r => ({ ...r, start: new Date(r.start), end: new Date(r.end) });
     data.past = data.past.map(revive);
     data.upcoming = data.upcoming.map(revive);
+    if (data.live) data.live = revive(data.live);
     return data;
 }
 
@@ -242,7 +290,7 @@ function deserialize(json) {
 async function loadWithCache() {
     try {
         let data = await loadData();
-        if (data.past.length || data.upcoming.length) {
+        if (data.live || data.past.length || data.upcoming.length) {
             fm.writeString(cachePath, serialize(data));
             return data;
         }
@@ -291,6 +339,7 @@ function addLabel(stack, text, font, color, opacity = 1) {
 }
 
 const WHITE = Color.white();
+const LIVE = new Color("#FF453A");
 const MEDALS = [new Color("#F5C542"), new Color("#C9D1D9"), new Color("#D08A4E")];
 
 function background(widget) {
@@ -305,7 +354,7 @@ function addHeader(widget, data) {
     header.centerAlignContent();
     addSymbol(header, "bicycle", 15, WHITE);
     header.addSpacer(5);
-    addLabel(header, "WorldTour", Font.semiboldSystemFont(15), WHITE);
+    addLabel(header, CONFIG.title, Font.semiboldSystemFont(15), WHITE);
     header.addSpacer();
     let offline = data && data.stale ? " · offline" : "";
     addLabel(header, `ProCyclingStats${offline}`, Font.semiboldSystemFont(11), WHITE, 0.6);
@@ -322,7 +371,7 @@ function addPastRace(stack, race, podiumSize) {
 
     let title = block.addStack();
     title.centerAlignContent();
-    addLabel(title, withFlag(race.flag, race.name), Font.semiboldSystemFont(14), WHITE);
+    addLabel(title, withFlag(race.flag, race.name), Font.semiboldSystemFont(13), WHITE);
     title.addSpacer(6);
     title.addSpacer();
     addLabel(title, formatRange(race), Font.mediumSystemFont(10), WHITE, 0.6);
@@ -332,6 +381,52 @@ function addPastRace(stack, race, podiumSize) {
         return;
     }
     race.podium.slice(0, podiumSize).forEach((p, i) => {
+        block.addSpacer(3);
+        let row = block.addStack();
+        row.centerAlignContent();
+        addSymbol(row, `${i + 1}.circle.fill`, 12, MEDALS[i]);
+        row.addSpacer(5);
+        addLabel(row, withFlag(p.flag, p.rider), Font.mediumSystemFont(12), WHITE);
+        row.addSpacer(6);
+        row.addSpacer();
+        addLabel(row, p.team, Font.regularSystemFont(10), WHITE, 0.55);
+    });
+}
+
+// Laufende Rundfahrt: Etappensieger, darunter die Gesamtwertung
+function addLiveRace(stack, race) {
+    let block = stack.addStack();
+    block.layoutVertically();
+    block.url = PCS + (race.stage ? race.stage.path : resultPath(race));
+
+    let title = block.addStack();
+    title.centerAlignContent();
+    addLabel(title, withFlag(race.flag, race.name), Font.semiboldSystemFont(13), WHITE);
+    title.addSpacer(6);
+    title.addSpacer();
+    addSymbol(title, "dot.radiowaves.left.and.right", 10, LIVE);
+    title.addSpacer(3);
+    addLabel(title, "läuft", Font.semiboldSystemFont(10), LIVE);
+
+    if (race.stage) {
+        block.addSpacer(3);
+        let row = block.addStack();
+        row.centerAlignContent();
+        addSymbol(row, "flag.checkered", 12, WHITE);
+        row.addSpacer(5);
+        addLabel(row, `Etappe ${race.stage.number}`, Font.semiboldSystemFont(12), WHITE, 0.7);
+        row.addSpacer(6);
+        addLabel(row, withFlag(race.stage.winner.flag, race.stage.winner.rider), Font.mediumSystemFont(12), WHITE);
+        row.addSpacer();
+    }
+    if (!race.podium.length) {
+        block.addSpacer(3);
+        addLabel(block, "Gesamtwertung folgt nach der 1. Etappe", Font.mediumSystemFont(11), WHITE, 0.6);
+        return;
+    }
+    block.addSpacer(3);
+    addLabel(block, "GESAMTWERTUNG", Font.semiboldSystemFont(9), WHITE, 0.5);
+    race.podium.forEach((p, i) => {
         block.addSpacer(2);
         let row = block.addStack();
         row.centerAlignContent();
@@ -362,7 +457,7 @@ function buildLarge(widget, data) {
     today.setHours(0, 0, 0, 0);
 
     addHeader(widget, data);
-    widget.addSpacer(8);
+    widget.addSpacer(6);
 
     if (!data) {
         addLabel(widget, "Keine Daten – später erneut versuchen", Font.mediumSystemFont(13), WHITE, 0.8);
@@ -375,16 +470,17 @@ function buildLarge(widget, data) {
         return;
     }
 
-    addSectionTitle(widget, "Letzte Rennen");
-    data.past.forEach(race => {
-        widget.addSpacer(6);
-        addPastRace(widget, race, CONFIG.podium);
+    let blocks = (data.live ? [data.live] : []).concat(data.past);
+    blocks.forEach((race, i) => {
+        if (i > 0) widget.addSpacer(10);
+        if (race === data.live) addLiveRace(widget, race);
+        else addPastRace(widget, race, CONFIG.podium);
     });
 
     widget.addSpacer();
     addSectionTitle(widget, "Nächste Rennen");
     data.upcoming.forEach(race => {
-        widget.addSpacer(4);
+        widget.addSpacer(5);
         addUpcomingRace(widget, race, today);
     });
 }
@@ -406,7 +502,7 @@ function buildMedium(widget, data) {
     left.layoutVertically();
     left.size = new Size(150, 0);
     addSectionTitle(left, "Sieger");
-    data.past.forEach(race => {
+    (data.live ? [data.live] : []).concat(data.past).forEach(race => {
         left.addSpacer(4);
         let block = left.addStack();
         block.layoutVertically();
@@ -444,7 +540,7 @@ async function createWidget() {
     widget.url = `${PCS}races.php?year=${new Date().getFullYear()}&circuit=${CONFIG.circuit}&filter=Filter`;
     widget.refreshAfterDate = new Date(Date.now() + 3 * 60 * 60 * 1000);
     background(widget);
-    widget.setPadding(16, 16, 16, 16);
+    widget.setPadding(14, 16, 14, 16);
 
     if (config.widgetFamily === "medium") {
         buildMedium(widget, data);
