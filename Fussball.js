@@ -945,17 +945,17 @@ function addGameRow(stack, game, images) {
     addLogo(row, images, game.home.logo, 15);
     row.addSpacer(3);
     let home = row.addStack();
-    home.size = new Size(36, 0);
+    home.size = new Size(35, 0);
     addLabel(home, game.home.abbr, teamFont(game.home), WHITE, teamOpacity(game.home));
     home.addSpacer();
 
     let mid = row.addStack();
-    mid.size = new Size(38, 0);
+    mid.size = new Size(42, 0);
     mid.addSpacer();
     if (game.state === "pre") {
         let df = new DateFormatter();
         df.dateFormat = "HH:mm";
-        addLabel(mid, df.string(new Date(game.date)), Font.semiboldMonospacedSystemFont(11), WHITE, 0.7);
+        addLabel(mid, df.string(new Date(game.date)), Font.semiboldMonospacedSystemFont(10), WHITE, 0.7).minimumScaleFactor = 0.8;
     } else {
         addLabel(mid, `${game.home.score}:${game.away.score}`, Font.boldRoundedSystemFont(13),
             game.state === "in" ? LIVE_RED : WHITE);
@@ -963,7 +963,7 @@ function addGameRow(stack, game, images) {
     mid.addSpacer();
 
     let away = row.addStack();
-    away.size = new Size(36, 0);
+    away.size = new Size(35, 0);
     away.addSpacer();
     addLabel(away, game.away.abbr, teamFont(game.away), WHITE, teamOpacity(game.away));
     row.addSpacer(3);
@@ -1026,7 +1026,7 @@ function buildMatchdays(widget, data, images) {
         let days = new Set(column.games.map(g => dayKey(g.date))).size;
         return { fixed: (column.title ? 18 : 0) + days * 15 + column.games.length * 17, rows: column.games.length };
     });
-    let gap = Math.max(4, Math.min(14, Math.min(...layout.map(l => (290 - l.fixed) / Math.max(1, l.rows - 1)))));
+    let gap = Math.max(4, Math.min(22, Math.min(...layout.map(l => (290 - l.fixed) / Math.max(1, l.rows - 1)))));
 
     let row = widget.addStack();
     columns.forEach((column, c) => {
