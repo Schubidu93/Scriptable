@@ -1,16 +1,16 @@
-const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15";
-const clean = h => h.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
-async function show(url) {
-  try {
-    let res = await fetch(url, { headers: { "User-Agent": UA } });
-    let html = await res.text();
-    console.log(`\n== ${url}: ${res.status}, ${html.length} Zeichen, Titel: ${(/<title>([^<]*)/.exec(html) || [])[1]}`);
-    let t = (html.match(/<table[\s\S]*?<\/table>/gi) || []).slice(0, 3);
-    t.forEach((x, i) => console.log(`  Tabelle ${i}: ${(x.match(/<tr[\s\S]*?<\/tr>/gi) || []).slice(0, 4).map(r => clean(r).slice(0, 80)).join(" || ")}`));
-  } catch (e) { console.log(url, e.message); }
+const API = "https://en.wikipedia.org/w/api.php?format=json&origin=*&";
+for (let q of ["2026 Vuelta a España", "2026 Tour of Guangxi", "2026 Tour de France", "2026 Il Lombardia"]) {
+  let s = await (await fetch(API + "action=query&list=search&srlimit=3&srsearch=" + encodeURIComponent(q))).json();
+  let titles = s.query.search.map(x => x.title);
+  console.log("\n==", q, "→", titles.join(" | "));
+  let title = titles[0];
+  let p = await (await fetch(API + "action=parse&prop=wikitext&page=" + encodeURIComponent(title))).json();
+  let text = p.parse ? p.parse.wikitext["*"] : "";
+  let i = text.search(/general classification/i);
+  let rows = [...text.matchAll(/\{\{\s*Cyclingresult\s*\|[^\n]*/gi)].map(m => m[0]);
+  console.log("  Länge", text.length, "GC-Index", i, "Cyclingresult-Zeilen", rows.length);
+  let gcStart = text.search(/title\s*=\s*[^|\n]*general classification/i);
+  console.log("  GC-Tabelle bei", gcStart);
+  if (gcStart >= 0) console.log(text.slice(gcStart, gcStart + 900));
+  else console.log(rows.slice(0, 4).join("\n"));
 }
-await show("https://firstcycling.com/race.php?r=23&y=2026");
-await show("https://firstcycling.com/race.php?r=23&y=2026&k=2");
-await show("https://firstcycling.com/race.php?y=2026&t=2");
-await show("https://en.wikipedia.org/w/api.php?action=parse&page=2026_Vuelta_a_Espa%C3%B1a&prop=sections&format=json");
-await show("https://www.procyclingstats.com/race/vuelta-a-espana/2026/gc");
