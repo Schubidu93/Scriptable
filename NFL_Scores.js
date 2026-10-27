@@ -172,7 +172,7 @@ function addGameRow(stack, game, images, compact = false) {
     let tie = game.state === "post" && !game.home.winner && !game.away.winner;
     let team = (side, alignRight) => {
         let box = row.addStack();
-        box.size = new Size(compact ? 30 : 34, 0);
+        box.size = new Size(compact ? 35 : 36, 0);
         if (alignRight) box.addSpacer();
         let loser = game.state === "post" && !side.winner && !tie;
         let font = !played || tie ? Font.semiboldSystemFont(fontSize) : side.winner ? Font.boldSystemFont(fontSize) : Font.mediumSystemFont(fontSize);
@@ -278,8 +278,8 @@ function buildWeekCompact(widget, data, images) {
 
     let games = data.games.slice(0, 16);
     let half = Math.ceil(games.length / 2);
-    // 8 Zeilen à ~12,5 pt füllen ~100 pt; bei weniger Spielen mehr Abstand
-    let gap = Math.max(1, Math.min(6, (104 - half * 12.5) / Math.max(1, half - 1)));
+    // Zeilen à ~12,5 pt in ~114 pt Höhe; bei weniger Spielen mehr Abstand
+    let gap = Math.max(1, Math.min(7, (114 - half * 12.5) / Math.max(1, half - 1)));
     let row = widget.addStack();
     [games.slice(0, half), games.slice(half)].forEach((list, c) => {
         if (c > 0) row.addSpacer();
