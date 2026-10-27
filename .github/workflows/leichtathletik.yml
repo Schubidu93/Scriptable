@@ -1,0 +1,36 @@
+name: Leichtathletik Woche
+
+# Täglich die besten Leistungen der letzten Tage aus den World-Athletics-Toplisten sammeln
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+  push:
+    branches-ignore: [main]
+    paths:
+      - "scripts/leichtathletik_woche.mjs"
+      - ".github/workflows/leichtathletik.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Toplisten durchsuchen
+        run: node scripts/leichtathletik_woche.mjs
+        env:
+          DEBUG: ${{ github.ref == 'refs/heads/main' && '0' || '1' }}
+      - name: Ergebnis speichern
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/leichtathletik_woche.json
+          git diff --staged --quiet || (git commit -m "Leichtathletik: Wochenbestleistungen aktualisiert" && git push)
