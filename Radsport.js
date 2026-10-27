@@ -312,25 +312,36 @@ async function loadGCInBrowser(path, stage) {
         if (!before.length) await sleep(1000);
     }
     stage = stage && stage.length ? stage : before;
-    let clicked = await wv.evaluateJavaScript(`(function () {
+    // Kandidaten mit Text „GC“; Reiter neben „STAGE“ (die Reiterleiste) zuerst
+    let count = await wv.evaluateJavaScript(`(function () {
         var all = Array.prototype.slice.call(document.querySelectorAll("a, li, button, span, div"));
         var hits = all.filter(function (e) {
             return e.textContent.trim().toUpperCase() === "GC"
                 && !Array.prototype.some.call(e.children, function (c) { return c.textContent.trim().toUpperCase() === "GC"; });
         });
-        if (!hits.length) return false;
-        var target = hits[0].closest("a, li, button") || hits[0];
-        target.click();
-        return true;
+        var nearStage = function (e) {
+            var box = e.closest("ul, nav") || (e.parentElement && e.parentElement.parentElement);
+            return box && /STAGE/i.test(box.textContent) ? 0 : 1;
+        };
+        hits.sort(function (a, b) { return nearStage(a) - nearStage(b); });
+        window.__gcHits = hits.slice(0, 3);
+        return window.__gcHits.length;
     })()`);
-    if (!clicked) return { stage, gc: [] };
-    for (let i = 0; i < 10; i++) {
-        await sleep(1000);
-        let rows = await visiblePodium(wv);
-        if (isGC(rows, stage)) return { stage, gc: rows };
-        let html = await wv.evaluateJavaScript("document.documentElement.outerHTML");
-        let tab = parseTab(html, "GC");
-        if (isGC(tab, stage)) return { stage, gc: tab };
+    for (let n = 0; n < count; n++) {
+        await wv.evaluateJavaScript(`(function () {
+            var hit = window.__gcHits && window.__gcHits[${n}];
+            if (!hit) return false;
+            (hit.closest("a, li, button") || hit).click();
+            return true;
+        })()`);
+        for (let i = 0; i < 8; i++) {
+            await sleep(1000);
+            let rows = await visiblePodium(wv);
+            if (isGC(rows, stage)) return { stage, gc: rows };
+            let html = await wv.evaluateJavaScript("document.documentElement.outerHTML");
+            let tab = parseTab(html, "GC");
+            if (isGC(tab, stage)) return { stage, gc: tab };
+        }
     }
     return { stage, gc: [] };
 }
@@ -353,7 +364,7 @@ async function loadGC(race, path, html, stageNumber, stage) {
             let rows = parseTab(page, "GC");
             if (isGC(rows, stage)) return rows;
             // Seite ohne Reiter: sichtbare Tabelle
-            if (rows === null && /\/gc$/.test(candidate)) {
+            if (rows === null && /gc$/.test(candidate)) {
                 let podium = parsePodium(page);
                 if (isGC(podium, stage)) return podium;
             }
@@ -467,15 +478,7 @@ async function loadStageEntries(race, today, need) {
         // die Gesamtwertung kommt per Klick auf „GC“ im Browser
         let visible = parsePodium(html);
         stagePodium = visible.length ? visible : null;
-        if (!isRunning) {
-            try {
-                let result = await loadGCInBrowser(path, stagePodium);
-                if (!stagePodium && result.stage.length) stagePodium = result.stage;
-                gcPodium = result.gc;
-            } catch (e) {
-                console.log(`GC im Browser: ${e}`);
-            }
-        }
+        if (!isRunning) gcPodium = await loadGC(race, path, html, number, stagePodium);
     } else if (!isRunning) {
         gcPodium = await loadGC(race, path, html, number, stagePodium);
     }
