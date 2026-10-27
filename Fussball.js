@@ -498,25 +498,28 @@ async function loadData() {
 }
 
 // Ergebnisse-Ansicht: laufende Spiele zuerst, dann die neuesten Ergebnisse
+function toGame(e) {
+    let side = homeAway => {
+        let c = e.competitions[0].competitors.find(x => x.homeAway === homeAway);
+        let german = germanTeam(c.team);
+        return { id: String(c.team.id), abbr: german.abbr, logo: logoUrl(c.team), score: score(c), winner: c.winner === true };
+    };
+    return {
+        id: String(e.id),
+        date: e.date,
+        state: stateOf(e),
+        detail: stateOf(e) === "in" ? liveDetail(statusOf(e)) : resultSuffix(e),
+        home: side("home"),
+        away: side("away"),
+    };
+}
+
 async function loadResults(count) {
     let all = await loadSeasonEvents();
     let played = all.filter(e => stateOf(e) !== "pre");
     played.sort((a, b) => (stateOf(b) === "in") - (stateOf(a) === "in") || new Date(b.date) - new Date(a.date));
     let shown = played.slice(0, count);
-
-    let side = (event, homeAway) => {
-        let c = event.competitions[0].competitors.find(x => x.homeAway === homeAway);
-        let german = germanTeam(c.team);
-        return { id: String(c.team.id), abbr: german.abbr, logo: logoUrl(c.team), score: score(c), winner: c.winner === true };
-    };
-    let games = shown.map(e => ({
-        id: String(e.id),
-        date: e.date,
-        state: stateOf(e),
-        detail: stateOf(e) === "in" ? liveDetail(statusOf(e)) : resultSuffix(e),
-        home: side(e, "home"),
-        away: side(e, "away"),
-    }));
+    let games = shown.map(toGame);
 
     // Überschrift: Spieltag(e) bzw. Runde des neuesten Spiels
     let label = "";
@@ -533,10 +536,71 @@ async function loadResults(count) {
     return { label, games };
 }
 
+// Spiele nach Spieltag gruppieren: ein Spieltag = Spiele ohne Pause von mehr als 1,5 Tagen
+// (Bundesliga Fr–So, CL Di/Mi). Einzelne Nachholspiele (< 3 Spiele) fallen weg.
+// Titel: häufigste Spieltagsnummer der Gruppe bzw. Runde und Hin-/Rückspiel
+function groupMatchdays(all) {
+    let sorted = all.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+    let clusters = [];
+    let last = 0;
+    for (let e of sorted) {
+        let t = new Date(e.date).getTime();
+        if (!clusters.length || t - last > 1.5 * 86400000) clusters.push([]);
+        clusters[clusters.length - 1].push(e);
+        last = t;
+    }
+    return clusters.filter(events => events.length >= 3).map(events => ({ events, all: sorted }));
+}
+
+// Titel erst für die angezeigten Spieltage berechnen (Spieltagsnummer zählen ist aufwendig)
+function titleGroup(group) {
+    let phase = roundOf(group.events[0]);
+    if (phase && phase !== "Ligaphase") {
+        group.title = [phase, legOf(group.events[0])].filter(Boolean).join(" · ");
+        group.phase = "";
+        return group;
+    }
+    let tally = {};
+    group.events.forEach(e => { let d = matchdayOf(e, group.all); tally[d] = (tally[d] || 0) + 1; });
+    let day = Object.keys(tally).sort((a, b) => tally[b] - tally[a])[0];
+    group.title = `${day}. Spieltag`;
+    group.phase = phase;
+    return group;
+}
+
+// Großes Widget: CL der ganze aktuelle Spieltag, Bundesliga der letzte und der nächste
+// (läuft ein Spieltag noch, der vorige und der laufende)
+async function loadMatchdays() {
+    let groups = groupMatchdays(await loadSeasonEvents());
+    let current = -1;
+    groups.forEach((g, i) => { if (g.events.some(e => stateOf(e) !== "pre")) current = i; });
+    if (current < 0) current = 0;
+    let picked;
+    if (LEAGUE_KEY === "cl") {
+        picked = [groups[current]];
+    } else {
+        let running = groups[current] && groups[current].events.some(e => stateOf(e) !== "post");
+        picked = running ? [groups[current - 1], groups[current]] : [groups[current], groups[current + 1]];
+    }
+    picked = picked.filter(Boolean).map(titleGroup);
+    let sections = picked.map(g => ({
+        title: g.title,
+        games: g.events.slice().sort((a, b) => new Date(a.date) - new Date(b.date)).map(toGame),
+    }));
+    let label = "";
+    if (sections.length === 1) {
+        let phase = picked[0].phase;
+        label = phase ? `${phase} · ${sections[0].title}` : sections[0].title;
+    } else if (sections.length > 1) {
+        label = `${sections[0].title.replace(". Spieltag", ".")}–${sections[1].title}`;
+    }
+    return { label, sections, games: sections.flatMap(sec => sec.games) };
+}
+
 async function loadWithCache(count) {
     try {
         if (VIEW === "ergebnisse") {
-            let data = await loadResults(count);
+            let data = COMPACT ? await loadResults(count) : await loadMatchdays();
             if (data.games.length) {
                 data.updated = Date.now();
                 fm.writeString(cachePath, JSON.stringify(data));
@@ -855,6 +919,82 @@ function buildResults(widget, data, columns, perColumn, images) {
     widget.addSpacer();
 }
 
+// Eine Zeile je Spiel: Logo Heim · Ergebnis bzw. Anstoß · Gast Logo
+function addGameRow(stack, game, images) {
+    let row = stack.addStack();
+    row.centerAlignContent();
+    row.url = `https://www.espn.com/soccer/match/_/gameId/${game.id}`;
+    let played = game.state !== "pre";
+    let draw = played && !game.home.winner && !game.away.winner;
+    let teamFont = team => (!played || draw ? Font.semiboldSystemFont(12)
+        : team.winner ? Font.boldSystemFont(12) : Font.mediumSystemFont(12));
+    let teamOpacity = team => (played && !draw && !team.winner && game.state === "post" ? 0.55 : 1);
+
+    addLogo(row, images, game.home.logo, 14);
+    row.addSpacer(3);
+    let home = row.addStack();
+    home.size = new Size(34, 0);
+    addLabel(home, game.home.abbr, teamFont(game.home), WHITE, teamOpacity(game.home));
+    home.addSpacer();
+
+    let mid = row.addStack();
+    mid.size = new Size(40, 0);
+    mid.addSpacer();
+    if (game.state === "pre") {
+        let df = new DateFormatter();
+        df.locale = "de_DE";
+        df.dateFormat = "EE HH:mm";
+        addLabel(mid, df.string(new Date(game.date)).replace(".", ""), Font.semiboldSystemFont(9), WHITE, 0.6);
+    } else {
+        addLabel(mid, `${game.home.score}:${game.away.score}`, Font.boldRoundedSystemFont(12),
+            game.state === "in" ? LIVE_RED : WHITE);
+    }
+    mid.addSpacer();
+
+    let away = row.addStack();
+    away.size = new Size(34, 0);
+    away.addSpacer();
+    addLabel(away, game.away.abbr, teamFont(game.away), WHITE, teamOpacity(game.away));
+    row.addSpacer(3);
+    addLogo(row, images, game.away.logo, 14);
+}
+
+// Großes Widget: ganze Spieltage, zwei Spalten mit je einem Spieltag (bzw. ein Spieltag auf beide verteilt)
+function buildMatchdays(widget, data, images) {
+    let header = widget.addStack();
+    header.centerAlignContent();
+    addLabel(header, `⚽️ ${LEAGUE.title}`, Font.semiboldSystemFont(15), WHITE);
+    header.addSpacer();
+    let info = [data.label, data.stale ? "offline" : ""].filter(Boolean).join(" · ");
+    addLabel(header, info, Font.semiboldSystemFont(11), WHITE, 0.6);
+    widget.addSpacer(10);
+
+    let columns;
+    if (data.sections.length > 1) {
+        columns = data.sections.slice(0, 2).map(sec => ({ title: sec.title, games: sec.games.slice(0, 10) }));
+    } else {
+        let games = data.sections[0].games.slice(0, 20);
+        let half = Math.ceil(games.length / 2);
+        columns = [{ games: games.slice(0, half) }, { games: games.slice(half) }];
+    }
+    let row = widget.addStack();
+    columns.forEach((column, c) => {
+        if (c > 0) row.addSpacer();
+        let col = row.addStack();
+        col.layoutVertically();
+        if (column.title) {
+            addLabel(col, column.title.toUpperCase(), Font.semiboldSystemFont(10), WHITE, 0.55);
+            col.addSpacer(5);
+        }
+        column.games.forEach((game, i) => {
+            if (i > 0) col.addSpacer(column.title ? 7 : 9);
+            addGameRow(col, game, images);
+        });
+        col.addSpacer();
+    });
+    widget.addSpacer();
+}
+
 // DFB-Pokal: links die letzten zwei Spiele, rechts die nächste Runde
 function addPokalGame(stack, game, images) {
     addLabel(stack, game.round || formatDay(game.date), Font.semiboldSystemFont(9), WHITE, 0.55);
@@ -1030,7 +1170,11 @@ function nextRefresh(data) {
     let now = Date.now();
     if (data && data.games) {
         let live = data.games.some(g => g.state === "in") && !data.stale;
-        return new Date(now + (live ? 5 : 30) * minute);
+        if (live) return new Date(now + 5 * minute);
+        // Nächster Anstoß innerhalb der nächsten halben Stunde: dann aktualisieren
+        let kickoffs = data.games.filter(g => g.state === "pre").map(g => new Date(g.date).getTime()).filter(t => t > now);
+        let soon = Math.min(...kickoffs, now + 30 * minute);
+        return new Date(Math.max(soon, now + 5 * minute));
     }
     if (data && data.live && !data.stale) return new Date(now + 5 * minute);
     if (data && data.next) {
@@ -1061,7 +1205,7 @@ async function createWidget() {
 
     let urls = [data.logo];
     if (VIEW === "ergebnisse") {
-        data.games.slice(0, columns * perColumn).forEach(g => urls.push(g.home.logo, g.away.logo));
+        data.games.slice(0, data.sections && !COMPACT ? 20 : columns * perColumn).forEach(g => urls.push(g.home.logo, g.away.logo));
     }
     if (data.last) urls.push(data.last.opponentLogo);
     (data.form || []).forEach(g => urls.push(g.opponentLogo));
@@ -1072,7 +1216,9 @@ async function createWidget() {
     if (data.pokal) data.pokal.lastTwo.forEach(g => urls.push(g.opponentLogo));
     let images = await loadLogos(urls);
 
-    if (VIEW === "ergebnisse") {
+    if (VIEW === "ergebnisse" && !COMPACT && data.sections && data.sections.length) {
+        buildMatchdays(widget, data, images);
+    } else if (VIEW === "ergebnisse") {
         buildResults(widget, data, columns, perColumn, images);
     } else if (VIEW === "pokal") {
         buildPokal(widget, data, images);
