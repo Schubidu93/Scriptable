@@ -1,5 +1,5 @@
 // ClubElo-Rangliste: aktuelle Top 10 und der Stand vor einem Monat (Rang und Elo-Punkte).
-// Läuft täglich per GitHub Actions und schreibt data/clubelo.json.
+// Läuft alle 6 Stunden per GitHub Actions und schreibt data/clubelo.json.
 // Ist ClubElo nicht erreichbar, bleibt die alte Datei stehen (kein Fehler – der nächste Lauf holt nach).
 
 import { writeFile, mkdir } from "node:fs/promises";
