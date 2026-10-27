@@ -325,9 +325,18 @@ function addEvent(stack, event, track) {
     addLabel(stack, `${f ? f + " " : ""}${city(event.venue)} · ${when}`, Font.mediumSystemFont(10), WHITE, 0.65);
 }
 
-// Geschätzte Zeilen des Namens (ca. 20 Zeichen je Zeile neben dem Kürzel)
+// Geschätzte Zeilen des Namens (ca. 17 Zeichen je Zeile neben dem Kürzel, Umbruch an Wortgrenzen)
 function nameLines(event, track) {
-    return Math.min(3, Math.max(1, Math.ceil(eventName(event, track).length / 20)));
+    let lines = 1, width = 0;
+    for (let word of eventName(event, track).split(" ")) {
+        if (width && width + 1 + word.length > 17) {
+            lines++;
+            width = word.length;
+        } else {
+            width += (width ? 1 : 0) + word.length;
+        }
+    }
+    return Math.min(3, lines);
 }
 
 // So viele Termine, wie in die Höhe passen – lange Namen brauchen zwei, drei Zeilen
