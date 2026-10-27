@@ -1,13 +1,20 @@
-// Fußball – Lieblingsteam (Standard: FC Bayern) in Bundesliga oder Champions League:
-// letztes Spiel, Form, nächstes Spiel (am Spieltag live) und Tabellen-Ausschnitt.
-// Quelle: ESPN (öffentliche Schnittstelle). Mittleres Widget, Aufbau wie das Browns-Widget.
+// Fußball mit Fokus FC Bayern. Quelle: ESPN (öffentliche Schnittstelle).
 //
-// Wettbewerb: "bundesliga" (Standard) oder "cl" – im Loader per
-// Function("LIGA", code)("cl") oder als Widget-Parameter, z. B. "cl".
+// Ansichten (ANSICHT):
+//   "team" (Standard): Lieblingsteam in Bundesliga oder CL – letztes Spiel, Form,
+//                      nächstes Spiel (am Spieltag live), Tabellen-Ausschnitt bzw. K.-o.-Runde
+//   "ergebnisse":      letzte Ergebnisse und laufende Spiele des Wettbewerbs
+//   "pokal":           DFB-Pokal – letzte zwei Spiele und nächste Runde
+// Wettbewerb (LIGA): "bundesliga" (Standard) oder "cl".
+//
+// Im Loader per Function("ANSICHT", "LIGA", code)("ergebnisse", "cl")
+// oder als Widget-Parameter, z. B. "ergebnisse cl" oder "pokal".
 
 const ESPN = "https://site.api.espn.com/apis/";
 const params = String(args.widgetParameter || "").trim().toLowerCase().split(/\s+/);
-const LEAGUE_KEY = String((typeof LIGA !== "undefined" && LIGA) || params.find(p => p === "cl" || p === "bundesliga") || "bundesliga").toLowerCase();
+const VIEW = String((typeof ANSICHT !== "undefined" && ANSICHT) || params.find(p => ["team", "ergebnisse", "pokal"].includes(p)) || "team").toLowerCase();
+const LEAGUE_KEY = VIEW === "pokal" ? "pokal"
+    : String((typeof LIGA !== "undefined" && LIGA) || params.find(p => p === "cl" || p === "bundesliga") || "bundesliga").toLowerCase();
 const TEAM_ID = String((typeof TEAM !== "undefined" && TEAM) || "132"); // 132 = FC Bayern München
 
 const LEAGUES = {
@@ -25,11 +32,18 @@ const LEAGUES = {
         colors: ["#1B2A6B", "#070F33"],
         url: "https://www.espn.com/soccer/standings/_/league/uefa.champions",
     },
+    pokal: {
+        slug: "ger.dfb_pokal",
+        title: "DFB-Pokal",
+        table: "",
+        colors: ["#1E6B3A", "#0A2E18"],
+        url: "https://www.espn.com/soccer/scoreboard/_/league/ger.dfb_pokal",
+    },
 };
 const LEAGUE = LEAGUES[LEAGUE_KEY] || LEAGUES.bundesliga;
 
 const fm = FileManager.local();
-const cachePath = fm.joinPath(fm.cacheDirectory(), `fussball-${LEAGUE_KEY}-${TEAM_ID}.json`);
+const cachePath = fm.joinPath(fm.cacheDirectory(), `fussball-${VIEW}-${LEAGUE_KEY}-${TEAM_ID}.json`);
 const DIAG = [];
 
 // Zeitpunkt der angezeigten Daten (bei Offline-Anzeige der des Zwischenspeichers)
@@ -92,6 +106,18 @@ const GERMAN_NAMES = [
     ["Hannover 96", "H96", "Hannover 96", "Hannover"],
     ["Paderborn", "SCP", "SC Paderborn 07", "Paderborn"],
     ["Kaiserslautern", "FCK", "1 FC Kaiserslautern", "Kaiserslautern"],
+    ["Elversberg", "SVE", "SV Elversberg", "SV 07 Elversberg", "Elversberg"],
+    ["Magdeburg", "FCM", "1 FC Magdeburg", "Magdeburg"],
+    ["Nürnberg", "FCN", "1 FC Nurnberg", "Nurnberg", "FC Nurnberg"],
+    ["Karlsruhe", "KSC", "Karlsruher SC", "Karlsruhe"],
+    ["Bielefeld", "DSC", "Arminia Bielefeld", "Bielefeld"],
+    ["Fürth", "SGF", "Greuther Furth", "SpVgg Greuther Furth", "Furth"],
+    ["Braunschweig", "EBS", "Eintracht Braunschweig", "Braunschweig"],
+    ["Münster", "SCM", "Preussen Munster", "SC Preussen Munster", "Munster"],
+    ["Dresden", "SGD", "Dynamo Dresden", "Dresden"],
+    ["Saarbrücken", "FCS", "1 FC Saarbrucken", "Saarbrucken"],
+    ["Regensburg", "SSV", "Jahn Regensburg", "SSV Jahn Regensburg", "Regensburg"],
+    ["Rostock", "FCH", "Hansa Rostock", "FC Hansa Rostock", "Rostock"],
     ["Real Madrid", "RMA", "Real Madrid"],
     ["FC Barcelona", "BAR", "Barcelona", "FC Barcelona"],
     ["Atlético Madrid", "ATM", "Atletico Madrid", "Atletico de Madrid"],
@@ -201,6 +227,8 @@ function gameInfo(event) {
     return {
         id: String(event.id),
         date: comp.date || event.date,
+        round: roundOf(event),
+        suffix: resultSuffix(event, us, them),
         home: us.homeAway === "home",
         opponent: germanTeam(them.team).abbr,
         opponentName: germanTeam(them.team).name,
@@ -216,13 +244,87 @@ function involvesTeam(event) {
     return comp && comp.competitors.some(c => String(c.team.id) === TEAM_ID);
 }
 
-// Alle Spiele des Wettbewerbs in einem Zeitraum, davon die des eigenen Teams
-async function loadGames() {
+// "n.V." / "i.E. 4:3" bei Verlängerung bzw. Elfmeterschießen
+function resultSuffix(event, us, them) {
+    let type = statusOf(event).type || {};
+    let text = `${type.detail || ""} ${type.shortDetail || ""} ${type.description || ""}`;
+    if (us && them && us.shootoutScore != null && them.shootoutScore != null) {
+        return `i.E. ${us.shootoutScore}:${them.shootoutScore}`;
+    }
+    if (/pen/i.test(text)) return "i.E.";
+    if (/AET|extra time/i.test(text)) return "n.V.";
+    return "";
+}
+
+// Runde aus den ESPN-Angaben (Notizen, Saison-Abschnitt) – auf Deutsch
+const ROUND_WORDS = [
+    [/knockout round play-?offs?|play-?off/i, "Playoffs"],
+    [/round of 16|last 16|eighth/i, "Achtelfinale"],
+    [/quarter/i, "Viertelfinale"],
+    [/semi/i, "Halbfinale"],
+    [/\bfinal\b/i, "Finale"],
+    [/league phase|league stage/i, "Ligaphase"],
+    [/group/i, "Gruppenphase"],
+    [/first round|1st round|round 1\b/i, "1. Runde"],
+    [/second round|2nd round|round 2\b/i, "2. Runde"],
+];
+const POKAL_ROUNDS = ["1. Runde", "2. Runde", "Achtelfinale", "Viertelfinale", "Halbfinale", "Finale"];
+
+function eventTexts(event) {
+    let comp = (event.competitions && event.competitions[0]) || {};
+    let notes = (comp.notes || []).concat(event.notes || []).map(n => n.headline || n.text || "");
+    let season = event.season ? [event.season.slug, event.season.name, event.season.displayName] : [];
+    return notes.concat(season).filter(Boolean).map(t => String(t).replace(/-/g, " ")).join(" | ");
+}
+
+function roundOf(event) {
+    let text = eventTexts(event);
+    let hit = ROUND_WORDS.find(([re]) => re.test(text));
+    if (hit) return hit[1];
+    if (LEAGUE_KEY === "cl") {
+        let month = new Date(event.date).getMonth(); // Ligaphase: September bis Januar
+        return month >= 6 || month === 0 ? "Ligaphase" : "K.-o.-Runde";
+    }
+    return "";
+}
+
+function legOf(event) {
+    let text = eventTexts(event);
+    if (/1st leg|first leg/i.test(text)) return "Hinspiel";
+    if (/2nd leg|second leg/i.test(text)) return "Rückspiel";
+    return "";
+}
+
+// Saison von Juli bis Juni
+function seasonRange() {
     let now = new Date();
-    let from = new Date(now.getTime() - 240 * 86400000);
-    let to = new Date(now.getTime() + 120 * 86400000);
+    let year = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+    let from = new Date(year, 6, 1);
+    let to = new Date(Math.max(new Date(year + 1, 5, 30).getTime(), now.getTime() + 120 * 86400000));
+    return { from, to };
+}
+
+// Alle Spiele des Wettbewerbs in der laufenden Saison (einmal geladen)
+let SEASON_EVENTS = null;
+async function loadSeasonEvents() {
+    if (SEASON_EVENTS) return SEASON_EVENTS;
+    let { from, to } = seasonRange();
     let json = await loadJSON(`site/v2/sports/soccer/${LEAGUE.slug}/scoreboard?dates=${ymd(from)}-${ymd(to)}&limit=1000`);
-    return (json.events || []).filter(involvesTeam).sort((a, b) => new Date(a.date) - new Date(b.date));
+    SEASON_EVENTS = (json.events || []).sort((a, b) => new Date(a.date) - new Date(b.date));
+    return SEASON_EVENTS;
+}
+
+async function loadGames() {
+    return (await loadSeasonEvents()).filter(involvesTeam);
+}
+
+// Spieltag = wievieltes Spiel der Heimmannschaft in dieser Phase
+function matchdayOf(event, all) {
+    let home = event.competitions[0].competitors.find(c => c.homeAway === "home") || event.competitions[0].competitors[0];
+    let phase = roundOf(event);
+    let date = new Date(event.date);
+    return all.filter(e => roundOf(e) === phase && new Date(e.date) <= date
+        && e.competitions[0].competitors.some(c => String(c.team.id) === String(home.team.id))).length;
 }
 
 // Alle Gruppen mit Tabelleneinträgen einsammeln
@@ -271,10 +373,39 @@ async function loadData() {
     let liveEvent = games.find(e => stateOf(e) === "in");
     let upcoming = games.filter(e => stateOf(e) === "pre");
 
-    let last = finished.length ? gameInfo(finished[finished.length - 1]) : null;
-    let form = finished.slice(-5).map(gameInfo);
-    let live = liveEvent ? { ...gameInfo(liveEvent), detail: liveDetail(statusOf(liveEvent)) } : null;
-    let next = upcoming.length ? gameInfo(upcoming[0]) : null;
+    // DFB-Pokal: Runde notfalls über die Reihenfolge der Spiele bestimmen
+    let info = e => {
+        let g = gameInfo(e);
+        if (LEAGUE_KEY === "pokal" && !g.round) g.round = POKAL_ROUNDS[games.indexOf(e)] || "";
+        g.leg = legOf(e);
+        return g;
+    };
+    let last = finished.length ? info(finished[finished.length - 1]) : null;
+    let form = finished.slice(-5).map(info);
+    let live = liveEvent ? { ...info(liveEvent), detail: liveDetail(statusOf(liveEvent)) } : null;
+    let next = upcoming.length ? info(upcoming[0]) : null;
+
+    // CL: Nach der Ligaphase statt Tabelle die aktuelle K.-o.-Runde mit Hin- und Rückspiel
+    let knockout = null;
+    if (LEAGUE_KEY === "cl") {
+        let current = live || next || last;
+        if (current && current.round && current.round !== "Ligaphase") {
+            knockout = { round: current.round, legs: games.map(info).filter(g => g.round === current.round) };
+        }
+    }
+
+    // Pokal: letzte zwei Spiele, Status und nächste Runde
+    let pokal = null;
+    if (LEAGUE_KEY === "pokal") {
+        let lastTwo = finished.slice(-2).map(info).reverse();
+        let status = "aktiv";
+        if (!live && !next && last) {
+            if (last.result === "N") status = "ausgeschieden";
+            else if (last.round === "Finale") status = "sieger";
+        }
+        let nextRound = next ? next.round : last ? POKAL_ROUNDS[POKAL_ROUNDS.indexOf(last.round) + 1] || "" : POKAL_ROUNDS[0];
+        pokal = { lastTwo, status, nextRound };
+    }
 
     let team = null;
     for (let e of games) {
@@ -284,7 +415,7 @@ async function loadData() {
 
     let standings = null;
     try {
-        standings = parseStandings(await loadJSON(`v2/sports/soccer/${LEAGUE.slug}/standings`));
+        if (LEAGUE_KEY !== "pokal") standings = parseStandings(await loadJSON(`v2/sports/soccer/${LEAGUE.slug}/standings`));
     } catch (e) {
         console.log(`Tabelle nicht geladen: ${e}`);
     }
@@ -292,19 +423,66 @@ async function loadData() {
     return {
         name: team ? germanTeam(team).name : "FC Bayern",
         logo: team ? logoUrl(team) : null,
-        record: standings && standings.own ? `${standings.own.points} Pkt` : "",
+        record: LEAGUE_KEY !== "pokal" && !knockout && standings && standings.own ? `${standings.own.points} Pkt` : "",
         last,
         form,
         live,
         next,
         standings,
+        knockout,
+        pokal,
     };
 }
 
-async function loadWithCache() {
+// Ergebnisse-Ansicht: laufende Spiele zuerst, dann die neuesten Ergebnisse
+async function loadResults(count) {
+    let all = await loadSeasonEvents();
+    let played = all.filter(e => stateOf(e) !== "pre");
+    played.sort((a, b) => (stateOf(b) === "in") - (stateOf(a) === "in") || new Date(b.date) - new Date(a.date));
+    let shown = played.slice(0, count);
+
+    let side = (event, homeAway) => {
+        let c = event.competitions[0].competitors.find(x => x.homeAway === homeAway);
+        let german = germanTeam(c.team);
+        return { id: String(c.team.id), abbr: german.abbr, logo: logoUrl(c.team), score: score(c), winner: c.winner === true };
+    };
+    let games = shown.map(e => ({
+        id: String(e.id),
+        date: e.date,
+        state: stateOf(e),
+        detail: stateOf(e) === "in" ? liveDetail(statusOf(e)) : resultSuffix(e),
+        home: side(e, "home"),
+        away: side(e, "away"),
+    }));
+
+    // Überschrift: Spieltag(e) bzw. Runde des neuesten Spiels
+    let label = "";
+    if (shown.length) {
+        let round = roundOf(shown[0]);
+        if (!round || round === "Ligaphase") {
+            let days = [...new Set(shown.map(e => matchdayOf(e, all)))].sort((a, b) => a - b);
+            let span = days.length > 1 ? `${days[0]}.–${days[days.length - 1]}. Spieltag` : `${days[0]}. Spieltag`;
+            label = round ? `${round} · ${span}` : span;
+        } else {
+            label = [round, legOf(shown[0])].filter(Boolean).join(" · ");
+        }
+    }
+    return { label, games };
+}
+
+async function loadWithCache(count) {
     try {
+        if (VIEW === "ergebnisse") {
+            let data = await loadResults(count);
+            if (data.games.length) {
+                data.updated = Date.now();
+                fm.writeString(cachePath, JSON.stringify(data));
+                return data;
+            }
+            throw new Error("Keine Ergebnisse gefunden");
+        }
         let data = await loadData();
-        if (data.last || data.next || data.live) {
+        if (data.last || data.next || data.live || LEAGUE_KEY === "pokal") {
             data.updated = Date.now();
             fm.writeString(cachePath, JSON.stringify(data));
             return data;
@@ -521,6 +699,196 @@ function addStandings(stack, data, images) {
     });
 }
 
+// CL nach der Ligaphase: Runde mit Hin- und Rückspiel statt Tabelle
+function addKnockout(stack, data, images) {
+    addSectionTitle(stack, data.knockout.round);
+    data.knockout.legs.forEach(leg => {
+        stack.addSpacer(5);
+        addLabel(stack, leg.leg || formatDay(leg.date), Font.semiboldSystemFont(9), WHITE, 0.55);
+        stack.addSpacer(1);
+        let row = stack.addStack();
+        row.centerAlignContent();
+        if (leg.result) {
+            addBadge(row, leg.result, 15);
+            row.addSpacer(5);
+            addLabel(row, `${leg.ourScore}:${leg.theirScore}`, Font.boldRoundedSystemFont(14), WHITE);
+        } else {
+            addLabel(row, formatDay(leg.date), Font.semiboldSystemFont(12), WHITE, 0.85);
+        }
+        row.addSpacer(5);
+        addLabel(row, leg.home ? "vs" : "@", Font.mediumSystemFont(10), WHITE, 0.6);
+        row.addSpacer(3);
+        addLogo(row, images, leg.opponentLogo, 14);
+        row.addSpacer(3);
+        addLabel(row, leg.opponent, Font.semiboldSystemFont(11), WHITE);
+        if (leg.suffix) {
+            row.addSpacer(3);
+            addLabel(row, leg.suffix, Font.mediumSystemFont(9), WHITE, 0.6);
+        }
+    });
+}
+
+// Ergebnisse-Ansicht: Heim oben, Gast unten; Bayern hervorgehoben, laufende Spiele mit Minute
+function addResultLine(stack, team, game, images) {
+    let row = stack.addStack();
+    row.centerAlignContent();
+    addLogo(row, images, team.logo, 14);
+    row.addSpacer(4);
+    let mine = team.id === TEAM_ID;
+    let loser = game.state === "post" && !team.winner && (game.home.winner || game.away.winner);
+    addLabel(row, team.abbr, team.winner || mine ? Font.boldSystemFont(12) : Font.mediumSystemFont(12), mine ? ACCENT : WHITE, loser ? 0.55 : 1);
+    row.addSpacer();
+    addLabel(row, team.score, team.winner ? Font.boldMonospacedSystemFont(12) : Font.mediumMonospacedSystemFont(12), WHITE, loser ? 0.55 : 1);
+}
+
+function addResult(stack, game, images) {
+    let box = stack.addStack();
+    box.layoutVertically();
+    box.url = `https://www.espn.com/soccer/match/_/gameId/${game.id}`;
+    addResultLine(box, game.home, game, images);
+    box.addSpacer(1);
+    addResultLine(box, game.away, game, images);
+    if (game.state === "in") {
+        box.addSpacer(1);
+        addLabel(box, `● ${game.detail}`, Font.semiboldSystemFont(9), LIVE_RED);
+    } else if (game.detail) {
+        box.addSpacer(1);
+        addLabel(box, game.detail, Font.mediumSystemFont(9), WHITE, 0.55);
+    }
+}
+
+function buildResults(widget, data, columns, perColumn, images) {
+    let header = widget.addStack();
+    header.centerAlignContent();
+    addLabel(header, `⚽️ ${LEAGUE.title}`, Font.semiboldSystemFont(15), WHITE);
+    header.addSpacer();
+    let info = [data.label, data.stale ? "offline" : ""].filter(Boolean).join(" · ");
+    addLabel(header, info, Font.semiboldSystemFont(11), WHITE, 0.6);
+
+    widget.addSpacer(8);
+
+    let games = data.games.slice(0, columns * perColumn);
+    let row = widget.addStack();
+    for (let c = 0; c < columns; c++) {
+        if (c > 0) row.addSpacer(columns > 2 ? 12 : 18);
+        let col = row.addStack();
+        col.layoutVertically();
+        games.slice(c * perColumn, (c + 1) * perColumn).forEach((game, i) => {
+            if (i > 0) col.addSpacer(6);
+            addResult(col, game, images);
+        });
+        col.addSpacer();
+    }
+    widget.addSpacer();
+}
+
+// DFB-Pokal: links die letzten zwei Spiele, rechts die nächste Runde
+function addPokalGame(stack, game, images) {
+    addLabel(stack, game.round || formatDay(game.date), Font.semiboldSystemFont(9), WHITE, 0.55);
+    stack.addSpacer(1);
+    let row = stack.addStack();
+    row.centerAlignContent();
+    addBadge(row, game.result, 18);
+    row.addSpacer(6);
+    addLabel(row, `${game.ourScore}:${game.theirScore}`, Font.boldRoundedSystemFont(20), WHITE);
+    if (game.suffix) {
+        row.addSpacer(4);
+        addLabel(row, game.suffix, Font.semiboldSystemFont(9), WHITE, 0.7);
+    }
+    row.addSpacer(6);
+    addLabel(row, game.home ? "vs" : "@", Font.mediumSystemFont(10), WHITE, 0.6);
+    row.addSpacer(3);
+    addLogo(row, images, game.opponentLogo, 15);
+    row.addSpacer(3);
+    addLabel(row, game.opponent, Font.semiboldSystemFont(11), WHITE);
+}
+
+function addPokalNext(stack, data, images) {
+    let pokal = data.pokal;
+    if (data.live) {
+        addLiveGame(stack, data.live, images);
+        return;
+    }
+    if (pokal.status === "sieger") {
+        addSectionTitle(stack, "Saison");
+        stack.addSpacer(4);
+        let row = stack.addStack();
+        row.centerAlignContent();
+        let trophy = SFSymbol.named("trophy.fill");
+        trophy.applyFont(Font.systemFont(22));
+        let img = row.addImage(trophy.image);
+        img.imageSize = new Size(22, 22);
+        img.tintColor = ACCENT;
+        row.addSpacer(6);
+        addLabel(row, "Pokalsieger", Font.boldSystemFont(15), ACCENT);
+        return;
+    }
+    if (pokal.status === "ausgeschieden") {
+        addSectionTitle(stack, "Ausgeschieden");
+        stack.addSpacer(4);
+        addLabel(stack, data.last.round || "", Font.semiboldSystemFont(15), WHITE);
+        addLabel(stack, `gegen ${data.last.opponentName}`, Font.mediumSystemFont(11), WHITE, 0.7);
+        return;
+    }
+    addSectionTitle(stack, "Nächste Runde");
+    stack.addSpacer(3);
+    addLabel(stack, pokal.nextRound || "–", Font.boldSystemFont(15), WHITE);
+    stack.addSpacer(3);
+    if (data.next) {
+        let row = stack.addStack();
+        row.centerAlignContent();
+        addLabel(row, data.next.home ? "vs" : "@", Font.mediumSystemFont(11), WHITE, 0.6);
+        row.addSpacer(4);
+        addLogo(row, images, data.next.opponentLogo, 18);
+        row.addSpacer(4);
+        addLabel(row, data.next.opponentName, Font.semiboldSystemFont(13), WHITE);
+        addLabel(stack, formatKickoff(data.next.date), Font.mediumSystemFont(10), WHITE, 0.6);
+    } else {
+        addLabel(stack, "Gegner wird ausgelost", Font.mediumSystemFont(11), WHITE, 0.7);
+    }
+}
+
+function buildPokal(widget, data, images) {
+    let header = widget.addStack();
+    header.centerAlignContent();
+    let cup = SFSymbol.named("trophy.fill");
+    cup.applyFont(Font.systemFont(16));
+    let cupImg = header.addImage(cup.image);
+    cupImg.imageSize = new Size(18, 18);
+    cupImg.tintColor = ACCENT;
+    header.addSpacer(6);
+    addLabel(header, "DFB-Pokal", Font.semiboldSystemFont(15), WHITE);
+    header.addSpacer(8);
+    addLogo(header, images, data.logo, 18);
+    header.addSpacer();
+    if (data.stale) addLabel(header, "offline", Font.semiboldSystemFont(10), WHITE, 0.6);
+
+    widget.addSpacer(8);
+
+    let body = widget.addStack();
+    let left = body.addStack();
+    left.layoutVertically();
+    addSectionTitle(left, "Letzte Spiele");
+    if (!data.pokal.lastTwo.length) {
+        left.addSpacer(3);
+        addLabel(left, "Noch kein Spiel", Font.mediumSystemFont(12), WHITE, 0.7);
+    }
+    data.pokal.lastTwo.forEach(game => {
+        left.addSpacer(5);
+        addPokalGame(left, game, images);
+    });
+    left.addSpacer();
+
+    body.addSpacer(12);
+    body.addSpacer();
+
+    let right = body.addStack();
+    right.layoutVertically();
+    right.size = new Size(120, 0);
+    addPokalNext(right, data, images);
+    right.addSpacer();
+}
+
 function buildMedium(widget, data, images) {
     let header = widget.addStack();
     header.centerAlignContent();
@@ -553,7 +921,8 @@ function buildMedium(widget, data, images) {
     let right = body.addStack();
     right.layoutVertically();
     right.size = new Size(110, 0);
-    addStandings(right, data, images);
+    if (data.knockout) addKnockout(right, data, images);
+    else addStandings(right, data, images);
     right.addSpacer();
 }
 
@@ -588,6 +957,10 @@ function buildError(widget) {
 function nextRefresh(data) {
     let minute = 60 * 1000;
     let now = Date.now();
+    if (data && data.games) {
+        let live = data.games.some(g => g.state === "in") && !data.stale;
+        return new Date(now + (live ? 5 : 30) * minute);
+    }
     if (data && data.live && !data.stale) return new Date(now + 5 * minute);
     if (data && data.next) {
         let kickoff = new Date(data.next.date).getTime();
@@ -598,12 +971,16 @@ function nextRefresh(data) {
 }
 
 async function createWidget() {
-    let data = await loadWithCache();
+    let large = config.widgetFamily === "large" || config.widgetFamily === "extraLarge";
+    let columns = large ? 2 : 3;
+    let perColumn = large ? 7 : 3;
+
+    let data = await loadWithCache(columns * perColumn);
     let widget = new ListWidget();
-    widget.url = LEAGUE.url;
+    widget.url = VIEW === "ergebnisse" ? `https://www.espn.com/soccer/scoreboard/_/league/${LEAGUE.slug}` : LEAGUE.url;
     widget.refreshAfterDate = nextRefresh(data);
     background(widget);
-    widget.setPadding(12, 16, 4, 16);
+    widget.setPadding(VIEW === "ergebnisse" ? 18 : 12, 16, 4, 16);
 
     if (!data) {
         buildError(widget);
@@ -611,14 +988,23 @@ async function createWidget() {
     }
 
     let urls = [data.logo];
+    if (VIEW === "ergebnisse") {
+        data.games.slice(0, columns * perColumn).forEach(g => urls.push(g.home.logo, g.away.logo));
+    }
     if (data.last) urls.push(data.last.opponentLogo);
     (data.form || []).forEach(g => urls.push(g.opponentLogo));
     if (data.next) urls.push(data.next.opponentLogo);
     if (data.live) urls.push(data.live.opponentLogo);
     if (data.standings) data.standings.rows.forEach(r => urls.push(r.logo));
+    if (data.knockout) data.knockout.legs.forEach(g => urls.push(g.opponentLogo));
+    if (data.pokal) data.pokal.lastTwo.forEach(g => urls.push(g.opponentLogo));
     let images = await loadLogos(urls);
 
-    if (config.widgetFamily === "small") {
+    if (VIEW === "ergebnisse") {
+        buildResults(widget, data, columns, perColumn, images);
+    } else if (VIEW === "pokal") {
+        buildPokal(widget, data, images);
+    } else if (config.widgetFamily === "small") {
         buildSmall(widget, data, images);
     } else {
         buildMedium(widget, data, images);

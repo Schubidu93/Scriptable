@@ -20,6 +20,9 @@ const SCRIPTS = [
     { name: "Biathlon Weltcup", file: "Biathlon.js", params: { ANSICHT: "weltcup" }, glyph: "trophy", color: "blue" },
     { name: "Bayern Bundesliga", file: "Fussball.js", params: { LIGA: "bundesliga" }, glyph: "futbol", color: "red" },
     { name: "Bayern CL", file: "Fussball.js", params: { LIGA: "cl" }, glyph: "futbol", color: "deep-blue" },
+    { name: "Bundesliga Ergebnisse", file: "Fussball.js", params: { ANSICHT: "ergebnisse", LIGA: "bundesliga" }, glyph: "futbol", color: "red" },
+    { name: "CL Ergebnisse", file: "Fussball.js", params: { ANSICHT: "ergebnisse", LIGA: "cl" }, glyph: "futbol", color: "deep-blue" },
+    { name: "DFB-Pokal", file: "Fussball.js", params: { ANSICHT: "pokal" }, glyph: "trophy", color: "green" },
     { name: "Browns", file: "NFL_Team.js", glyph: "football-ball", color: "orange" },
     { name: "NFL Ergebnisse", file: "NFL_Scores.js", glyph: "football-ball", color: "deep-blue" },
 ];
