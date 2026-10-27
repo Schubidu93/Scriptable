@@ -17,6 +17,7 @@ const VIEW = String((typeof ANSICHT !== "undefined" && ANSICHT) || params.find(p
 const LEAGUE_KEY = VIEW === "pokal" ? "pokal"
     : String((typeof LIGA !== "undefined" && LIGA) || params.find(p => ["cl", "el", "ecl", "bundesliga"].includes(p)) || "bundesliga").toLowerCase();
 const TEAM_ID = String((typeof TEAM !== "undefined" && TEAM) || "132"); // 132 = FC Bayern München
+// Andere Vereine per Function("LIGA", "TEAM", code)("ecl", "489") – z. B. 489 = Hajduk Split
 
 const LEAGUES = {
     bundesliga: {
