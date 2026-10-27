@@ -56,16 +56,40 @@ function sleep(ms) {
 }
 
 // Fallback: Seite in einem unsichtbaren Browser laden, bis die Cloudflare-Prüfung durch ist
-async function loadInWebView(url) {
+// (optional mit eigener Bedingung, wann die Seite fertig ist)
+async function loadInWebView(url, ready = html => !isChallenge(html) && /<table/i.test(html)) {
     let wv = new WebView();
     await wv.loadURL(url);
     let html = "";
     for (let i = 0; i < 12; i++) {
         html = await wv.evaluateJavaScript("document.documentElement.outerHTML");
-        if (!isChallenge(html) && /<table/i.test(html)) break;
+        if (ready(html)) break;
         await sleep(1000);
     }
     return html;
+}
+
+// Ergebnisseite laden. Fehlt die Ergebnisliste im HTML (wird bei manchen Seiten
+// erst per JavaScript nachgeladen), die Seite im unsichtbaren Browser öffnen.
+async function loadResultPage(path, hasResults) {
+    let html = await load(path);
+    if (hasResults(html)) return html;
+    try {
+        let rendered = await loadInWebView(PCS + path, hasResults);
+        if (hasResults(rendered)) return rendered;
+        html = html.replace(/<title[^>]*>/i, "$&[Browser] ");
+    } catch (e) {
+        console.log(`Browser für ${path}: ${e}`);
+    }
+    return html;
+}
+
+function hasPodium(html) {
+    return parsePodium(html).length > 0;
+}
+
+function hasStageOrGC(html) {
+    return (parseTab(html, "STAGE") || []).length > 0 || (parseTab(html, "GC") || []).length > 0 || hasPodium(html);
 }
 
 async function load(path) {
@@ -215,7 +239,8 @@ function parsePodium(html) {
     }
     let empty = [];
     let riderLinks = (html.match(/href=["'][^"']*?\brider\//gi) || []).length;
-    empty.debug = `${pageTitle(html)} · ${tables.length} Tabellen · ${riderLinks} Fahrer`;
+    let rows = (html.match(/<tr/gi) || []).length;
+    empty.debug = `${pageTitle(html)} · ${tables.length} Tabellen · ${rows} Zeilen · ${riderLinks} Fahrer`;
     return empty;
 }
 
@@ -303,7 +328,7 @@ async function loadData() {
             if (race.stageRace) {
                 entries = entries.concat(await loadStageEntries(race, today, need));
             } else {
-                let podium = parsePodium(await load(resultPath(race)));
+                let podium = parsePodium(await loadResultPage(resultPath(race), hasPodium));
                 entries.push({ ...race, label: "", date: race.end, path: resultPath(race), podium, debug: podium.debug });
             }
         } catch (e) {
@@ -323,7 +348,7 @@ async function loadData() {
 // Die verlinkte Seite enthält beide als Reiter "STAGE" und "GC".
 async function loadStageEntries(race, today, need) {
     let path = resultPath(race);
-    let html = await load(path);
+    let html = await loadResultPage(path, hasStageOrGC);
     let isRunning = !race.finished;
 
     let stagePodium = parseTab(html, "STAGE");
