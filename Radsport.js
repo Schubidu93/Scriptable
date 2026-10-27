@@ -22,8 +22,9 @@ function pageTitle(html) {
 }
 
 // Cloudflare-Prüfseite statt Inhalt?
+// (Normale Seiten binden auch Cloudflare-Skripte ein – daher nur am Titel erkennen)
 function isChallenge(html) {
-    return /Just a moment|cf-chl|challenge-platform|Attention Required/i.test(html || "");
+    return /Just a moment|Attention Required|Checking your browser/i.test(pageTitle(html));
 }
 
 function sleep(ms) {
@@ -96,20 +97,25 @@ function cleanText(html) {
 function parseCalendar(html, year) {
     let rows = html.match(/<tr[\s\S]*?<\/tr>/gi) || [];
     return rows.map(row => {
-        let link = /href="\/?(race\/([^"\/]+)\/(\d{4})[^"]*)"[^>]*>([\s\S]*?)<\/a>/i.exec(row);
+        // Links können relativ ("race/…") oder absolut ("https://www.procyclingstats.com/race/…") sein
+        let link = /href=["'][^"']*?\brace\/([^"'\/?#]+)\/(\d{4})[^"']*["'][^>]*>([\s\S]*?)<\/a>/i.exec(row);
         if (!link) return null;
-        let dates = [...cleanText(row).matchAll(/(\d{2})\.(\d{2})/g)].map(m => new Date(year, m[2] - 1, m[1]));
+        let text = cleanText(row);
+        let dates = [...text.matchAll(/\b(\d{1,2})\.(\d{1,2})\b/g)].map(m => new Date(year, m[2] - 1, m[1]));
+        if (!dates.length) {
+            dates = [...text.matchAll(/\b(\d{4})-(\d{2})-(\d{2})\b/g)].map(m => new Date(m[1], m[2] - 1, m[3]));
+        }
         if (!dates.length) return null;
         let cls = (/\b([12]\.[A-Za-z0-9.]+)/.exec(cleanText(row)) || [])[1] || "";
         return {
-            name: cleanText(link[4]),
+            name: cleanText(link[3]),
             flag: flagEmoji(row.slice(0, link.index)),
-            slug: link[2],
-            year: link[3],
+            slug: link[1],
+            year: link[2],
             start: dates[0],
             end: dates[1] || dates[0],
             stageRace: cls.startsWith("2."),
-            finished: /href="\/?rider\//i.test(row),
+            finished: /href=["'][^"']*?\brider\//i.test(row),
         };
     }).filter(Boolean);
 }
@@ -149,8 +155,8 @@ function parsePodium(html) {
     let body = (table.match(/<tbody[\s\S]*?<\/tbody>/i) || [table])[0];
     return (body.match(/<tr[\s\S]*?<\/tr>/gi) || [])
         .map(row => {
-            let rider = /<a[^>]*href="\/?rider\/[^"]*"[^>]*>([\s\S]*?)<\/a>/i.exec(row);
-            let team = /<a[^>]*href="\/?team\/[^"]*"[^>]*>([\s\S]*?)<\/a>/i.exec(row);
+            let rider = /<a[^>]*href=["'][^"']*?\brider\/[^"']*["'][^>]*>([\s\S]*?)<\/a>/i.exec(row);
+            let team = /<a[^>]*href=["'][^"']*?\bteam\/[^"']*["'][^>]*>([\s\S]*?)<\/a>/i.exec(row);
             if (!rider) return null;
             return {
                 rider: shortRider(rider[1]),
@@ -168,6 +174,13 @@ async function loadCalendar(year) {
     if (!races.length) {
         let rows = (html.match(/<tr/gi) || []).length;
         DIAG.push(`Kalender ${year}: ${rows} Zeilen, 0 Rennen erkannt · ${pageTitle(html)}`);
+        // Beispielzeile für die Fehlersuche: Text und erste Links
+        let sample = (html.match(/<tr[\s\S]*?<\/tr>/gi) || []).find(r => /<a\s/i.test(r));
+        if (sample) {
+            let hrefs = [...sample.matchAll(/href=["']([^"']+)["']/gi)].map(m => m[1]).slice(0, 2).join(" | ");
+            DIAG.push(`Zeile: ${cleanText(sample).slice(0, 70)}`);
+            DIAG.push(`Links: ${hrefs.slice(0, 120)}`);
+        }
     }
     return races;
 }
@@ -350,7 +363,7 @@ function buildLarge(widget, data) {
     if (!data) {
         addLabel(widget, "Keine Daten – später erneut versuchen", Font.mediumSystemFont(13), WHITE, 0.8);
         widget.addSpacer(8);
-        DIAG.slice(0, 6).forEach(line => {
+        DIAG.slice(0, 8).forEach(line => {
             let t = addLabel(widget, line, Font.regularMonospacedSystemFont(10), WHITE, 0.6);
             t.lineLimit = 2;
         });
