@@ -350,6 +350,9 @@ function addTypeTag(stack, type) {
     stack.addSpacer(5);
 }
 
+// Schriftgröße der Athletennamen – in Rennergebnissen und Gesamtweltcup gleich
+const NAME_SIZE = 10.5;
+
 function addPastRace(stack, race) {
     let block = stack.addStack();
     block.layoutVertically();
@@ -368,7 +371,9 @@ function addPastRace(stack, race) {
         row.centerAlignContent();
         addSymbol(row, `${i + 1}.circle.fill`, 12, MEDALS[i]);
         row.addSpacer(5);
-        addLabel(row, withFlag(p.nat, p.name), Font.mediumSystemFont(11), p.nat === "GER" ? GERMAN : WHITE);
+        // Gleiche Größe wie im Gesamtweltcup; nicht automatisch verkleinern, damit beide gleich wirken
+        addLabel(row, withFlag(p.nat, p.name), Font.mediumSystemFont(NAME_SIZE), p.nat === "GER" ? GERMAN : WHITE)
+            .minimumScaleFactor = 1;
         row.addSpacer(6);
         row.addSpacer();
         addLabel(row, p.time, Font.mediumMonospacedSystemFont(10), WHITE, 0.6);
@@ -426,12 +431,13 @@ function addCupColumn(stack, title, cup, compact) {
         col.addSpacer(compact ? 1 : 4);
         let row = col.addStack();
         row.centerAlignContent();
-        addLabel(row, `${r.rank}`, Font.mediumMonospacedSystemFont(compact ? 10 : 12), WHITE, 0.6);
+        addLabel(row, `${r.rank}`, Font.mediumMonospacedSystemFont(NAME_SIZE), WHITE, 0.6);
         row.addSpacer(4);
-        addLabel(row, withFlag(r.nat, r.name), Font.mediumSystemFont(compact ? 11 : 13), r.nat === "GER" ? GERMAN : WHITE);
+        addLabel(row, withFlag(r.nat, r.name), Font.mediumSystemFont(NAME_SIZE), r.nat === "GER" ? GERMAN : WHITE)
+            .minimumScaleFactor = 1;
         row.addSpacer(4);
         row.addSpacer();
-        addLabel(row, `${r.score}`, Font.semiboldMonospacedSystemFont(compact ? 10 : 12), WHITE, 0.85);
+        addLabel(row, `${r.score}`, Font.semiboldMonospacedSystemFont(NAME_SIZE), WHITE, 0.85);
     };
     (cup.top || []).forEach(addRow);
     if (cup.germans && cup.germans.length) {
