@@ -86,7 +86,7 @@ function shortDate(date) {
 
 // IOC-Kürzel → Flaggen-Emoji
 const IOC_TO_ISO = {
-    ALG: "DZ", ARG: "AR", AUS: "AU", AUT: "AT", BAH: "BS", BDI: "BI", BEL: "BE", BHR: "BH", BRN: "BH",
+    ALG: "DZ", HKG: "HK", ARG: "AR", AUS: "AU", AUT: "AT", BAH: "BS", BDI: "BI", BEL: "BE", BHR: "BH", BRN: "BH",
     BOT: "BW", BRA: "BR", BUL: "BG", CAN: "CA", CHI: "CL", CHN: "CN", CIV: "CI", COL: "CO", CRO: "HR",
     CUB: "CU", CZE: "CZ", DEN: "DK", DJI: "DJ", DOM: "DO", ECU: "EC", EGY: "EG", ERI: "ER", ESP: "ES",
     EST: "EE", ETH: "ET", FIN: "FI", FRA: "FR", GBR: "GB", GER: "DE", GHA: "GH", GRE: "GR", GRN: "GD",
@@ -303,7 +303,7 @@ function eventName(event, track) {
 
 function addEvent(stack, event, track) {
     let top = stack.addStack();
-    top.centerAlignContent();
+    top.topAlignContent();
     let badge = categoryBadge(event);
     let pill = top.addStack();
     pill.backgroundColor = badge.color;
@@ -311,7 +311,10 @@ function addEvent(stack, event, track) {
     pill.setPadding(0, 3, 0, 3);
     addLabel(pill, badge.text, Font.boldSystemFont(9), badge.dark ? new Color("#3A2A00") : WHITE);
     top.addSpacer(4);
-    addLabel(top, eventName(event, track), Font.semiboldSystemFont(12), WHITE);
+    // Name ausgeschrieben, bei Bedarf über mehrere Zeilen – nicht verkleinert
+    let name = addLabel(top, eventName(event, track), Font.semiboldSystemFont(12), WHITE);
+    name.lineLimit = 3;
+    name.minimumScaleFactor = 1;
     top.addSpacer();
 
     let nat = (/\(([A-Z]{3})\)\s*$/.exec(event.venue || "") || [])[1];
@@ -322,14 +325,32 @@ function addEvent(stack, event, track) {
     addLabel(stack, `${f ? f + " " : ""}${city(event.venue)} · ${when}`, Font.mediumSystemFont(10), WHITE, 0.65);
 }
 
+// Geschätzte Zeilen des Namens (ca. 20 Zeichen je Zeile neben dem Kürzel)
+function nameLines(event, track) {
+    return Math.min(3, Math.max(1, Math.ceil(eventName(event, track).length / 20)));
+}
+
+// So viele Termine, wie in die Höhe passen – lange Namen brauchen zwei, drei Zeilen
+function fitEvents(events, track, large) {
+    let budget = large ? 330 : 118, gap = large ? 6 : 4, used = 0, list = [];
+    for (let event of events || []) {
+        let height = nameLines(event, track) * 14.5 + 12 + (list.length ? gap : 0);
+        if (used + height > budget) break;
+        used += height;
+        list.push(event);
+    }
+    return list;
+}
+
 // Kopfzeile = Spaltentitel (Bahn | Straße), spart eine Zeile gegenüber Titel plus Spaltenköpfen
-function buildCalendar(widget, data, count) {
+function buildCalendar(widget, data, large) {
     let columns = [["Bahn", "sportscourt", data.track], ["Straße", "road.lanes", data.road]];
     let row = widget.addStack();
     columns.forEach(([title, symbol, events], i) => {
         if (i > 0) row.addSpacer(12);
         let col = row.addStack();
         col.layoutVertically();
+        col.size = new Size(150, 0);
         let head = col.addStack();
         head.centerAlignContent();
         addSymbol(head, symbol, 12, WHITE);
@@ -344,8 +365,8 @@ function buildCalendar(widget, data, count) {
             col.addSpacer(2);
             addLabel(col, "Keine Termine", Font.mediumSystemFont(11), WHITE, 0.7);
         }
-        (events || []).slice(0, count).forEach(event => {
-            col.addSpacer(2);
+        fitEvents(events, i === 0, large).forEach((event, j) => {
+            col.addSpacer(j === 0 ? 3 : large ? 6 : 4);
             addEvent(col, event, i === 0);
         });
         col.addSpacer();
@@ -395,7 +416,7 @@ async function createWidget() {
     if (CALENDAR) {
         let large = config.widgetFamily === "large" || config.widgetFamily === "extraLarge";
         widget.setPadding(12, 14, 4, 14);
-        buildCalendar(widget, data, large ? 10 : 4);
+        buildCalendar(widget, data, large);
     } else if (RECORDS) {
         widget.setPadding(12, 14, 4, 14);
         buildRecords(widget, data, config.widgetFamily === "medium" ? 3 : 10, config.widgetFamily === "medium");
