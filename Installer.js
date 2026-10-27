@@ -28,6 +28,7 @@ const SCRIPTS = [
     { name: "Bundesliga Ergebnisse", file: "Fussball.js", params: { ANSICHT: "ergebnisse", LIGA: "bundesliga" }, glyph: "futbol", color: "red" },
     { name: "CL Ergebnisse", file: "Fussball.js", params: { ANSICHT: "ergebnisse", LIGA: "cl" }, glyph: "futbol", color: "deep-blue" },
     { name: "DFB-Pokal", file: "Fussball.js", params: { ANSICHT: "pokal" }, glyph: "trophy", color: "green" },
+    { name: "DFB-Pokal Ergebnisse", file: "Fussball.js", params: { ANSICHT: "ergebnisse", LIGA: "pokal" }, glyph: "futbol", color: "green" },
     { name: "Browns", file: "NFL_Team.js", glyph: "football-ball", color: "orange" },
     { name: "NFL Ergebnisse", file: "NFL_Scores.js", glyph: "football-ball", color: "deep-blue" },
     { name: "Strava", file: "Strava.js", glyph: "running", color: "orange" },

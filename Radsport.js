@@ -620,6 +620,9 @@ const WHITE = Color.white();
 const LIVE = new Color("#FF453A");
 const MEDALS = [new Color("#F5C542"), new Color("#C9D1D9"), new Color("#D08A4E")];
 
+// Schriftgröße der Fahrernamen – in Radsport- und Biathlon-Widgets gleich
+const NAME_SIZE = 10.5;
+
 function background(widget) {
     let gradient = new LinearGradient();
     gradient.colors = [new Color("#34495E"), new Color("#1C2833")];
@@ -676,7 +679,8 @@ function addPastRace(stack, race, podiumSize) {
         row.centerAlignContent();
         addSymbol(row, `${i + 1}.circle.fill`, 12, MEDALS[i]);
         row.addSpacer(5);
-        addLabel(row, withFlag(p.flag, p.rider), Font.mediumSystemFont(12), WHITE);
+        // Gleiche Namensgröße wie in den Biathlon-Widgets, ohne automatisches Verkleinern
+        addLabel(row, withFlag(p.flag, p.rider), Font.mediumSystemFont(NAME_SIZE), WHITE).minimumScaleFactor = 1;
         row.addSpacer(6);
         row.addSpacer();
         addLabel(row, p.team, Font.regularSystemFont(10), WHITE, 0.55);
@@ -754,7 +758,7 @@ function buildMedium(widget, data) {
         winner.centerAlignContent();
         addSymbol(winner, "trophy.fill", 10, MEDALS[0]);
         winner.addSpacer(4);
-        addLabel(winner, race.podium[0] ? withFlag(race.podium[0].flag, race.podium[0].rider) : "–", Font.regularSystemFont(11), WHITE, 0.8);
+        addLabel(winner, race.podium[0] ? withFlag(race.podium[0].flag, race.podium[0].rider) : "–", Font.mediumSystemFont(NAME_SIZE), WHITE, 0.8);
     });
     left.addSpacer();
 

@@ -5,6 +5,7 @@
 //                      nächstes Spiel (am Spieltag live), Tabellen-Ausschnitt bzw. K.-o.-Runde
 //   "ergebnisse":      letzte Ergebnisse und laufende Spiele des Wettbewerbs
 //   "pokal":           DFB-Pokal – letzte zwei Spiele und nächste Runde
+//   "ergebnisse" mit LIGA "pokal": alle Spiele der aktuellen Pokalrunde (bzw. Vorschau auf die ausgeloste nächste)
 // Wettbewerb (LIGA): "bundesliga" (Standard) oder "cl".
 //
 // Im Loader per Function("ANSICHT", "LIGA", code)("ergebnisse", "cl")
@@ -539,7 +540,7 @@ async function loadResults(count) {
 // Spiele nach Spieltag gruppieren: ein Spieltag = Spiele ohne Pause von mehr als 1,5 Tagen
 // (Bundesliga Fr–So, CL Di/Mi). Einzelne Nachholspiele (< 3 Spiele) fallen weg.
 // Titel: häufigste Spieltagsnummer der Gruppe bzw. Runde und Hin-/Rückspiel
-function groupMatchdays(all) {
+function groupMatchdays(all, minGames = 3) {
     let sorted = all.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
     let clusters = [];
     let last = 0;
@@ -549,12 +550,18 @@ function groupMatchdays(all) {
         clusters[clusters.length - 1].push(e);
         last = t;
     }
-    return clusters.filter(events => events.length >= 3).map(events => ({ events, all: sorted }));
+    return clusters.filter(events => events.length >= minGames).map((events, index) => ({ events, all: sorted, index }));
 }
 
 // Titel erst für die angezeigten Spieltage berechnen (Spieltagsnummer zählen ist aufwendig)
 function titleGroup(group) {
     let phase = roundOf(group.events[0]);
+    // DFB-Pokal: Runde aus ESPN, sonst über die Reihenfolge der Runden in der Saison
+    if (LEAGUE_KEY === "pokal") {
+        group.title = phase && phase !== "Ligaphase" ? phase : POKAL_ROUNDS[group.index] || "Runde";
+        group.phase = "";
+        return group;
+    }
     if (phase && phase !== "Ligaphase") {
         group.title = [phase, legOf(group.events[0])].filter(Boolean).join(" · ");
         group.phase = "";
@@ -571,13 +578,18 @@ function titleGroup(group) {
 // Großes Widget: CL der ganze aktuelle Spieltag, Bundesliga der letzte und der nächste
 // (läuft ein Spieltag noch, der vorige und der laufende)
 async function loadMatchdays() {
-    let groups = groupMatchdays(await loadSeasonEvents());
+    let pokal = LEAGUE_KEY === "pokal";
+    let groups = groupMatchdays(await loadSeasonEvents(), pokal ? 1 : 3);
     let current = -1;
     groups.forEach((g, i) => { if (g.events.some(e => stateOf(e) !== "pre")) current = i; });
     if (current < 0) current = 0;
     let picked;
     if (LEAGUE_KEY === "cl") {
         picked = [groups[current]];
+    } else if (pokal) {
+        // Runde beendet und die nächste schon ausgelost (Spiele angesetzt): Vorschau auf die nächste
+        let done = groups[current] && groups[current].events.every(e => stateOf(e) === "post");
+        picked = [done && groups[current + 1] ? groups[current + 1] : groups[current]];
     } else {
         let running = groups[current] && groups[current].events.some(e => stateOf(e) !== "post");
         picked = running ? [groups[current - 1], groups[current]] : [groups[current], groups[current + 1]];
@@ -933,12 +945,12 @@ function addGameRow(stack, game, images) {
     addLogo(row, images, game.home.logo, 15);
     row.addSpacer(3);
     let home = row.addStack();
-    home.size = new Size(38, 0);
+    home.size = new Size(36, 0);
     addLabel(home, game.home.abbr, teamFont(game.home), WHITE, teamOpacity(game.home));
     home.addSpacer();
 
     let mid = row.addStack();
-    mid.size = new Size(40, 0);
+    mid.size = new Size(38, 0);
     mid.addSpacer();
     if (game.state === "pre") {
         let df = new DateFormatter();
@@ -951,7 +963,7 @@ function addGameRow(stack, game, images) {
     mid.addSpacer();
 
     let away = row.addStack();
-    away.size = new Size(38, 0);
+    away.size = new Size(36, 0);
     away.addSpacer();
     addLabel(away, game.away.abbr, teamFont(game.away), WHITE, teamOpacity(game.away));
     row.addSpacer(3);
@@ -997,7 +1009,8 @@ function buildMatchdays(widget, data, images) {
     header.centerAlignContent();
     addLabel(header, `⚽️ ${LEAGUE.title}`, Font.semiboldSystemFont(15), WHITE);
     header.addSpacer();
-    let info = [data.label, data.stale ? "offline" : ""].filter(Boolean).join(" · ");
+    let more = data.sections.length === 1 ? data.sections[0].games.length - 18 : 0;
+    let info = [data.label, more > 0 ? `+${more} weitere` : "", data.stale ? "offline" : ""].filter(Boolean).join(" · ");
     addLabel(header, info, Font.semiboldSystemFont(11), WHITE, 0.6);
     widget.addSpacer(10);
 
@@ -1005,7 +1018,7 @@ function buildMatchdays(widget, data, images) {
     if (data.sections.length > 1) {
         columns = data.sections.slice(0, 2).map(sec => ({ title: sec.title, games: sec.games.slice(0, 10) }));
     } else {
-        columns = splitByDay(data.sections[0].games.slice(0, 20)).map(games => ({ games }));
+        columns = splitByDay(data.sections[0].games.slice(0, 18)).map(games => ({ games }));
     }
 
     // Höhe: Titel 18, Tageszeile 17, Spielzeile 17 – der Rest (Budget ~290) als Abstand zwischen den Spielen
@@ -1017,7 +1030,7 @@ function buildMatchdays(widget, data, images) {
 
     let row = widget.addStack();
     columns.forEach((column, c) => {
-        if (c > 0) row.addSpacer();
+        if (c > 0) row.addSpacer(); // Spalten fest breit, der Rest ist Abstand in der Mitte
         let col = row.addStack();
         col.layoutVertically();
         if (column.title) {

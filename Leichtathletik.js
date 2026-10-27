@@ -204,32 +204,55 @@ function fullDate(date) {
     return m ? `${shortDate(date)}${m[1].slice(2)}` : shortDate(date);
 }
 
-// Zwei Zeilen: Auszeichnung(en), Name, Leistung – darunter Disziplin, Ort, Datum
-function addHighlight(stack, item, compact) {
-    let top = stack.addStack();
-    top.centerAlignContent();
-    // Mehrere Auszeichnungen nebeneinander (z. B. EU 8 · DE 2); ältere Daten: nur Rekorde bzw. Hauptauszeichnung
+// Mehrere Auszeichnungen (z. B. EU 8 und DE 2); ältere Daten: nur Rekorde bzw. Hauptauszeichnung
+function badgesOf(item) {
     let badges = item.badges && item.badges.length ? item.badges
         : (item.records && item.records.length ? item.records : [item.type]).map(type => ({ type, rank: item.rank }));
-    badges.slice(0, 3).forEach((badge, i) => {
-        if (i > 0) top.addSpacer(3);
-        addBadge(top, badge.type, badge.rank);
-    });
-    top.addSpacer(5);
-    let f = flag(item.nat);
-    addLabel(top, `${f ? f + " " : ""}${shortName(item.name)}`, Font.semiboldSystemFont(12), WHITE);
-    top.addSpacer(4);
-    top.addSpacer();
-    addLabel(top, item.mark, Font.boldRoundedSystemFont(12), GOLD);
+    return badges.slice(0, 3);
+}
 
+// Höhe eines Eintrags: zwei Textzeilen oder die übereinander stehenden Abzeichen
+function highlightHeight(item) {
+    return Math.max(26, badgesOf(item).length * 15 - 2);
+}
+
+// Einheitliche Spalten: links Name und darunter Disziplin, Ort, Datum – rechts in fester Spalte
+// die Abzeichen übereinander, ganz rechts die Leistung
+function addHighlight(stack, item, compact) {
+    let row = stack.addStack();
+    row.topAlignContent();
+
+    let left = row.addStack();
+    left.layoutVertically();
+    let f = flag(item.nat);
+    addLabel(left, `${f ? f + " " : ""}${shortName(item.name)}`, Font.semiboldSystemFont(12), WHITE);
     let gender = item.gender === "women" ? "Frauen" : "Männer";
     let details = compact
         ? `${item.event} ${gender} · ${fullDate(item.date)}`
         : `${item.event} ${gender} · ${city(item.venue)} · ${fullDate(item.date)}`;
-    addLabel(stack, details, Font.mediumSystemFont(9), WHITE, 0.65);
+    addLabel(left, details, Font.mediumSystemFont(9), WHITE, 0.65);
+
+    row.addSpacer(6);
+    row.addSpacer();
+
+    let tags = row.addStack();
+    tags.layoutVertically();
+    tags.size = new Size(46, 0);
+    badgesOf(item).forEach((badge, i) => {
+        if (i > 0) tags.addSpacer(2);
+        let line = tags.addStack();
+        line.addSpacer();
+        addBadge(line, badge.type, badge.rank);
+    });
+
+    row.addSpacer(8);
+    let mark = row.addStack();
+    mark.size = new Size(compact ? 50 : 56, 0);
+    mark.addSpacer();
+    addLabel(mark, item.mark, Font.boldRoundedSystemFont(compact ? 12 : 13), GOLD);
 }
 
-function buildRecords(widget, data, count, compact) {
+function buildRecords(widget, data, large) {
     let header = widget.addStack();
     header.centerAlignContent();
     addSymbol(header, "trophy.fill", 13, GOLD);
@@ -237,15 +260,23 @@ function buildRecords(widget, data, count, compact) {
     addLabel(header, "Rekorde & ewige Top 10", Font.semiboldSystemFont(14), WHITE);
     header.addSpacer();
     addLabel(header, `Welt · Europa · DE${data.stale ? " · offline" : ""}`, Font.semiboldSystemFont(10), WHITE, 0.6);
-    widget.addSpacer(compact ? 5 : 6);
+    widget.addSpacer(large ? 8 : 5);
 
     let items = data.items || [];
     if (!items.length) {
         addLabel(widget, "Noch keine Einträge", Font.mediumSystemFont(12), WHITE, 0.7);
     }
-    items.slice(0, count).forEach((item, i) => {
-        if (i > 0) widget.addSpacer(compact ? 4 : 3);
-        addHighlight(widget, item, compact);
+    // So viele Einträge, wie in die Höhe passen (mehrere Abzeichen brauchen mehr Platz)
+    let budget = large ? 330 : 100, gap = large ? 5 : 4, used = 0, shown = [];
+    for (let item of items.slice(0, 10)) {
+        let h = highlightHeight(item) + (shown.length ? gap : 0);
+        if (used + h > budget) break;
+        used += h;
+        shown.push(item);
+    }
+    shown.forEach((item, i) => {
+        if (i > 0) widget.addSpacer(gap);
+        addHighlight(widget, item, !large);
     });
     widget.addSpacer();
 }
@@ -301,42 +332,66 @@ function eventName(event, track) {
     return short.split(" ").length >= 2 ? short : event.name;
 }
 
-function addEvent(stack, event, track) {
-    let top = stack.addStack();
-    top.topAlignContent();
-    let badge = categoryBadge(event);
-    let pill = top.addStack();
-    pill.backgroundColor = badge.color;
-    pill.cornerRadius = 3;
-    pill.setPadding(0, 3, 0, 3);
-    addLabel(pill, badge.text, Font.boldSystemFont(9), badge.dark ? new Color("#3A2A00") : WHITE);
-    top.addSpacer(4);
-    // Name ausgeschrieben, bei Bedarf über mehrere Zeilen – nicht verkleinert
-    let name = addLabel(top, eventName(event, track), Font.semiboldSystemFont(12), WHITE);
-    name.lineLimit = 3;
-    name.minimumScaleFactor = 1;
-    top.addSpacer();
+// Lange Namen kürzen: Sponsoren und Zusätze weg, „Championships“ → „Champs“ …
+// ("TCS New York City Marathon" → "New York City Marathon")
+const SPONSOR_PREFIX = /^(TCS|BYD|Wanda|ORLEN|Mapei|Santos|Bank of China|Generali|Schneider Electric|BMW|Haspa|Mainova)\s+/i;
+function displayName(event, track) {
+    let name = eventName(event, track)
+        .replace(/\s+presented by\b.*$/i, "")
+        .replace(/\s+(Trinidad Alfonso( Zurich)?|Trophée EDF|Zurich)$/i, "");
+    while (SPONSOR_PREFIX.test(name) && name.replace(SPONSOR_PREFIX, "").split(" ").length >= 2) {
+        name = name.replace(SPONSOR_PREFIX, "");
+    }
+    return name
+        .replace(/\bChampionships\b/g, "Champs")
+        .replace(/\bInternational\b/g, "Int.")
+        .replace(/\s+/g, " ")
+        .trim();
+}
 
+// Links Name (höchstens zwei Zeilen) und darunter Flagge, Ort, Datum – rechts in fester Spalte das Kürzel.
+// So beginnen alle Namen an derselben Stelle.
+function addEvent(stack, event, track) {
+    let row = stack.addStack();
+    row.topAlignContent();
+
+    let left = row.addStack();
+    left.layoutVertically();
+    let name = addLabel(left, displayName(event, track), Font.semiboldSystemFont(12), WHITE);
+    name.lineLimit = 2;
+    name.minimumScaleFactor = 1;
     let nat = (/\(([A-Z]{3})\)\s*$/.exec(event.venue || "") || [])[1];
     let f = nat ? flag(nat) : "";
     // Läuft der Wettkampf gerade oder ist er heute, steht das statt des Datums
     let soon = countdown(event);
     let when = soon === "läuft" || soon === "heute" ? soon : dateRange(event);
-    addLabel(stack, `${f ? f + " " : ""}${city(event.venue)} · ${when}`, Font.mediumSystemFont(10), WHITE, 0.65);
+    addLabel(left, `${f ? f + " " : ""}${city(event.venue)} · ${when}`, Font.mediumSystemFont(10), WHITE, 0.65);
+
+    row.addSpacer(4);
+    row.addSpacer();
+    let badgeCol = row.addStack();
+    badgeCol.size = new Size(30, 0);
+    badgeCol.addSpacer();
+    let badge = categoryBadge(event);
+    let pill = badgeCol.addStack();
+    pill.backgroundColor = badge.color;
+    pill.cornerRadius = 3;
+    pill.setPadding(1, 3, 1, 3);
+    addLabel(pill, badge.text, Font.boldSystemFont(9), badge.dark ? new Color("#3A2A00") : WHITE);
 }
 
-// Geschätzte Zeilen des Namens (ca. 17 Zeichen je Zeile neben dem Kürzel, Umbruch an Wortgrenzen)
+// Geschätzte Zeilen des Namens (ca. 16 Zeichen je Zeile neben dem Kürzel, Umbruch an Wortgrenzen)
 function nameLines(event, track) {
     let lines = 1, width = 0;
-    for (let word of eventName(event, track).split(" ")) {
-        if (width && width + 1 + word.length > 17) {
+    for (let word of displayName(event, track).split(" ")) {
+        if (width && width + 1 + word.length > 16) {
             lines++;
             width = word.length;
         } else {
             width += (width ? 1 : 0) + word.length;
         }
     }
-    return Math.min(3, lines);
+    return Math.min(2, lines);
 }
 
 // So viele Termine, wie in die Höhe passen – lange Namen brauchen zwei, drei Zeilen
@@ -429,7 +484,7 @@ async function createWidget() {
         buildCalendar(widget, data, large);
     } else if (RECORDS) {
         widget.setPadding(12, 14, 4, 14);
-        buildRecords(widget, data, config.widgetFamily === "medium" ? 3 : 10, config.widgetFamily === "medium");
+        buildRecords(widget, data, config.widgetFamily !== "medium");
     }
     else if (config.widgetFamily === "medium") buildMedium(widget, data);
     else buildLarge(widget, data);
