@@ -1135,7 +1135,9 @@ function addTeamHeader(widget, data, images) {
     header.addSpacer(10);
     addForm(header, data, images);
     header.addSpacer();
-    addLabel(header, `${LEAGUE.title}${data.stale ? " · offline" : ""}`, Font.semiboldSystemFont(11), WHITE, 0.6);
+    // Champions League als „UCL“, damit es neben der Form passt
+    let competition = LEAGUE_KEY === "cl" ? "UCL" : LEAGUE.title;
+    addLabel(header, `${competition}${data.stale ? " · offline" : ""}`, Font.semiboldSystemFont(11), WHITE, 0.6);
 }
 
 function buildPokal(widget, data, images) {
