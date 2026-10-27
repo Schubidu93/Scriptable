@@ -68,10 +68,12 @@ function shortName(name) {
     return first.length ? `${first[0].charAt(0)}. ${last.join(" ")}` : last.join(" ");
 }
 
-// "Takahata Race Walk Course, Takahata (JPN)" → "Takahata"
+// "Takahata Race Walk Course, Takahata (JPN)" → "Takahata", "Chicago, IL (USA)" → "Chicago"
+// Ort steht meist zuletzt; ein US-Bundesstaat-Kürzel am Ende wird übersprungen
 function city(venue) {
     let parts = String(venue || "").replace(/\s*\(.*?\)\s*$/, "").split(",").map(p => p.trim()).filter(Boolean);
-    return parts.length > 1 && /stadium|course|park|arena|track|field/i.test(parts[0]) ? parts[parts.length - 1] : parts[0] || "";
+    while (parts.length > 1 && parts[parts.length - 1].length <= 3) parts.pop();
+    return parts[parts.length - 1] || "";
 }
 
 // "25 OCT 2026" → "25.10."
