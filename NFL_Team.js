@@ -59,9 +59,9 @@ function gameInfo(event, teamId) {
     let ourScore = score(us), theirScore = score(them);
     let result = "";
     if (isCompleted(event)) {
-        if (us.winner) result = "S";
-        else if (them.winner) result = "N";
-        else result = Number(ourScore) > Number(theirScore) ? "S" : Number(ourScore) < Number(theirScore) ? "N" : "U";
+        if (us.winner) result = "W";
+        else if (them.winner) result = "L";
+        else result = Number(ourScore) > Number(theirScore) ? "W" : Number(ourScore) < Number(theirScore) ? "L" : "T";
     }
     return {
         date: comp.date || event.date,
@@ -128,6 +128,7 @@ async function loadData() {
 
     let finished = events.filter(isCompleted);
     let last = finished.length ? gameInfo(finished[finished.length - 1], team.id) : null;
+    let form = finished.slice(-5).map(e => gameInfo(e, team.id));
 
     let upcoming = (team.nextEvent || []).filter(e => !isCompleted(e));
     if (!upcoming.length) upcoming = events.filter(e => !isCompleted(e));
@@ -149,6 +150,7 @@ async function loadData() {
         record: record ? record.summary : "",
         summary: team.standingSummary || "",
         last,
+        form,
         next,
         standings,
     };
@@ -185,8 +187,7 @@ async function loadLogos(urls) {
 }
 
 const WHITE = Color.white();
-const RESULT_COLORS = { S: new Color("#34C759"), N: new Color("#FF453A"), U: new Color("#8E8E93") };
-const RESULT_LABELS = { S: "Sieg", N: "Niederlage", U: "Unentschieden" };
+const RESULT_COLORS = { W: new Color("#34C759"), L: new Color("#FF453A"), T: new Color("#8E8E93") };
 
 function addLabel(stack, text, font, color, opacity = 1) {
     let t = stack.addText(text);
@@ -234,33 +235,59 @@ function accent() {
     return new Color((COLORS[teamKey] || DEFAULT_COLORS)[2]);
 }
 
+function addRecord(stack, record) {
+    if (!record) return;
+    let pill = stack.addStack();
+    pill.backgroundColor = new Color("#ffffff", 0.18);
+    pill.cornerRadius = 9;
+    pill.setPadding(1, 9, 1, 9);
+    addLabel(pill, record, Font.boldRoundedSystemFont(17), WHITE);
+}
+
 function addSectionTitle(stack, text) {
     addLabel(stack, text.toUpperCase(), Font.semiboldSystemFont(10), WHITE, 0.6);
 }
 
-function addLastGame(stack, last, images) {
-    addSectionTitle(stack, "Letztes Spiel");
+function addBadge(stack, result, size) {
+    let badge = stack.addStack();
+    badge.size = new Size(size, size);
+    badge.backgroundColor = RESULT_COLORS[result] || RESULT_COLORS.T;
+    badge.cornerRadius = 4;
+    badge.centerAlignContent();
+    addLabel(badge, result || "–", Font.boldSystemFont(size * 0.65), WHITE);
+}
+
+// Form: Gegner-Logo über W/L-Badge, ältestes Spiel links, neuestes rechts
+function addForm(stack, data, images) {
+    addSectionTitle(stack, "Form");
     stack.addSpacer(3);
-    if (!last) {
+    let form = data.form || (data.last ? [data.last] : []);
+    if (!form.length) {
         addLabel(stack, "–", Font.mediumSystemFont(13), WHITE, 0.7);
         return;
     }
     let row = stack.addStack();
-    row.centerAlignContent();
-    let badge = row.addStack();
-    badge.backgroundColor = RESULT_COLORS[last.result] || RESULT_COLORS.U;
-    badge.cornerRadius = 4;
-    badge.setPadding(1, 5, 1, 5);
-    addLabel(badge, last.result || "–", Font.boldSystemFont(11), WHITE);
-    row.addSpacer(6);
-    addLabel(row, `${last.ourScore}:${last.theirScore}`, Font.semiboldMonospacedSystemFont(17), WHITE);
-    row.addSpacer(6);
-    addLabel(row, last.home ? "vs" : "@", Font.mediumSystemFont(11), WHITE, 0.6);
-    row.addSpacer(3);
-    addLogo(row, images, last.opponentLogo, 18);
-    row.addSpacer(2);
-    addLabel(row, last.opponent, Font.semiboldSystemFont(12), WHITE);
-    addLabel(stack, `${RESULT_LABELS[last.result] || ""} · ${formatDay(last.date)}`, Font.mediumSystemFont(10), WHITE, 0.6);
+    form.forEach((game, i) => {
+        if (i > 0) row.addSpacer(6);
+        let item = row.addStack();
+        item.layoutVertically();
+        item.centerAlignContent();
+        let logo = item.addStack();
+        logo.addSpacer(1);
+        addLogo(logo, images, game.opponentLogo, 14);
+        item.addSpacer(1);
+        addBadge(item, game.result, 16);
+    });
+
+    // Daneben das letzte Ergebnis
+    let last = data.last;
+    if (last) {
+        row.addSpacer(10);
+        let score = row.addStack();
+        score.layoutVertically();
+        addLabel(score, `${last.ourScore}:${last.theirScore}`, Font.semiboldMonospacedSystemFont(14), WHITE);
+        addLabel(score, `${last.home ? "vs" : "@"} ${last.opponent} · ${formatDay(last.date)}`, Font.mediumSystemFont(9), WHITE, 0.6);
+    }
 }
 
 function addNextGame(stack, next, images) {
@@ -316,16 +343,19 @@ function buildMedium(widget, data, images) {
     header.addSpacer(6);
     addLabel(header, data.name, Font.semiboldSystemFont(15), WHITE);
     header.addSpacer();
-    let info = [data.record, data.stale ? "offline" : ""].filter(Boolean).join(" · ");
-    addLabel(header, info, Font.semiboldSystemFont(12), WHITE, 0.7);
+    if (data.stale) {
+        addLabel(header, "offline", Font.semiboldSystemFont(10), WHITE, 0.6);
+        header.addSpacer(6);
+    }
+    addRecord(header, data.record);
 
-    widget.addSpacer(10);
+    widget.addSpacer(6);
 
     let body = widget.addStack();
     let left = body.addStack();
     left.layoutVertically();
-    addLastGame(left, data.last, images);
-    left.addSpacer(8);
+    addForm(left, data, images);
+    left.addSpacer(6);
     addNextGame(left, data.next, images);
     left.addSpacer();
 
@@ -345,9 +375,9 @@ function buildSmall(widget, data, images) {
     header.addSpacer(5);
     addLabel(header, data.abbr, Font.semiboldSystemFont(15), WHITE);
     header.addSpacer();
-    addLabel(header, data.record, Font.semiboldSystemFont(12), WHITE, 0.7);
+    addRecord(header, data.record);
     widget.addSpacer(8);
-    addLastGame(widget, data.last, images);
+    addForm(widget, data, images);
     widget.addSpacer();
     addNextGame(widget, data.next, images);
 }
@@ -370,7 +400,7 @@ async function createWidget() {
     widget.url = `https://www.espn.com/nfl/team/_/name/${teamKey}`;
     widget.refreshAfterDate = new Date(Date.now() + 60 * 60 * 1000);
     background(widget);
-    widget.setPadding(14, 16, 14, 16);
+    widget.setPadding(12, 16, 12, 16);
 
     if (!data) {
         buildError(widget);
@@ -379,6 +409,7 @@ async function createWidget() {
 
     let urls = [data.logo];
     if (data.last) urls.push(data.last.opponentLogo);
+    (data.form || []).forEach(g => urls.push(g.opponentLogo));
     if (data.next) urls.push(data.next.opponentLogo);
     if (data.standings) data.standings.rows.forEach(r => urls.push(r.logo));
     let images = await loadLogos(urls);

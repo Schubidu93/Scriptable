@@ -176,7 +176,7 @@ function build(widget, data, columns, perColumn, images) {
     let games = data.games.slice(0, columns * perColumn);
     let row = widget.addStack();
     for (let c = 0; c < columns; c++) {
-        if (c > 0) row.addSpacer(18);
+        if (c > 0) row.addSpacer(columns > 2 ? 12 : 18);
         let col = row.addStack();
         col.layoutVertically();
         games.slice(c * perColumn, (c + 1) * perColumn).forEach((game, i) => {
@@ -202,7 +202,7 @@ function buildError(widget) {
 
 async function createWidget() {
     let large = config.widgetFamily === "large" || config.widgetFamily === "extraLarge";
-    let columns = 2;
+    let columns = large ? 2 : 3;
     let perColumn = large ? 7 : 3;
 
     let data = await loadWithCache(columns * perColumn);
