@@ -431,13 +431,14 @@ function addCupColumn(stack, title, cup, compact) {
         col.addSpacer(compact ? 1 : 4);
         let row = col.addStack();
         row.centerAlignContent();
-        addLabel(row, `${r.rank}`, Font.mediumMonospacedSystemFont(NAME_SIZE), WHITE, 0.6);
+        addLabel(row, `${r.rank}`, Font.mediumMonospacedSystemFont(NAME_SIZE), WHITE, 0.6).minimumScaleFactor = 1;
         row.addSpacer(4);
         addLabel(row, withFlag(r.nat, r.name), Font.mediumSystemFont(NAME_SIZE), r.nat === "GER" ? GERMAN : WHITE)
             .minimumScaleFactor = 1;
         row.addSpacer(4);
         row.addSpacer();
-        addLabel(row, `${r.score}`, Font.semiboldMonospacedSystemFont(NAME_SIZE), WHITE, 0.85);
+        // Punkte und Platz nicht automatisch verkleinern – alle gleich groß
+        addLabel(row, `${r.score}`, Font.semiboldMonospacedSystemFont(NAME_SIZE), WHITE, 0.85).minimumScaleFactor = 1;
     };
     (cup.top || []).forEach(addRow);
     if (cup.germans && cup.germans.length) {
