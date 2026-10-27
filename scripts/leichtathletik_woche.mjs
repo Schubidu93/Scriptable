@@ -12,7 +12,7 @@ const WINDOWS = [7, 14, 30]; // Tage – reicht eine Woche nicht für 5 Leistung
 const CONCURRENCY = 4;
 const DEBUG = process.env.DEBUG === "1";
 
-// [Gruppe, Disziplin in der URL, Anzeige] – nicht vorhandene Seiten werden übersprungen
+// [Gruppe, Disziplin in der URL, Anzeige, Umgebung (Standard "all")] – nicht vorhandene Seiten werden übersprungen
 const EVENTS = {
     women: [
         ["sprints", "60-metres", "60 m"], ["sprints", "100-metres", "100 m"], ["sprints", "200-metres", "200 m"],
@@ -20,11 +20,11 @@ const EVENTS = {
         ["middlelong", "one-mile", "Meile"], ["middlelong", "3000-metres", "3000 m"], ["middlelong", "5000-metres", "5000 m"],
         ["middlelong", "10000-metres", "10.000 m"], ["hurdles", "60-metres-hurdles", "60 m Hürden"],
         ["hurdles", "100-metres-hurdles", "100 m Hürden"], ["hurdles", "400-metres-hurdles", "400 m Hürden"],
-        ["hurdles", "3000-metres-steeplechase", "3000 m Hindernis"], ["jumps", "high-jump", "Hochsprung"],
+        ["middlelong", "3000-metres-steeplechase", "3000 m Hindernis"], ["jumps", "high-jump", "Hochsprung"],
         ["jumps", "pole-vault", "Stabhochsprung"], ["jumps", "long-jump", "Weitsprung"], ["jumps", "triple-jump", "Dreisprung"],
         ["throws", "shot-put", "Kugelstoßen"], ["throws", "discus-throw", "Diskuswurf"], ["throws", "hammer-throw", "Hammerwurf"],
         ["throws", "javelin-throw", "Speerwurf"], ["combined-events", "heptathlon", "Siebenkampf"],
-        ["combined-events", "pentathlon", "Fünfkampf"], ["road-running", "10-kilometres", "10 km"],
+        ["combined-events", "pentathlon", "Fünfkampf", "indoor"], ["road-running", "10-kilometres", "10 km"],
         ["road-running", "half-marathon", "Halbmarathon"], ["road-running", "marathon", "Marathon"],
         ["race-walks", "20-kilometres-race-walk", "20 km Gehen"], ["race-walks", "35-kilometres-race-walk", "35 km Gehen"],
         ["race-walks", "half-marathon-race-walk", "Halbmarathon Gehen"], ["race-walks", "marathon-race-walk", "Marathon Gehen"],
@@ -35,11 +35,11 @@ const EVENTS = {
         ["middlelong", "one-mile", "Meile"], ["middlelong", "3000-metres", "3000 m"], ["middlelong", "5000-metres", "5000 m"],
         ["middlelong", "10000-metres", "10.000 m"], ["hurdles", "60-metres-hurdles", "60 m Hürden"],
         ["hurdles", "110-metres-hurdles", "110 m Hürden"], ["hurdles", "400-metres-hurdles", "400 m Hürden"],
-        ["hurdles", "3000-metres-steeplechase", "3000 m Hindernis"], ["jumps", "high-jump", "Hochsprung"],
+        ["middlelong", "3000-metres-steeplechase", "3000 m Hindernis"], ["jumps", "high-jump", "Hochsprung"],
         ["jumps", "pole-vault", "Stabhochsprung"], ["jumps", "long-jump", "Weitsprung"], ["jumps", "triple-jump", "Dreisprung"],
         ["throws", "shot-put", "Kugelstoßen"], ["throws", "discus-throw", "Diskuswurf"], ["throws", "hammer-throw", "Hammerwurf"],
         ["throws", "javelin-throw", "Speerwurf"], ["combined-events", "decathlon", "Zehnkampf"],
-        ["combined-events", "heptathlon", "Siebenkampf"], ["road-running", "10-kilometres", "10 km"],
+        ["combined-events", "heptathlon", "Siebenkampf", "indoor"], ["road-running", "10-kilometres", "10 km"],
         ["road-running", "half-marathon", "Halbmarathon"], ["road-running", "marathon", "Marathon"],
         ["race-walks", "20-kilometres-race-walk", "20 km Gehen"], ["race-walks", "35-kilometres-race-walk", "35 km Gehen"],
         ["race-walks", "half-marathon-race-walk", "Halbmarathon Gehen"], ["race-walks", "marathon-race-walk", "Marathon Gehen"],
@@ -123,8 +123,8 @@ async function fetchPage(url) {
     return { status: res.status, html: res.status === 200 ? await res.text() : "" };
 }
 
-async function loadEvent(gender, [group, slug, label], from, to) {
-    let url = `${BASE}${group}/${slug}/all/${gender}/senior?regionType=world&page=1&bestResultsOnly=false`
+async function loadEvent(gender, [group, slug, label, env = "all"], from, to) {
+    let url = `${BASE}${group}/${slug}/${env}/${gender}/senior?regionType=world&page=1&bestResultsOnly=false`
         + `&firstDay=${isoDate(from)}&lastDay=${isoDate(to)}&maxResultsByCountry=all&ageCategory=senior`;
     try {
         let { status, html } = await fetchPage(url);
