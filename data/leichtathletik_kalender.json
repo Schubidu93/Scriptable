@@ -1,0 +1,97 @@
+{
+  "generated": "2026-10-27T12:34:25.787Z",
+  "track": [
+    {
+      "id": 7244483,
+      "name": "International Jump-Meeting Cottbus",
+      "venue": "Lausitz-Arena, Cottbus (GER)",
+      "category": "B",
+      "group": "World Athletics Indoor Tour – Silver",
+      "startDate": "2027-01-27",
+      "endDate": "2027-01-27"
+    },
+    {
+      "id": 7244481,
+      "name": "ISTAF Indoor",
+      "venue": "Uber Arena, Berlin (GER)",
+      "category": "B",
+      "group": "World Athletics Indoor Tour – Silver",
+      "startDate": "2027-02-05",
+      "endDate": "2027-02-05"
+    },
+    {
+      "id": 7242037,
+      "name": "INIT Indoor Meeting Karlsruhe",
+      "venue": "Europahalle, Karlsruhe (GER)",
+      "category": "A",
+      "group": "World Athletics Indoor Tour – Gold",
+      "startDate": "2027-02-07",
+      "endDate": "2027-02-07"
+    },
+    {
+      "id": 7244478,
+      "name": "ISTAF INDOOR Düsseldorf",
+      "venue": "PSD Bank Dome, Düsseldorf (GER)",
+      "category": "B",
+      "group": "World Athletics Indoor Tour – Silver",
+      "startDate": "2027-02-13",
+      "endDate": "2027-02-13"
+    },
+    {
+      "id": 7220873,
+      "name": "Doha Meeting",
+      "venue": "Suhaim bin Hamad Stadium, Doha (QAT)",
+      "category": "GW",
+      "group": "Wanda Diamond League Meeting",
+      "startDate": "2027-05-07",
+      "endDate": "2027-05-07"
+    }
+  ],
+  "road": [
+    {
+      "id": 7235594,
+      "name": "Hangzhou Marathon",
+      "venue": "Hangzhou (CHN)",
+      "category": "A",
+      "group": "World Athletics Label Road Races – Gold",
+      "startDate": "2026-11-01",
+      "endDate": "2026-11-01"
+    },
+    {
+      "id": 7235596,
+      "name": "Istanbul Marathon",
+      "venue": "Istanbul (TUR)",
+      "category": "A",
+      "group": "World Athletics Label Road Races – Gold",
+      "startDate": "2026-11-01",
+      "endDate": "2026-11-01"
+    },
+    {
+      "id": 7235564,
+      "name": "TCS New York City Marathon",
+      "venue": "New York, NY (USA)",
+      "category": "GW",
+      "group": "World Athletics Label Road Races – Platinum",
+      "startDate": "2026-11-01",
+      "endDate": "2026-11-01"
+    },
+    {
+      "id": 7246459,
+      "name": "NACAC Road Running Championships",
+      "venue": "Parque Tangamanga-II, San Luis Potosi (MEX)",
+      "category": "A",
+      "group": "Area RR Championships, Area Half Marathon Championships",
+      "startDate": "2026-11-14",
+      "endDate": "2026-11-14"
+    },
+    {
+      "id": 7241749,
+      "name": "Bank of China Hong Kong-Zhuhai-Macao Bridge Half Marathon",
+      "venue": "Hong Kong (HKG)",
+      "category": "GL",
+      "group": "World Athletics Label Road Races – Platinum",
+      "startDate": "2026-11-15",
+      "endDate": "2026-11-15"
+    }
+  ]
+}
