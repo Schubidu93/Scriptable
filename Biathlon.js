@@ -368,7 +368,7 @@ function addPastRace(stack, race) {
         row.centerAlignContent();
         addSymbol(row, `${i + 1}.circle.fill`, 12, MEDALS[i]);
         row.addSpacer(5);
-        addLabel(row, withFlag(p.nat, p.name), Font.mediumSystemFont(12), p.nat === "GER" ? GERMAN : WHITE);
+        addLabel(row, withFlag(p.nat, p.name), Font.mediumSystemFont(11), p.nat === "GER" ? GERMAN : WHITE);
         row.addSpacer(6);
         row.addSpacer();
         addLabel(row, p.time, Font.mediumMonospacedSystemFont(10), WHITE, 0.6);
