@@ -1,4 +1,4 @@
-// Loipenberichte rund um Kißlegg: gespurte Kilometer (klassisch / Skating), Schneehöhe, Stand.
+// Loipenberichte rund um Kißlegg und im Großraum München: gespurte Kilometer (klassisch / Skating), Schneehöhe, Stand.
 // Läuft stündlich per GitHub Actions und schreibt data/langlauf.json (gelesen von Langlauf.js).
 // Quellen – wo möglich direkt beim Betreiber (Primärquelle), sonst Loipen-Allgäu (private Sammelseite,
 // wird von Hand gepflegt und oft erst später aktualisiert):
@@ -7,6 +7,8 @@
 //   Wangen: Loipen-Allgäu (km) + Skilift Berger Höhe/Niederwangen (Loipenzustand mit Datum) ·
 //   Argenbühl, Missen-Wilhams, Heimenkirch, Lindenberg, Scheidegg: Loipen-Allgäu
 //   (Missen meldet selbst nur über ein Skript-Widget).
+// München: Schneebericht der Alpenregion Tegernsee-Schliersee (je Loipe befahrbar ja/nein, gespurte km) für Holzkirchen
+//   bis Bayrischzell · Lenggries: Tourismus Lenggries (Text) · Baierbrunn: Altschützen (Text)
 // Fällt eine Quelle aus, bleibt ihr letzter Stand aus der bisherigen Datei erhalten.
 
 import { readFile, writeFile, mkdir } from "node:fs/promises";
@@ -294,26 +296,152 @@ async function leutkirchStadt() {
     return { latest, loipen: rows.length, recent: recent.length, names: recent.map(r => r.name), sections };
 }
 
+// ---------- Großraum München ----------
+
+// Alpenregion Tegernsee-Schliersee (gemeinsamer Schneebericht der Tourist-Infos, z. B. bayrischzell.de/schneebericht):
+// je Ort Schneehöhe, Infotext und "Daten zuletzt aktualisiert am 17.03.26 um 08:42 Uhr"; die Loipenliste je Ort lädt die
+// Seite nach (/de/action/module_placeholder) – je Loipe "Zustand: befahrbar / nicht befahrbar", "Klassisch gespurt: 4,3km" …
+const ATS = "https://www.bayrischzell.de";
+let atsPage = null;
+
+async function atsPlaces() {
+    if (!atsPage) atsPage = load(`${ATS}/schneebericht`).then(html => {
+        let places = {};
+        for (let block of html.split(/<div class="snowHeights__element"/).slice(1)) {
+            let name = /<h2>([^<]+)<\/h2>/.exec(block);
+            let ident = /id="(address_\d+)_CrossCountry"/.exec(block);
+            if (!name || !ident) continue;
+            let t = text(block);
+            let snow = /Schneeh(?:ö|o)he Tal:\s*(\d+)\s*cm/i.exec(t);
+            let stamp = /aktualisiert am\s+(\d{1,2}\.\d{1,2}\.\d{2,4})\s+um\s+(\d{1,2}:\d{2})/i.exec(t);
+            let info = /snowHeights__element__information">([\s\S]*?)<\/div>/.exec(block);
+            places[decode(name[1]).trim()] = {
+                ident: ident[1],
+                snow: snow ? Number(snow[1]) : null,
+                updated: stamp ? `${isoDate(stamp[1])}T${stamp[2].padStart(5, "0")}` : null,
+                // Infotext ohne Eislauf-/Rodel-Teil: "Schneebericht für die Saison eingestellt."
+                info: info ? text(info[1]).split(/\n/).map(x => x.trim()).filter(x => x && !/^Loipen$/i.test(x))
+                    .find(x => !/eis|rodel|telefon|hier\s*\.?$/i.test(x)) || null : null,
+            };
+        }
+        if (!Object.keys(places).length) throw new Error("Schneebericht nicht gefunden");
+        return places;
+    });
+    return atsPage;
+}
+
+async function ats(place) {
+    let p = (await atsPlaces())[place];
+    if (!p) throw new Error(`${place} fehlt im Schneebericht`);
+    let html = await load(`${ATS}/de/action/module_placeholder?blockType=${encodeURIComponent("body\\snowReport\\CrossCountryMapListBlock")}`
+        + `&blockIdent=${p.ident}`);
+    let loipen = html.split(/<article class="mapList__element/).slice(1).map(article => {
+        let t = text(article).replace(/\s+/g, " ");
+        let km = label => {
+            let m = new RegExp(`${label} gespurt:?\\s*([\\d,]+)\\s*km`, "i").exec(t);
+            return m ? num(m[1]) : 0;
+        };
+        let name = /<h3>([\s\S]*?)<\/h3>/.exec(article);
+        let state = /Zustand:\s*([^:]+?)\s+(?:Nachtloipe|Gesamtlänge|Weitere Infos)/i.exec(t);
+        return {
+            name: name ? text(name[1]).replace(/\s+/g, " ").trim() : "",
+            state: state ? state[1].trim() : null,
+            classic: km("Klassisch"),
+            skating: km("Skating"),
+        };
+    }).filter(l => l.name);
+    if (!loipen.length) throw new Error("keine Loipen gelesen");
+    let open = loipen.filter(l => l.state && !/nicht|gesperrt|geschlossen/i.test(l.state));
+    let round = x => Math.round(x * 10) / 10;
+    let classic = round(open.reduce((a, l) => a + l.classic, 0));
+    let skating = round(open.reduce((a, l) => a + l.skating, 0));
+    return {
+        network: null,
+        groomed: round(Math.max(classic, skating)),
+        classic: open.length ? classic : null,
+        skating: open.length ? skating : null,
+        snow: p.snow,
+        updated: p.updated,
+        status: open.length ? "open" : loipen.some(l => l.state) ? "closed" : "unknown",
+        // Nur befahrbare Loipen nennen, sonst den Hinweis des Orts ("Schneebericht für die Saison eingestellt.")
+        note: open.length ? `befahrbar: ${open.map(l => l.name).join(", ")}` : p.info || undefined,
+    };
+}
+
+// Tourismus Lenggries: "Loipenbericht Lenggries: Langlaufloipe Hinterriss-Eng ab 28.03.26 wieder in Betrieb!"
+async function lenggries() {
+    let t = text(await load("https://www.lenggries.de/aktiv/winter/schneebericht")).replace(/[ \t]+/g, " ");
+    let report = /Loipenbericht Lenggries:?\s*([^\n©]+)/i.exec(t);
+    if (!report) throw new Error("Loipenbericht nicht gefunden");
+    let body = report[1].trim();
+    let stamp = /(\d{1,2}\.\d{1,2}\.\d{4})\s*\|\s*(\d{1,2}:\d{2})\s*Uhr/.exec(t);
+    let snow = /Schneeh(?:ö|o)he Tal(?:\/Lifte)?:?\s*(\d+)\s*cm/i.exec(t);
+    let closed = /geschlossen|gesperrt|nicht (gespurt|befahrbar|möglich)|keine? (Loipen|Spur)|eingestellt|zu wenig Schnee/i.test(body);
+    let open = !closed && /gespurt|befahrbar|in Betrieb|geöffnet|offen/i.test(body);
+    return {
+        network: null, groomed: null, classic: null, skating: null,
+        snow: snow ? Number(snow[1]) : null,
+        updated: stamp ? `${isoDate(stamp[1])}T${stamp[2].padStart(5, "0")}` : null,
+        status: closed ? "closed" : open ? "open" : "unknown",
+        note: body.length > 70 ? body.slice(0, 68).replace(/\s+\S*$/, "") + " …" : body,
+    };
+}
+
+// Altschützen Baierbrunn (Vereinsloipe, nur klassisch): "12. Januar 2026: … Noch nicht ausreichend für eine Loipe. … Keine Loipe."
+const MONTHS = ["januar", "februar", "märz", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "dezember"];
+
+async function baierbrunn() {
+    let t = text(await load("http://www.altschuetzen-baierbrunn.de/Loipe.html")).replace(/\s+/g, " ");
+    let m = /(\d{1,2})\.\s*(Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s+(\d{4}):?\s*([^*]*)/i.exec(t);
+    if (!m) throw new Error("Loipenbericht nicht gefunden");
+    let date = `${m[3]}-${String(MONTHS.indexOf(m[2].toLowerCase()) + 1).padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+    let body = m[4].replace(/Bilder leider[^.]*\.{0,3}\s*/i, "").trim();
+    let closed = /keine Loipe|nicht ausreichend|nicht (gespurt|befahrbar)|geschlossen|gesperrt|zu wenig Schnee/i.test(body);
+    let open = !closed && /gespurt|befahrbar|Loipe ist (gezogen|offen)/i.test(body);
+    let last = body.split(/(?<=[.!])\s+/).filter(Boolean).pop() || "";
+    return {
+        network: null, groomed: null, classic: null, skating: null, snow: null,
+        updated: date,
+        status: closed ? "closed" : open ? "open" : "unknown",
+        note: last.length > 70 ? last.slice(0, 68).replace(/\s+\S*$/, "") + " …" : last,
+    };
+}
+
+// region: Allgäu (ab Kißlegg) oder München; km: Autostrecke ab Rathaus Kißlegg bzw. Marienplatz (OSRM, Okt. 2026)
 const AREAS = [
-    { id: "vogt", name: "Vogt", load: scVogt, url: "https://www.sc-vogt.de/langlauf.html" },
-    { id: "waldburg", name: "Waldburg", load: asvWaldburg, url: "https://www.asv-waldburg.de/ski/langlaufen/loipenbericht" },
-    { id: "waldsee", name: "Bad Waldsee", load: badWaldsee, url: "https://www.sportpark-badwaldsee.de/loipen-info" },
-    { id: "leutkirch", name: "Leutkirch", load: () => loipenAllgaeu("Leutkirch"),
+    { id: "vogt", region: "allgaeu", km: 11.6, name: "Vogt", load: scVogt, url: "https://www.sc-vogt.de/langlauf.html" },
+    { id: "waldburg", region: "allgaeu", km: 15.9, name: "Waldburg", load: asvWaldburg, url: "https://www.asv-waldburg.de/ski/langlaufen/loipenbericht" },
+    { id: "waldsee", region: "allgaeu", km: 23.2, name: "Bad Waldsee", load: badWaldsee, url: "https://www.sportpark-badwaldsee.de/loipen-info" },
+    { id: "leutkirch", region: "allgaeu", km: 16.7, name: "Leutkirch", load: () => loipenAllgaeu("Leutkirch"),
         url: "https://www.leutkirch.de/de/Urlaub/Natur-Bewegung/Langlaufen/Loipenbericht" },
-    { id: "wangen", name: "Wangen", load: () => loipenAllgaeu("Wangen"), url: "http://www.loipen-allgaeu.de/loipen.php?name=Wangen" },
-    { id: "isny", name: "Isny", load: isny, fallback: () => loipenAllgaeu("Isny / Maierhoefen"),
+    { id: "wangen", region: "allgaeu", km: 20.9, name: "Wangen", load: () => loipenAllgaeu("Wangen"), url: "http://www.loipen-allgaeu.de/loipen.php?name=Wangen" },
+    { id: "isny", region: "allgaeu", km: 22.5, name: "Isny", load: isny, fallback: () => loipenAllgaeu("Isny / Maierhoefen"),
         url: "https://www.isny.de/freizeit-urlaub/wintersport/schneehoehen-loipenbericht.html" },
-    { id: "argenbuehl", name: "Argenbühl", load: () => loipenAllgaeu("Argenbuehl"),
+    { id: "argenbuehl", region: "allgaeu", km: 18.6, name: "Argenbühl", load: () => loipenAllgaeu("Argenbuehl"),
         url: "http://www.loipen-allgaeu.de/loipen.php?name=Argenbuehl" },
-    { id: "missen", name: "Missen-Wilhams", load: () => loipenAllgaeu("Missen-Wilhams"),
+    { id: "missen", region: "allgaeu", km: 37.2, name: "Missen-Wilhams", load: () => loipenAllgaeu("Missen-Wilhams"),
         url: "http://www.loipen-allgaeu.de/loipen.php?name=Missen-Wilhams" },
     // Weitere Gebiete in der Nähe (Westallgäu) – das Widget zeigt sie, wenn dort gespurt ist
-    { id: "heimenkirch", name: "Heimenkirch", load: () => loipenAllgaeu("Heimenkirch"),
+    { id: "heimenkirch", region: "allgaeu", km: 25.4, name: "Heimenkirch", load: () => loipenAllgaeu("Heimenkirch"),
         url: "http://www.loipen-allgaeu.de/loipen.php?name=Heimenkirch" },
-    { id: "lindenberg", name: "Lindenberg", load: () => loipenAllgaeu("Lindenberg"),
+    { id: "lindenberg", region: "allgaeu", km: 28.4, name: "Lindenberg", load: () => loipenAllgaeu("Lindenberg"),
         url: "http://www.loipen-allgaeu.de/loipen.php?name=Lindenberg" },
-    { id: "scheidegg", name: "Scheidegg", load: () => loipenAllgaeu("Scheidegg"),
+    { id: "scheidegg", region: "allgaeu", km: 45.6, name: "Scheidegg", load: () => loipenAllgaeu("Scheidegg"),
         url: "http://www.loipen-allgaeu.de/loipen.php?name=Scheidegg" },
+    // Großraum München – Alpenregion Tegernsee-Schliersee, Lenggries und die Vereinsloipe Baierbrunn
+    { id: "baierbrunn", region: "muenchen", km: 15.6, name: "Baierbrunn", load: baierbrunn, url: "http://www.altschuetzen-baierbrunn.de/Loipe.html" },
+    { id: "holzkirchen", region: "muenchen", km: 35.1, name: "Holzkirchen", load: () => ats("Holzkirchen"), url: `${ATS}/schneebericht` },
+    { id: "warngau", region: "muenchen", km: 38.4, name: "Warngau", load: () => ats("Warngau"), url: `${ATS}/schneebericht` },
+    { id: "gmund", region: "muenchen", km: 47.8, name: "Gmund", load: () => ats("Gmund"), url: `${ATS}/schneebericht` },
+    { id: "waakirchen", region: "muenchen", km: 48.3, name: "Waakirchen", load: () => ats("Waakirchen"), url: `${ATS}/schneebericht` },
+    { id: "hausham", region: "muenchen", km: 51.9, name: "Hausham", load: () => ats("Hausham"), url: `${ATS}/schneebericht` },
+    { id: "badwiessee", region: "muenchen", km: 52.6, name: "Bad Wiessee", load: () => ats("Bad Wiessee"), url: `${ATS}/schneebericht` },
+    { id: "schliersee", region: "muenchen", km: 53.8, name: "Schliersee", load: () => ats("Schliersee"), url: `${ATS}/schneebericht` },
+    { id: "rottach", region: "muenchen", km: 55.9, name: "Rottach-Egern", load: () => ats("Rottach-Egern"), url: `${ATS}/schneebericht` },
+    { id: "lenggries", region: "muenchen", km: 62.0, name: "Lenggries", load: lenggries, url: "https://www.lenggries.de/aktiv/winter/schneebericht" },
+    { id: "kreuth", region: "muenchen", km: 63.1, name: "Kreuth", load: () => ats("Kreuth"), url: `${ATS}/schneebericht` },
+    { id: "fischbachau", region: "muenchen", km: 65.5, name: "Fischbachau", load: () => ats("Fischbachau"), url: `${ATS}/schneebericht` },
+    { id: "bayrischzell", region: "muenchen", km: 76.0, name: "Bayrischzell", load: () => ats("Bayrischzell"), url: `${ATS}/schneebericht` },
 ];
 
 async function main() {
@@ -326,20 +454,21 @@ async function main() {
     for (let area of AREAS) {
         let entry;
         try {
-            entry = { id: area.id, name: area.name, url: area.url, ...(await area.load()) };
+            entry = { id: area.id, region: area.region, km: area.km, name: area.name, url: area.url, ...(await area.load()) };
         } catch (e) {
             console.log(`::warning::${area.name}: ${e.stack || e.message}`);
             // Primärquelle ausgefallen: Loipen-Allgäu als Ersatz
             if (area.fallback) {
                 try {
-                    entry = { id: area.id, name: area.name, url: area.url, ...(await area.fallback()), source: "Loipen-Allgäu" };
+                    entry = { id: area.id, region: area.region, km: area.km, name: area.name, url: area.url, ...(await area.fallback()), source: "Loipen-Allgäu" };
                     areas.push(entry);
                     continue;
                 } catch (e2) {
                     console.log(`::warning::${area.name} (Ersatz): ${e2.message}`);
                 }
             }
-            entry = previous[area.id] ? { ...previous[area.id], stale: true } : { id: area.id, name: area.name, url: area.url, status: "unknown" };
+            entry = previous[area.id] ? { ...previous[area.id], region: area.region, km: area.km, stale: true }
+                : { id: area.id, region: area.region, km: area.km, name: area.name, url: area.url, status: "unknown" };
         }
         areas.push(entry);
     }

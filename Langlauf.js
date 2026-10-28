@@ -1,20 +1,23 @@
-// Langlauf rund um Kißlegg – gespurte Loipen-Kilometer (klassisch / Skating), Schneehöhe und Stand
-// für elf Gebiete (Vogt bis Scheidegg). Gespurte Gebiete haben Vorrang (nach Entfernung),
+// Langlauf rund um Kißlegg oder im Großraum München – gespurte Loipen-Kilometer (klassisch / Skating), Schneehöhe
+// und Stand. Die Region richtet sich nach dem Standort (näher an München oder an Kißlegg); als Widget-Parameter
+// erzwingt "München" bzw. "Allgäu" eine Region. Gespurte Gebiete haben Vorrang (nach Entfernung),
 // freie Plätze füllen die nächstgelegenen geschlossenen.
 // Die Berichte sammelt stündlich ein GitHub-Workflow (scripts/langlauf.mjs); das Widget lädt die
 // fertige Datei und merkt sich den letzten Stand. Mittleres Widget: 6 Gebiete, großes: 8 mit Hinweis.
 // Antippen aktualisiert das Widget.
 
 const DATA_URL = "https://raw.githubusercontent.com/Schubidu93/Scriptable/main/data/langlauf.json";
-// Autostrecke ab Rathaus Kißlegg zum Loipeneinstieg (km, schnellste Route laut OpenStreetMap/OSRM, Okt. 2026):
-// Vogt, Leutkirch-Wilhelmshöhe, Eisenharz (Argenbühl), Niederwangen, Isny-Langlaufstadion, Golfplatz Bad Waldsee …
-const DISTANCE = { vogt: 11.6, waldburg: 15.9, leutkirch: 16.7, argenbuehl: 18.6, wangen: 20.9, isny: 22.5, waldsee: 23.2,
-    heimenkirch: 25.4, lindenberg: 28.4, missen: 37.2, scheidegg: 45.6 };
+// Jedes Gebiet bringt seine Region und die Autostrecke (km) ab Rathaus Kißlegg bzw. Marienplatz mit
+const REGIONS = {
+    allgaeu: { title: "Loipen Allgäu", lat: 47.7886, lon: 9.8809 },
+    muenchen: { title: "Loipen München", lat: 48.1374, lon: 11.5755 },
+};
 // Plätze: mittel 6, groß 8 (mit Hinweiszeile)
 const SLOTS = { medium: 6, large: 8 };
 
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), "langlauf.json");
+const locationPath = fm.joinPath(fm.cacheDirectory(), "langlauf-ort.json");
 
 const WHITE = Color.white();
 const OPEN = new Color("#34C759");
@@ -42,6 +45,37 @@ async function loadData() {
         return data;
     }
     return null;
+}
+
+// Luftlinie in km
+function distanceKm(a, b) {
+    let rad = x => x * Math.PI / 180;
+    let h = Math.sin(rad(b.lat - a.lat) / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lon - a.lon) / 2) ** 2;
+    return 12742 * Math.asin(Math.sqrt(h));
+}
+
+// Standort (grob, höchstens 10 s); ohne Freigabe/Empfang der zuletzt bekannte, sonst Kißlegg
+async function currentLocation() {
+    try {
+        Location.setAccuracyToThreeKilometers();
+        let loc = await Promise.race([Location.current(), new Promise((_, reject) => Timer.schedule(10000, false, () => reject(new Error("Zeitüberschreitung"))))]);
+        let here = { lat: loc.latitude, lon: loc.longitude };
+        fm.writeString(locationPath, JSON.stringify(here));
+        return here;
+    } catch (e) {
+        console.log(`Standort nicht verfügbar: ${e}`);
+        if (fm.fileExists(locationPath)) return JSON.parse(fm.readString(locationPath));
+        return null;
+    }
+}
+
+async function chooseRegion() {
+    let param = (args.widgetParameter || "").toLowerCase();
+    if (/m(ü|ue|u)nchen|muc/.test(param)) return "muenchen";
+    if (/allg(ä|ae|a)u|ki(ß|ss)legg/.test(param)) return "allgaeu";
+    let here = await currentLocation();
+    if (!here) return "allgaeu";
+    return distanceKm(here, REGIONS.muenchen) < distanceKm(here, REGIONS.allgaeu) ? "muenchen" : "allgaeu";
 }
 
 function addLabel(stack, text, font, color = WHITE, opacity = 1) {
@@ -114,12 +148,12 @@ function background(widget) {
     widget.backgroundGradient = gradient;
 }
 
-function addHeader(widget, data, large) {
+function addHeader(widget, data, large, region) {
     let header = widget.addStack();
     header.centerAlignContent();
     addSymbol(header, "figure.skiing.crosscountry", 15);
     header.addSpacer(6);
-    addLabel(header, "Loipen Allgäu", Font.semiboldSystemFont(15));
+    addLabel(header, REGIONS[region].title, Font.semiboldSystemFont(15));
     header.addSpacer();
     let open = data ? data.areas.filter(a => a.status === "open").length : 0;
     let info = data ? (open ? `${open} gespurt` : "nichts gespurt") : "";
@@ -164,9 +198,9 @@ function addAreaRow(widget, area, large) {
     nameBox.size = new Size(large ? COL.name - 6 : COL.name, 0);
     nameBox.centerAlignContent();
     addLabel(nameBox, area.name, Font.semiboldSystemFont(12), WHITE, open ? 1 : 0.8).minimumScaleFactor = 0.85;
-    if (large && DISTANCE[area.id]) {
+    if (large && area.km) {
         nameBox.addSpacer(4);
-        addLabel(nameBox, `${Math.round(DISTANCE[area.id])} km`, Font.mediumSystemFont(9), WHITE, 0.5);
+        addLabel(nameBox, `${Math.round(area.km)} km`, Font.mediumSystemFont(9), WHITE, 0.5);
     }
     nameBox.addSpacer();
     let num = Font.mediumSystemFont(11.5);
@@ -197,7 +231,7 @@ const FAMILY = config.widgetFamily || "medium";
 // Auswahl: zuerst alle gespurten Gebiete nach Entfernung, freie Plätze dann mit den nächstgelegenen
 // geschlossenen auffüllen; angezeigt wird in dieser Reihenfolge (gespurt vor geschlossen)
 function pickAreas(areas, slots) {
-    let dist = a => DISTANCE[a.id] || 99;
+    let dist = a => a.km || 999;
     let open = areas.filter(a => a.status === "open").sort((a, b) => dist(a) - dist(b));
     let rest = areas.filter(a => a.status !== "open").sort((a, b) => dist(a) - dist(b));
     return open.concat(rest).slice(0, slots);
@@ -206,13 +240,16 @@ function pickAreas(areas, slots) {
 async function createWidget() {
     let large = FAMILY === "large" || FAMILY === "extraLarge";
     let data = await loadData();
+    let region = await chooseRegion();
+    // Nur die Gebiete der Region (ältere Daten ohne Region gehören zum Allgäu)
+    if (data) data.areas = data.areas.filter(a => (a.region || "allgaeu") === region);
     let widget = new ListWidget();
     widget.url = URLScheme.forRunningScript();
     widget.refreshAfterDate = new Date(Date.now() + 30 * 60 * 1000);
     background(widget);
     widget.setPadding(large ? 14 : 11, 16, large ? 12 : 8, 16);
 
-    addHeader(widget, data, large);
+    addHeader(widget, data, large, region);
     if (!data) {
         addLabel(widget, "Keine Loipenberichte – später erneut versuchen", Font.mediumSystemFont(12), WHITE, 0.8);
         widget.addSpacer();
