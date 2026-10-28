@@ -1,5 +1,9 @@
 const E = "https://site.api.espn.com/apis/site/v2/sports/soccer/ger.dfb_pokal/";
-const board = await (await fetch(E + "scoreboard?dates=20261027-20261028")).json();
+for (const q of ["dates=20261027-20261028", "dates=20261028", ""]) {
+  const j = await (await fetch(E + "scoreboard?" + q)).json();
+  console.log("Q", q, Object.keys(j), (j.events || []).length, j.message || "");
+}
+const board = await (await fetch(E + "scoreboard?dates=20261028")).json();
 const ev = board.events.find(e => e.competitions[0].competitors.some(c => c.team.id === "132")) || board.events[0];
 const comp = ev.competitions[0];
 console.log("EVENT", ev.id, ev.name, comp.status.type.state);
