@@ -168,6 +168,12 @@ function addGameRow(stack, game, images, compact = false) {
     let logoSize = compact ? 12 : 15;
     let row = stack.addStack();
     row.centerAlignContent();
+    // Spiel des Lieblingsteams gold hinterlegt (wie im Fußball-Widget); Innenabstand ist der Mitte abgezogen
+    row.setPadding(0, 2, 0, 2);
+    if (game.away.abbr === FAVORITE || game.home.abbr === FAVORITE) {
+        row.backgroundColor = new Color("#FFE08A", 0.35);
+        row.cornerRadius = 4;
+    }
     let played = game.state !== "pre";
     let tie = game.state === "post" && !game.home.winner && !game.away.winner;
     let team = (side, alignRight) => {
@@ -194,7 +200,7 @@ function addGameRow(stack, game, images, compact = false) {
     team(game.away, false);
     // Feste Breite, Inhalt zentriert – ohne Abstandhalter, die selbst Platz kosten
     let mid = row.addStack();
-    mid.size = new Size(44, 0);
+    mid.size = new Size(40, 0);
     mid.centerAlignContent();
     let text;
     if (game.state === "pre") {

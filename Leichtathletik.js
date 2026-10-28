@@ -146,7 +146,16 @@ function addHeader(widget, data) {
 }
 
 // Zwei Zeilen pro Leistung: Name und Punkte, darunter Disziplin, Leistung, Ort, Datum
-function addPerformance(stack, p, compact) {
+function addPerformance(parent, p, compact) {
+    // Weltweite Liste: deutsche Athletinnen und Athleten gold hinterlegt (wie das Lieblingsteam im Fußball-Widget);
+    // Innenabstand immer, damit hinterlegte und normale Einträge bündig bleiben
+    let stack = parent.addStack();
+    stack.layoutVertically();
+    stack.setPadding(0, 2, 0, 2);
+    if (!GERMANY && p.nat === "GER") {
+        stack.backgroundColor = new Color("#FFE08A", 0.35);
+        stack.cornerRadius = 4;
+    }
     let top = stack.addStack();
     top.centerAlignContent();
     let rank = top.addStack();
