@@ -221,7 +221,12 @@ async function wikiLogo(name, cache) {
     let fits = page => page.thumbnail && words.some(w => page.title.toLowerCase().includes(w))
         && /\.svg|logo|wappen|emblem|signet/i.test(decodeURIComponent(page.thumbnail.source));
     let url = null;
-    for (let term of [`${name} Fußballverein`, `${name} Fußball`]) {
+    let failed = false;
+    // Zuletzt nur das längste Wort – hilft bei Tippfehlern im ESPN-Namen („Großaspch“)
+    let longest = words.slice().sort((a, b) => b.length - a.length)[0];
+    let terms = [`${name} Fußballverein`, `${name} Fußball`];
+    if (longest && words.length > 1) terms.push(`${longest} Fußball`);
+    for (let term of terms) {
         try {
             let req = new Request("https://de.wikipedia.org/w/api.php?format=json&action=query&generator=search"
                 + `&gsrnamespace=0&gsrlimit=3&gsrsearch=${encodeURIComponent(term)}`
@@ -236,11 +241,13 @@ async function wikiLogo(name, cache) {
                 break;
             }
         } catch (e) {
+            // z. B. zu viele Anfragen – nicht als „kein Logo“ merken, beim nächsten Mal erneut
             console.log(`Wikipedia-Logo ${name}: ${e}`);
+            failed = true;
             break;
         }
     }
-    cache[name] = { url, t: Date.now() };
+    if (!failed || url) cache[name] = { url, t: Date.now() };
     return url;
 }
 
