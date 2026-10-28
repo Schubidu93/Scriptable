@@ -174,6 +174,8 @@ function parseCalendar(html, year) {
         // ältere Seiten "race/tour-down-under/2026/gc"; relativ oder absolut
         let link = /href=["'][^"']*?\b(race\/[^"'?#]+)["'][^>]*>([\s\S]*?)<\/a>/i.exec(row);
         if (!link) return null;
+        // Abgesagte Rennen stehen durchgestrichen im Kalender – überspringen
+        if (/line-through|strike|striked|cancel|<s[\s>]|<del[\s>]/i.test(row)) return null;
         let text = cleanText(row);
         let dates = [...text.matchAll(/\b(\d{1,2})\.(\d{1,2})\b/g)].map(m => new Date(year, m[2] - 1, m[1]));
         if (!dates.length) {
@@ -579,7 +581,9 @@ async function loadData() {
         upcoming = upcoming.concat(await loadCalendar(year + 1).catch(() => []));
     }
 
-    finished.sort((a, b) => b.end - a.end);
+    // Neueste zuerst; endet eine Rundfahrt am selben Tag wie ein Eintagesrennen, zählt der spätere Start
+    // (Montréal am 13.09. vor der Vuelta, die vom 22.08. bis 13.09. lief)
+    finished.sort((a, b) => b.end - a.end || b.start - a.start);
     upcoming.sort((a, b) => a.start - b.start);
 
     // Laufende Rundfahrten zuerst, dann die beendeten Rennen – bis 3 Ergebnisse beisammen sind.
@@ -624,6 +628,9 @@ async function loadData() {
         try {
             if (race.stageRace) {
                 let result = await loadStageEntries(race, today, false);
+                // Weder Etappe noch GC und Hinweis auf Absage: überspringen
+                if (race.finished && result.entries.every(e => !e.podium.length)
+                    && /cancel|abgesagt|annul/i.test(cleanText(result.ctx.html))) continue;
                 let item = { race, entries: result.entries };
                 collected.push(item);
                 if (race.finished) {
@@ -633,7 +640,10 @@ async function loadData() {
                     if (!complete) pending.push({ item, ctx: result.ctx });
                 }
             } else {
-                let podium = parsePodium(await loadResultPage(key, hasPodium));
+                let html = await loadResultPage(key, hasPodium);
+                let podium = parsePodium(html);
+                // Kein Ergebnis und Hinweis auf Absage: Rennen überspringen, das nächste ältere nachrücken lassen
+                if (!podium.length && /cancel|abgesagt|annul/i.test(cleanText(html))) continue;
                 let entries = [{ ...race, label: "", date: race.end, path: key, podium, debug: podium.debug }];
                 collected.push({ race, entries });
                 if (race.finished && podium.length) {
