@@ -692,7 +692,10 @@ async function loadWithCache(count) {
             throw new Error("Keine Tabelle gefunden");
         }
         if (VIEW === "ergebnisse") {
+            // Europapokale: deutsche Vereine kennen, um ihre Spiele zu hinterlegen
+            let german = EUROPE ? loadGermanClubs() : null;
             let data = COMPACT ? await loadResults(count) : await loadMatchdays();
+            if (german) GERMAN_CLUBS = await german;
             if (data.games.length) {
                 data.updated = Date.now();
                 fm.writeString(cachePath, JSON.stringify(data));
@@ -1028,9 +1031,22 @@ function addResultLine(stack, team, game, images) {
     addLabel(row, team.score, team.winner ? Font.boldMonospacedSystemFont(COMPACT ? 11 : 12) : Font.mediumMonospacedSystemFont(COMPACT ? 11 : 12), WHITE, loser ? 0.55 : 1);
 }
 
+// Spiele hinterlegen: mit Lieblingsteam kräftig (gold), in Europapokalen mit deutschem Verein dezent
+function gameBackground(game) {
+    let backgrounds = [game.home, game.away].map(team => rowBackground(team.id));
+    return backgrounds.includes(FAV_BACKGROUND) ? FAV_BACKGROUND : backgrounds.find(Boolean) || null;
+}
+
 function addResult(stack, game, images) {
     let box = stack.addStack();
     box.layoutVertically();
+    // Innenabstand immer, damit hinterlegte und normale Spiele bündig bleiben
+    box.setPadding(1, 3, 1, 3);
+    let background = gameBackground(game);
+    if (background) {
+        box.backgroundColor = background;
+        box.cornerRadius = 4;
+    }
     addResultLine(box, game.home, game, images);
     box.addSpacer(1);
     addResultLine(box, game.away, game, images);
@@ -1072,6 +1088,13 @@ function buildResults(widget, data, columns, perColumn, images) {
 function addGameRow(stack, game, images) {
     let row = stack.addStack();
     row.centerAlignContent();
+    // Innenabstand (2 + 2) ist der Mitte abgezogen – die Zeile bleibt 148 pt breit, zwei Spalten passen weiter
+    row.setPadding(0, 2, 0, 2);
+    let background = gameBackground(game);
+    if (background) {
+        row.backgroundColor = background;
+        row.cornerRadius = 4;
+    }
     let played = game.state !== "pre";
     let draw = played && !game.home.winner && !game.away.winner;
     let teamFont = team => (!played || draw ? Font.semiboldSystemFont(13)
@@ -1087,7 +1110,7 @@ function addGameRow(stack, game, images) {
 
     // Feste Breite, Inhalt zentriert – ohne Abstandhalter, die selbst Platz kosten (sonst „15:…“)
     let mid = row.addStack();
-    mid.size = new Size(42, 0);
+    mid.size = new Size(38, 0);
     mid.centerAlignContent();
     let text;
     if (game.state === "pre") {
@@ -1195,7 +1218,7 @@ function buildMatchdays(widget, data, images) {
 // ---------- Vollständige Tabelle ----------
 // Lieblingsteams (Schrift gold, fett): FC Bayern, Hajduk Split und das per TEAM gewählte
 const FAVORITES = new Set(["132", "489", TEAM_ID]);
-// Europapokale: übrige deutsche Vereine dezent hinterlegt (Lieblingsteams haben Vorrang)
+// Europapokale: übrige deutsche Vereine dezent hinterlegt (Lieblingsteams haben Vorrang) – Tabellen und Spiele
 const FAV_BACKGROUND = new Color("#FFE08A", 0.35);
 const GERMAN_BACKGROUND = new Color("#FFFFFF", 0.25);
 const GERMAN_CLUBS_PATH = fm.joinPath(fm.cacheDirectory(), "fussball-deutsche-clubs.json");
