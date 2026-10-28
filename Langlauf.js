@@ -1,14 +1,16 @@
 // Langlauf rund um Kißlegg – gespurte Loipen-Kilometer (klassisch / Skating), Schneehöhe und Stand
-// für Vogt, Bad Waldsee, Leutkirch, Wangen, Isny, Argenbühl und Missen-Wilhams.
+// für zehn Gebiete (Vogt bis Missen-Wilhams). Gespurte Gebiete haben Vorrang (nach Entfernung),
+// freie Plätze füllen die nächstgelegenen geschlossenen.
 // Die Berichte sammelt stündlich ein GitHub-Workflow (scripts/langlauf.mjs); das Widget lädt die
-// fertige Datei und merkt sich den letzten Stand. Mittleres Widget: 6 Gebiete, großes: alle mit Hinweis.
+// fertige Datei und merkt sich den letzten Stand. Mittleres Widget: 6 Gebiete, großes: 8 mit Hinweis.
 // Antippen aktualisiert das Widget.
 
 const DATA_URL = "https://raw.githubusercontent.com/Schubidu93/Scriptable/main/data/langlauf.json";
-// Luftlinie ab Kißlegg (km) – Reihenfolge im Widget: nächstes Gebiet zuerst
-const DISTANCE = { vogt: 9, leutkirch: 11, wangen: 12, argenbuehl: 12, isny: 16, waldsee: 18, missen: 28 };
-// Mittleres Widget: sechs Gebiete (Argenbühl nur im großen)
-const MEDIUM_AREAS = ["vogt", "leutkirch", "wangen", "isny", "waldsee", "missen"];
+// Luftlinie ab Kißlegg (km)
+const DISTANCE = { vogt: 9, leutkirch: 11, wangen: 12, argenbuehl: 12, isny: 16, waldsee: 18, heimenkirch: 18,
+    lindenberg: 21, scheidegg: 23, missen: 28 };
+// Plätze: mittel 6, groß 8 (mit Hinweiszeile)
+const SLOTS = { medium: 6, large: 8 };
 
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), "langlauf.json");
@@ -191,6 +193,15 @@ function addAreaRow(widget, area, large) {
 
 const FAMILY = config.widgetFamily || "medium";
 
+// Auswahl: zuerst alle gespurten Gebiete nach Entfernung, freie Plätze dann mit den nächstgelegenen
+// geschlossenen auffüllen; angezeigt wird in dieser Reihenfolge (gespurt vor geschlossen)
+function pickAreas(areas, slots) {
+    let dist = a => DISTANCE[a.id] || 99;
+    let open = areas.filter(a => a.status === "open").sort((a, b) => dist(a) - dist(b));
+    let rest = areas.filter(a => a.status !== "open").sort((a, b) => dist(a) - dist(b));
+    return open.concat(rest).slice(0, slots);
+}
+
 async function createWidget() {
     let large = FAMILY === "large" || FAMILY === "extraLarge";
     let data = await loadData();
@@ -207,8 +218,7 @@ async function createWidget() {
         return widget;
     }
     addColumnTitles(widget, large);
-    let areas = (large ? data.areas : data.areas.filter(a => MEDIUM_AREAS.includes(a.id)))
-        .slice().sort((a, b) => (DISTANCE[a.id] || 99) - (DISTANCE[b.id] || 99));
+    let areas = pickAreas(data.areas, large ? SLOTS.large : SLOTS.medium);
     areas.forEach((area, i) => {
         if (i > 0) widget.addSpacer(large ? 7 : 2);
         addAreaRow(widget, area, large);
