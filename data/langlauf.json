@@ -1,0 +1,84 @@
+{
+  "generated": "2026-10-28T12:54:04.616Z",
+  "areas": [
+    {
+      "id": "vogt",
+      "name": "Vogt",
+      "url": "https://www.sc-vogt.de/langlauf.html",
+      "network": 30,
+      "groomed": null,
+      "classic": null,
+      "skating": null,
+      "snow": null,
+      "updated": "2026-03-22",
+      "status": "closed",
+      "note": "wir haben den Winterbetrieb endgültig eingestellt."
+    },
+    {
+      "id": "waldsee",
+      "name": "Bad Waldsee",
+      "url": "https://www.sportpark-badwaldsee.de/loipen-info",
+      "status": "unknown"
+    },
+    {
+      "id": "leutkirch",
+      "name": "Leutkirch",
+      "url": "https://www.leutkirch.de/de/Urlaub/Natur-Bewegung/Langlaufen/Loipenbericht",
+      "network": 180.8,
+      "groomed": 0,
+      "classic": 0,
+      "skating": 0,
+      "snow": 0,
+      "updated": "2026-04-02T12:41",
+      "status": "closed"
+    },
+    {
+      "id": "wangen",
+      "name": "Wangen",
+      "url": "http://www.loipen-allgaeu.de/loipen.php?name=Wangen",
+      "network": 120,
+      "groomed": 0,
+      "classic": 0,
+      "skating": 0,
+      "snow": 0,
+      "updated": "2026-04-02T12:41",
+      "status": "closed"
+    },
+    {
+      "id": "isny",
+      "name": "Isny",
+      "url": "http://www.loipen-allgaeu.de/loipen.php?name=Isny%20/%20Maierhoefen",
+      "network": 97.7,
+      "groomed": 0,
+      "classic": 0,
+      "skating": 0,
+      "snow": 0,
+      "updated": "2026-04-02T12:41",
+      "status": "closed"
+    },
+    {
+      "id": "argenbuehl",
+      "name": "Argenbühl",
+      "url": "http://www.loipen-allgaeu.de/loipen.php?name=Argenbuehl",
+      "network": 75.8,
+      "groomed": 0,
+      "classic": 0,
+      "skating": 0,
+      "snow": 0,
+      "updated": "2026-04-02T12:41",
+      "status": "closed"
+    },
+    {
+      "id": "missen",
+      "name": "Missen-Wilhams",
+      "url": "http://www.loipen-allgaeu.de/loipen.php?name=Missen-Wilhams",
+      "network": 41,
+      "groomed": 0,
+      "classic": 0,
+      "skating": 0,
+      "snow": 0,
+      "updated": "2026-04-02T12:41",
+      "status": "closed"
+    }
+  ]
+}
