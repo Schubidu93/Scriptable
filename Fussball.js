@@ -561,6 +561,12 @@ async function loadData() {
         return g;
     };
     let last = finished.length ? info(finished[finished.length - 1]) : null;
+    // Am Spieltag bleiben die Torschützen auch nach Abpfiff unter dem Ergebnis stehen
+    let lastGoals = null;
+    if (last && new Date(last.date).toDateString() === new Date().toDateString()) {
+        lastGoals = await loadGoals(finished[finished.length - 1]);
+        last.goals = lastGoals;
+    }
     let form = finished.slice(-5).map(info);
     let live = liveEvent ? { ...info(liveEvent), detail: liveDetail(statusOf(liveEvent)), goals: await loadGoals(liveEvent) } : null;
     let next = upcoming.length ? info(upcoming[0]) : null;
@@ -578,6 +584,7 @@ async function loadData() {
     let pokal = null;
     if (LEAGUE_KEY === "pokal") {
         let lastTwo = finished.slice(-2).map(info).reverse();
+        if (lastGoals && lastTwo[0]) lastTwo[0].goals = lastGoals;
         let status = "aktiv";
         if (!live && !next && last) {
             if (last.result === "N") status = "ausgeschieden";
@@ -937,6 +944,7 @@ function addLastGame(stack, last, images, compact = false) {
     opponent.addSpacer(3);
     addLabel(opponent, last.opponent, Font.semiboldSystemFont(12), WHITE);
     addLabel(info, formatDay(last.date), Font.mediumSystemFont(10), WHITE, 0.6);
+    addScorers(stack, last, compact, compact ? 0 : 160);
 }
 
 // Form klein: Gegner-Logo über S/U/N-Badge, ältestes Spiel links, neuestes rechts
@@ -958,7 +966,7 @@ function addForm(stack, data, images) {
 }
 
 // Live-Spielstand: eigener Score groß, Halbzeit und Minute farbig
-function addLiveGame(stack, live, images, compact = false) {
+function addLiveGame(stack, live, images, compact = false, width = 0) {
     addSectionTitle(stack, "● Live", LIVE_RED, 1);
     stack.addSpacer(2);
     let row = stack.addStack();
@@ -971,18 +979,25 @@ function addLiveGame(stack, live, images, compact = false) {
     row.addSpacer(3);
     addLabel(row, live.opponent, Font.semiboldSystemFont(12), WHITE);
     addLabel(stack, live.detail, Font.semiboldSystemFont(10), LIVE_RED);
-    addScorers(stack, live, compact);
+    addScorers(stack, live, compact, width);
 }
 
 // Torschützen klein unter dem Spielstand: eigene Tore, darunter die des Gegners (kleines Widget: eine Zeile, zeitlich)
-function addScorers(stack, live, compact) {
+function addScorers(stack, live, compact, width = 0) {
     let goals = live.goals || [];
     if (!goals.length) return;
     let ours = goals.filter(g => g.team === TEAM_ID);
     let theirs = goals.filter(g => g.team !== TEAM_ID);
     stack.addSpacer(2);
     let line = (text, opacity) => {
-        let t = addLabel(stack, text, Font.mediumSystemFont(compact ? 8 : 9), WHITE, opacity);
+        // Feste Breite, damit lange Zeilen die Nachbarspalte nicht verdrängen (sie werden verkleinert)
+        let box = stack;
+        if (width) {
+            box = stack.addStack();
+            box.size = new Size(width, 0);
+        }
+        let t = addLabel(box, text, Font.mediumSystemFont(compact ? 8 : 9), WHITE, opacity);
+        if (width) box.addSpacer();
         t.lineLimit = compact ? 2 : 1;
         t.minimumScaleFactor = 0.75;
     };
@@ -1719,12 +1734,13 @@ function addPokalGame(stack, game, images) {
     addLogo(row, images, game.opponentLogo, 15);
     row.addSpacer(3);
     addLabel(row, game.opponent, Font.semiboldSystemFont(11), WHITE);
+    addScorers(stack, game, false, 170);
 }
 
 function addPokalNext(stack, data, images) {
     let pokal = data.pokal;
     if (data.live) {
-        addLiveGame(stack, data.live, images);
+        addLiveGame(stack, data.live, images, false, 120);
         return;
     }
     if (pokal.status === "sieger") {
@@ -1818,7 +1834,7 @@ function buildMedium(widget, data, images) {
     left.layoutVertically();
     addLastGame(left, data.last, images);
     left.addSpacer(6);
-    if (data.live) addLiveGame(left, data.live, images);
+    if (data.live) addLiveGame(left, data.live, images, false, 160);
     else addNextGame(left, data.next, images);
     left.addSpacer();
 
