@@ -87,7 +87,9 @@ function formatStand(iso) {
     if (days === 0) return `heute${time}`;
     if (days === 1) return "gestern";
     let pad = n => String(n).padStart(2, "0");
-    return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.`;
+    // Älter als ein knappes Jahr (z. B. Bad Waldsee 03.12.2023): mit Jahr, damit es nicht aktuell wirkt
+    let year = days > 300 ? String(date.getFullYear()).slice(2) : "";
+    return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${year}`;
 }
 
 // Ampel: grün = gespurt und Bericht höchstens 2 Tage alt, gelb = gespurt, aber älter, grau = zu / unbekannt
