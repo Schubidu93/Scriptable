@@ -1212,22 +1212,10 @@ function addTableRow(stack, r, images, full) {
     addNumbers(row, full, col => col[2](r), WHITE, 0.7, padCell(r.points, 3), fav ? ACCENT : WHITE, 1);
 }
 
-// Zahlenspalten und Punkte. Liga (eine Spalte, Platz genug): je Spalte ein Text mit festem Abstand.
-// Ligaphase (36 Teams, zwei Spalten): alle Zahlen in einem Text – sonst reicht der Speicher nicht.
-// Überschriften nutzen dieselben Schriften wie die Zahlen, damit sie genau darüber stehen.
-const COLUMN_GAP = 7;
+// Zahlenspalten in einem Text, dann die Punkte (fett)
 function addNumbers(row, full, pick, color, opacity, points, pointsColor, pointsOpacity) {
-    let cols = tableColumns(full);
     let num = Font.regularMonospacedSystemFont(NUM_SIZE);
-    if (full) {
-        cols.forEach((col, i) => {
-            if (i > 0) row.addSpacer(COLUMN_GAP);
-            addLabel(row, padCell(pick(col), col[1]), num, color, opacity).minimumScaleFactor = 1;
-        });
-        row.addSpacer(COLUMN_GAP);
-    } else {
-        addLabel(row, numberText(cols, pick) + " ", num, color, opacity).minimumScaleFactor = 1;
-    }
+    addLabel(row, numberText(tableColumns(full), pick) + " ", num, color, opacity).minimumScaleFactor = 1;
     addLabel(row, points, Font.boldMonospacedSystemFont(NUM_SIZE), pointsColor, pointsOpacity).minimumScaleFactor = 1;
 }
 
@@ -1235,6 +1223,15 @@ function addNumbers(row, full, pick, color, opacity, points, pointsColor, points
 function addTableHeader(stack, full) {
     let row = stack.addStack();
     row.setPadding(0, 2, 0, 2);
+    if (full) {
+        // Bundesliga: Überschriften halbfett in einem Text
+        let font = Font.semiboldMonospacedSystemFont(NUM_SIZE);
+        addLabel(row, padCell("#", 2), font, WHITE, 0.45).minimumScaleFactor = 1;
+        row.addSpacer();
+        addLabel(row, numberText(tableColumns(full), col => col[0]) + " " + padCell("Pkt", 3), font, WHITE, 0.45)
+            .minimumScaleFactor = 1;
+        return;
+    }
     addLabel(row, padCell("#", 2), Font.regularMonospacedSystemFont(NUM_SIZE), WHITE, 0.45).minimumScaleFactor = 1;
     row.addSpacer();
     // Überschrift über einstelligen Zahlen rechtsbündig, „Tore“ mittig über dem Doppelpunkt
