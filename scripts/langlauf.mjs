@@ -359,6 +359,17 @@ async function main() {
         console.log(`::warning::Stadt Leutkirch: ${e.message}`);
     }
 
+    // Waldburg: Ohne eigenen ASV-Bericht gilt der des SC Vogt – gemeinsames Loipennetz Vogt-Waldburg
+    let wb = areas.find(a => a.id === "waldburg");
+    let vg = areas.find(a => a.id === "vogt");
+    if (wb && vg && (wb.status === "unknown" || !wb.updated) && vg.updated) {
+        wb.status = vg.status;
+        wb.updated = vg.updated;
+        wb.groomed = vg.groomed;
+        wb.note = "laut SC Vogt (Netz Vogt-Waldburg)";
+        wb.source = "SC Vogt";
+    }
+
     // Wangen: Meldung der Berger Höhe (Niederwangen), wenn neuer als Loipen-Allgäu
     try {
         let berger = await bergerHoehe();
