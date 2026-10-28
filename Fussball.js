@@ -1154,7 +1154,79 @@ async function loadTable() {
         };
     }).sort((a, b) => a.rank - b.rank);
     let matchday = Math.max(0, ...rows.map(r => r.played));
-    return { rows, matchday, schedule };
+    // Europapokal: Ligaphase beendet (8 Spiele je Team) und K.-o.-Runde begonnen → Turnierbaum statt Tabelle
+    let bracket = null;
+    if (EUROPE && rows.length && rows.every(r => r.played >= 8)) {
+        try {
+            bracket = buildBracketData(await loadSeasonEvents());
+        } catch (e) {
+            console.log(`Turnierbaum: ${e}`);
+        }
+    }
+    return { rows, matchday, schedule, bracket };
+}
+
+// K.-o.-Runden der Europapokale: [Runde, Kurzname, Anzahl Duelle]
+const KO_ROUNDS = [["Playoffs", "Playoffs", 8], ["Achtelfinale", "AF", 8], ["Viertelfinale", "VF", 4],
+    ["Halbfinale", "HF", 2], ["Finale", "Finale", 1]];
+
+// Duelle (Hin- und Rückspiel zusammengefasst) je Runde, in Baum-Reihenfolge
+function buildBracketData(events) {
+    let ties = {};
+    for (let e of events) {
+        let round = roundOf(e);
+        if (!KO_ROUNDS.some(r => r[0] === round)) continue;
+        let comps = e.competitions[0].competitors;
+        let ids = comps.map(c => String(c.team.id)).sort();
+        let key = `${round}|${ids.join("-")}`;
+        let g = toGame(e);
+        let tie = ties[key] || (ties[key] = { round, teams: [], legs: [] });
+        tie.legs.push({ date: e.date, state: g.state, home: g.home, away: g.away });
+        for (let side of [g.home, g.away]) {
+            let t = tie.teams.find(x => x.id === side.id);
+            if (!t) tie.teams.push(t = { id: side.id, abbr: side.abbr, logo: side.logo, goals: 0, advance: false, legWinner: false });
+            if (g.state !== "pre") t.goals += Number(side.score) || 0;
+            t.legWinner = side.winner; // im letzten Spiel (z. B. nach Elfmeterschießen)
+        }
+        comps.forEach(c => {
+            if (c.advance === true) tie.teams.find(t => t.id === String(c.team.id)).advance = true;
+        });
+    }
+    let all = Object.values(ties).map(tie => {
+        tie.legs.sort((a, b) => new Date(a.date) - new Date(b.date));
+        let legsNeeded = tie.round === "Finale" ? 1 : 2;
+        let states = tie.legs.map(l => l.state);
+        let state = states.includes("in") ? "in" : states.every(s => s === "pre") ? "pre"
+            : states.every(s => s === "post") && tie.legs.length >= legsNeeded ? "post" : "running";
+        let [a, b] = tie.teams;
+        let winner = null;
+        if (state === "post" && a && b) {
+            let adv = tie.teams.find(t => t.advance);
+            winner = adv ? adv.id : a.goals !== b.goals ? (a.goals > b.goals ? a.id : b.id)
+                : (tie.teams.find(t => t.legWinner) || {}).id || null;
+        }
+        return { round: tie.round, date: tie.legs[0].date, state, winner,
+            teams: tie.teams.map(({ id, abbr, logo, goals }) => ({ id, abbr, logo, goals })) };
+    });
+    let rounds = KO_ROUNDS.map(([name, short, slots]) => ({
+        name, short, slots,
+        ties: all.filter(t => t.round === name).sort((a, b) => new Date(a.date) - new Date(b.date)),
+    }));
+    // Reihenfolge von hinten: Duelle einer Runde stehen bei dem Duell der nächsten Runde, in das ihr Sieger kam
+    for (let r = rounds.length - 2; r >= 0; r--) {
+        let next = rounds[r + 1].ties;
+        if (!next.length) continue;
+        let ordered = [];
+        next.forEach(t => rounds[r].ties
+            .filter(c => !ordered.includes(c) && c.teams.some(x => t.teams.some(y => y.id === x.id)))
+            .forEach(c => ordered.push(c)));
+        rounds[r].ties.forEach(c => { if (!ordered.includes(c)) ordered.push(c); });
+        rounds[r].ties = ordered;
+    }
+    rounds.forEach(r => { r.slots = Math.max(r.slots, r.ties.length); });
+    let started = rounds.filter(r => r.ties.some(t => t.state !== "pre"));
+    if (!started.length) return null;
+    return { rounds, current: started[started.length - 1].name };
 }
 
 // Zahlen in Festbreitenschrift, links mit Ziffern-Leerzeichen auf eine feste Zeichenzahl aufgefüllt –
@@ -1236,6 +1308,90 @@ function addTableHeader(stack, full) {
     row.addSpacer();
     // Überschrift über einstelligen Zahlen rechtsbündig, „Tore“ mittig über dem Doppelpunkt
     addNumbers(row, full, col => col[0] === "Tore" ? "Tore" + FIG : col[0], WHITE, 0.45, "Pkt", WHITE, 0.45);
+}
+
+// Größe des großen Widgets (Punkte) je nach iPhone-Breite
+function largeWidgetSize() {
+    let w = Device.screenSize().width;
+    if (w >= 428) return new Size(364, 382);
+    if (w >= 390) return new Size(338, 354);
+    if (w >= 375) return new Size(329, 345);
+    return new Size(292, 311);
+}
+
+// Turnierbaum: je Runde eine Spalte; jedes Duell mittig in seinem Feld, so liegen die Duelle
+// einer Runde genau zwischen ihren beiden Vorgängern
+function buildBracket(widget, data, images) {
+    let header = widget.addStack();
+    header.centerAlignContent();
+    addLabel(header, `⚽️ ${LEAGUE.title}`, Font.semiboldSystemFont(15), WHITE);
+    header.addSpacer();
+    let info = [data.bracket.current, data.stale ? "offline" : ""].filter(Boolean).join(" · ");
+    addLabel(header, info, Font.semiboldSystemFont(11), WHITE, 0.6);
+    widget.addSpacer(6);
+
+    let size = largeWidgetSize();
+    let rounds = data.bracket.rounds;
+    let gap = 4;
+    let colW = Math.floor((size.width - 28 - gap * (rounds.length - 1)) / rounds.length);
+    let bodyH = size.height - 16 - 28 - 14 - 14;
+
+    let body = widget.addStack();
+    rounds.forEach((round, i) => {
+        if (i > 0) body.addSpacer(gap);
+        let col = body.addStack();
+        col.layoutVertically();
+        col.size = new Size(colW, 0);
+        let title = col.addStack();
+        title.size = new Size(colW, 12);
+        let t = addLabel(title, round.short.toUpperCase(), Font.semiboldSystemFont(8.5), WHITE,
+            round.name === data.bracket.current ? 0.9 : 0.5);
+        t.centerAlignText();
+        t.minimumScaleFactor = 1;
+        col.addSpacer(2);
+        let slotH = bodyH / round.slots;
+        for (let k = 0; k < round.slots; k++) {
+            let slot = col.addStack();
+            slot.layoutVertically();
+            slot.size = new Size(colW, slotH);
+            slot.addSpacer();
+            addTie(slot, round.ties[k], images, colW);
+            slot.addSpacer();
+        }
+    });
+    widget.addSpacer();
+}
+
+// Ein Duell: zwei Zeilen mit Logo, Kürzel und Toren (Hin- und Rückspiel zusammen)
+function addTie(stack, tie, images, width) {
+    let box = stack.addStack();
+    box.layoutVertically();
+    box.size = new Size(width, 0);
+    box.setPadding(2, 3, 2, 3);
+    box.cornerRadius = 4;
+    box.backgroundColor = new Color("#FFFFFF", tie ? 0.08 : 0.04);
+    let teams = tie ? tie.teams : [null, null];
+    teams.slice(0, 2).forEach((team, i) => {
+        if (i > 0) box.addSpacer(1);
+        let row = box.addStack();
+        row.centerAlignContent();
+        if (!team) {
+            addLabel(row, "–", Font.mediumSystemFont(9), WHITE, 0.3);
+            row.addSpacer();
+            return;
+        }
+        let fav = FAVORITES.has(team.id);
+        let out = tie.winner && tie.winner !== team.id;
+        addLogo(row, images, team.logo, 10);
+        row.addSpacer(3);
+        let name = addLabel(row, team.abbr, tie.winner === team.id ? Font.boldSystemFont(9) : Font.semiboldSystemFont(9),
+            fav ? ACCENT : WHITE, out ? 0.45 : 1);
+        name.minimumScaleFactor = 1;
+        row.addSpacer();
+        let goals = tie.state === "pre" ? "" : String(team.goals);
+        addLabel(row, goals, Font.semiboldMonospacedSystemFont(9),
+            tie.state === "in" ? LIVE_RED : WHITE, out ? 0.45 : 0.9).minimumScaleFactor = 1;
+    });
 }
 
 // Legende der Zonen (in Tabellenreihenfolge)
@@ -1516,10 +1672,16 @@ async function createWidget() {
     if (data.standings) data.standings.rows.forEach(r => urls.push(r.logo));
     if (data.knockout) data.knockout.legs.forEach(g => urls.push(g.opponentLogo));
     if (data.pokal) data.pokal.lastTwo.forEach(g => urls.push(g.opponentLogo));
-    if (VIEW === "tabelle") (data.rows || []).forEach(r => urls.push(r.logo));
+    if (VIEW === "tabelle" && data.bracket) {
+        data.bracket.rounds.forEach(r => r.ties.forEach(t => t.teams.forEach(x => urls.push(x.logo))));
+    } else if (VIEW === "tabelle") {
+        (data.rows || []).forEach(r => urls.push(r.logo));
+    }
     let images = await loadLogos(urls);
 
-    if (VIEW === "tabelle") {
+    if (VIEW === "tabelle" && data.bracket) {
+        buildBracket(widget, data, images);
+    } else if (VIEW === "tabelle") {
         buildTable(widget, data, images);
     } else if (VIEW === "ergebnisse" && !COMPACT && data.sections && data.sections.length) {
         buildMatchdays(widget, data, images);
