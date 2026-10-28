@@ -137,13 +137,15 @@ async function badWaldsee() {
     if (!rows.length) throw new Error("Loipentabelle nicht gefunden");
     let classic = 0, skating = 0, open = 0, network = 0;
     let dates = [];
-    for (let [status, , , length, type, last] of rows) {
+    let openNames = [];
+    for (let [status, , name, length, type, last] of rows) {
         let km = Math.max(...(length.match(/\d+(?:,\d+)?/g) || ["0"]).map(num));
         network += km;
         let date = isoDate(last);
         if (date) dates.push(date);
         if (/geschlossen|gesperrt/i.test(status)) continue;
         open++;
+        openNames.push(name.replace(/\s*Loipe$/i, ""));
         if (/klassisch|einsteiger/i.test(type)) classic += km;
         if (/skating/i.test(type)) skating += km;
     }
@@ -156,7 +158,8 @@ async function badWaldsee() {
         snow: null,
         updated: dates.length ? dates[dates.length - 1] : null,
         status: open ? "open" : "closed",
-        note: open ? `${open} von ${rows.length} Loipen offen` : "alle Loipen geschlossen",
+        // Nur die offenen Loipen nennen ("offen: Polarstern, Zauberwald")
+        note: open ? `offen: ${openNames.join(", ")}` : "alle Loipen geschlossen",
     };
 }
 
@@ -210,7 +213,9 @@ async function isny() {
         snow: null,
         updated,
         status: open.length ? "open" : "closed",
-        note: news ? news[3].trim() : open.length ? `${open.length} von ${loipen.length} Loipen offen` : "alle Loipen geschlossen",
+        // Offene Loipen beim Namen ("offen: Langlaufstadion, Gschwend, Sportplatz Maierhöfen"), sonst die Tagesmeldung
+        note: open.length ? `offen: ${open.map(l => l.name.replace(/loipe\b/i, "").replace(/\s+in\s+/i, " ").trim()).join(", ")}`
+            : news ? news[3].trim() : "alle Loipen geschlossen",
     };
 }
 
