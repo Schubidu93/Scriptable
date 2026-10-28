@@ -6,6 +6,8 @@
 //   "ergebnisse":      letzte Ergebnisse und laufende Spiele des Wettbewerbs
 //   "pokal":           DFB-Pokal – letzte zwei Spiele und nächste Runde
 //   "ergebnisse" mit LIGA "pokal": alle Spiele der aktuellen Pokalrunde (bzw. Vorschau auf die ausgeloste nächste)
+//   "tabelle":         vollständige Tabelle (großes Widget) – Bundesliga mit allen Spalten,
+//                      Europapokale mit 36 Teams in zwei Spalten; Zonen und Lieblingsteams farbig
 // Wettbewerb (LIGA): "bundesliga" (Standard), "cl", "el" (Europa League) oder "ecl" (Conference League).
 //
 // Im Loader per Function("ANSICHT", "LIGA", code)("ergebnisse", "cl")
@@ -13,7 +15,7 @@
 
 const ESPN = "https://site.api.espn.com/apis/";
 const params = String(args.widgetParameter || "").trim().toLowerCase().split(/\s+/);
-const VIEW = String((typeof ANSICHT !== "undefined" && ANSICHT) || params.find(p => ["team", "ergebnisse", "pokal"].includes(p)) || "team").toLowerCase();
+const VIEW = String((typeof ANSICHT !== "undefined" && ANSICHT) || params.find(p => ["team", "ergebnisse", "pokal", "tabelle"].includes(p)) || "team").toLowerCase();
 const LEAGUE_KEY = VIEW === "pokal" ? "pokal"
     : String((typeof LIGA !== "undefined" && LIGA) || params.find(p => ["cl", "el", "ecl", "bundesliga"].includes(p)) || "bundesliga").toLowerCase();
 const TEAM_ID = String((typeof TEAM !== "undefined" && TEAM) || "132"); // 132 = FC Bayern München
@@ -636,6 +638,15 @@ async function loadMatchdays() {
 
 async function loadWithCache(count) {
     try {
+        if (VIEW === "tabelle") {
+            let data = await loadTable();
+            if (data.rows.length) {
+                data.updated = Date.now();
+                fm.writeString(cachePath, JSON.stringify(data));
+                return data;
+            }
+            throw new Error("Keine Tabelle gefunden");
+        }
         if (VIEW === "ergebnisse") {
             let data = COMPACT ? await loadResults(count) : await loadMatchdays();
             if (data.games.length) {
@@ -725,7 +736,10 @@ function formatDay(dateString) {
 
 function background(widget) {
     let gradient = new LinearGradient();
-    gradient.colors = LEAGUE.colors.map(c => new Color(c));
+    // Tabellen: dunkler Hintergrund mit leichtem Ton des Wettbewerbs, damit die Zonenfarben lesbar bleiben
+    gradient.colors = VIEW === "tabelle"
+        ? [new Color(LEAGUE.colors[1]), new Color("#0B0E14")]
+        : LEAGUE.colors.map(c => new Color(c));
     gradient.locations = [0, 1];
     widget.backgroundGradient = gradient;
 }
@@ -1079,6 +1093,167 @@ function buildMatchdays(widget, data, images) {
     widget.addSpacer();
 }
 
+// ---------- Vollständige Tabelle ----------
+// Lieblingsteams (Schrift gold, fett): FC Bayern, Hajduk Split und das per TEAM gewählte
+const FAVORITES = new Set(["132", "489", TEAM_ID]);
+
+// ESPN-Zonen (note.description) → Kurzname und Farbe der Platzziffer
+const ZONES = [
+    [/round of 16/i, "Achtelfinale", "#30D158"],
+    [/playoffs? - seeded/i, "Playoffs gesetzt", "#64D2FF"],
+    [/playoff/i, "Playoffs", "#BF9BFF"],
+    [/eliminat/i, "Aus", "#FF6961"],
+    [/^champions league/i, "Champions League", "#64D2FF"],
+    [/^europa league/i, "Europa League", "#FF9F0A"],
+    [/conference/i, "Conference League", "#30D158"],
+    [/relegation play/i, "Relegation", "#FFD60A"],
+    [/relegation/i, "Abstieg", "#FF6961"],
+];
+
+function zoneOf(note) {
+    if (!note || !note.description) return null;
+    let hit = ZONES.find(([re]) => re.test(note.description));
+    return hit ? { label: hit[1], color: hit[2] } : { label: note.description, color: note.color || "#FFFFFF" };
+}
+
+async function loadTable() {
+    let json = await loadJSON(`v2/sports/soccer/${LEAGUE.slug}/standings`);
+    let group = collectGroups(json).sort((a, b) => b.standings.entries.length - a.standings.entries.length)[0];
+    if (!group) return { rows: [] };
+    let rows = group.standings.entries.map((e, i) => {
+        let german = germanTeam(e.team);
+        return {
+            id: String(e.team.id),
+            name: german.name,
+            abbr: shortAbbr(german.abbr),
+            logo: logoUrl(e.team),
+            rank: stat(e, "rank") || i + 1,
+            played: stat(e, "gamesPlayed"),
+            wins: stat(e, "wins"),
+            ties: stat(e, "ties"),
+            losses: stat(e, "losses"),
+            goalsFor: stat(e, "pointsFor"),
+            goalsAgainst: stat(e, "pointsAgainst"),
+            diff: stat(e, "pointDifferential"),
+            points: stat(e, "points"),
+            zone: zoneOf(e.note),
+        };
+    }).sort((a, b) => a.rank - b.rank);
+    let matchday = Math.max(0, ...rows.map(r => r.played));
+    return { rows, matchday };
+}
+
+// Zelle mit fester Breite, Inhalt rechtsbündig ohne Abstandhalter (der kostet selbst Platz)
+function addCell(row, text, width, font, color = WHITE, opacity = 1) {
+    let cell = row.addStack();
+    cell.size = new Size(width, 0);
+    let t = addLabel(cell, text, font, color, opacity);
+    t.minimumScaleFactor = 1;
+    t.rightAlignText();
+    return t;
+}
+
+function addTableRow(stack, r, images, full) {
+    let fav = FAVORITES.has(r.id);
+    let row = stack.addStack();
+    row.centerAlignContent();
+    if (fav) {
+        row.backgroundColor = new Color("#FFE08A", 0.14);
+        row.cornerRadius = 4;
+    }
+    row.setPadding(0, 2, 0, 2);
+    let mono = Font.semiboldMonospacedSystemFont(10.5);
+    addCell(row, `${r.rank}`, 18, mono, r.zone ? new Color(r.zone.color) : WHITE, r.zone ? 1 : 0.6);
+    row.addSpacer(5);
+    addLogo(row, images, r.logo, 13);
+    row.addSpacer(5);
+    let name = addLabel(row, full ? r.name : r.abbr, fav ? Font.boldSystemFont(11) : Font.mediumSystemFont(11), fav ? ACCENT : WHITE);
+    name.minimumScaleFactor = full ? 0.8 : 1;
+    row.addSpacer(4);
+    row.addSpacer();
+    let num = Font.regularMonospacedSystemFont(10.5);
+    addCell(row, `${r.played}`, 18, num, WHITE, 0.7);
+    if (full) {
+        addCell(row, `${r.wins}`, 18, num, WHITE, 0.7);
+        addCell(row, `${r.ties}`, 18, num, WHITE, 0.7);
+        addCell(row, `${r.losses}`, 18, num, WHITE, 0.7);
+        addCell(row, `${r.goalsFor}:${r.goalsAgainst}`, 42, num, WHITE, 0.7);
+    }
+    addCell(row, r.diff > 0 ? `+${r.diff}` : `${r.diff}`, full ? 30 : 28, num, WHITE, 0.7);
+    addCell(row, `${r.points}`, full ? 26 : 24, Font.boldMonospacedSystemFont(10.5), fav ? ACCENT : WHITE);
+}
+
+function addTableHeader(stack, full) {
+    let row = stack.addStack();
+    row.setPadding(0, 2, 0, 2);
+    let font = Font.semiboldSystemFont(8.5);
+    addCell(row, "#", 18, font, WHITE, 0.5);
+    row.addSpacer();
+    addCell(row, "Sp", 18, font, WHITE, 0.5);
+    if (full) {
+        addCell(row, "S", 18, font, WHITE, 0.5);
+        addCell(row, "U", 18, font, WHITE, 0.5);
+        addCell(row, "N", 18, font, WHITE, 0.5);
+        addCell(row, "Tore", 42, font, WHITE, 0.5);
+    }
+    addCell(row, "Diff", full ? 30 : 28, font, WHITE, 0.5);
+    addCell(row, "Pkt", full ? 26 : 24, font, WHITE, 0.5);
+}
+
+// Legende der Zonen (in Tabellenreihenfolge)
+function addLegend(widget, rows) {
+    let seen = [];
+    rows.forEach(r => { if (r.zone && !seen.find(z => z.label === r.zone.label)) seen.push(r.zone); });
+    if (!seen.length) return;
+    let line = widget.addStack();
+    line.centerAlignContent();
+    seen.forEach((z, i) => {
+        if (i > 0) line.addSpacer(8);
+        addLabel(line, "●", Font.boldSystemFont(8), new Color(z.color));
+        line.addSpacer(2);
+        addLabel(line, z.label, Font.mediumSystemFont(8), WHITE, 0.65);
+    });
+}
+
+function buildTable(widget, data, images) {
+    let header = widget.addStack();
+    header.centerAlignContent();
+    addLabel(header, `⚽️ ${LEAGUE.title}`, Font.semiboldSystemFont(15), WHITE);
+    header.addSpacer();
+    let info = [data.matchday ? `${data.matchday}. Spieltag` : "", data.stale ? "offline" : ""].filter(Boolean).join(" · ");
+    addLabel(header, info, Font.semiboldSystemFont(11), WHITE, 0.6);
+    widget.addSpacer(6);
+
+    let rows = data.rows || [];
+    if (rows.length <= 20) {
+        // Liga (18 Teams): eine Spalte mit allen Angaben
+        addTableHeader(widget, true);
+        widget.addSpacer(2);
+        rows.forEach((r, i) => {
+            if (i > 0) widget.addSpacer(1.5);
+            addTableRow(widget, r, images, true);
+        });
+    } else {
+        // Ligaphase (36 Teams): zwei Spalten à 18
+        let half = Math.ceil(rows.length / 2);
+        let body = widget.addStack();
+        [rows.slice(0, half), rows.slice(half)].forEach((list, c) => {
+            if (c > 0) body.addSpacer(10);
+            let col = body.addStack();
+            col.layoutVertically();
+            addTableHeader(col, false);
+            col.addSpacer(2);
+            list.forEach((r, i) => {
+                if (i > 0) col.addSpacer(1.5);
+                addTableRow(col, r, images, false);
+            });
+        });
+    }
+    widget.addSpacer();
+    addLegend(widget, rows);
+    widget.addSpacer(2);
+}
+
 // DFB-Pokal: links die letzten zwei Spiele, rechts die nächste Runde
 function addPokalGame(stack, game, images) {
     addLabel(stack, game.round || formatDay(game.date), Font.semiboldSystemFont(9), WHITE, 0.55);
@@ -1260,7 +1435,7 @@ function nextRefresh(data) {
 }
 
 // Größe: auf dem Homescreen die gewählte; in der App die Standardgröße (Ergebnisse groß, sonst mittel)
-const FAMILY = config.widgetFamily || (VIEW === "ergebnisse" ? "large" : "medium");
+const FAMILY = config.widgetFamily || (VIEW === "ergebnisse" || VIEW === "tabelle" ? "large" : "medium");
 
 async function createWidget() {
     let large = FAMILY === "large" || FAMILY === "extraLarge";
@@ -1275,6 +1450,7 @@ async function createWidget() {
     widget.refreshAfterDate = nextRefresh(data);
     background(widget);
     widget.setPadding(VIEW === "ergebnisse" ? (COMPACT ? 12 : 16) : 12, 16, 4, 16);
+    if (VIEW === "tabelle") widget.setPadding(12, 14, 4, 14);
 
     if (!data) {
         buildError(widget);
@@ -1292,9 +1468,12 @@ async function createWidget() {
     if (data.standings) data.standings.rows.forEach(r => urls.push(r.logo));
     if (data.knockout) data.knockout.legs.forEach(g => urls.push(g.opponentLogo));
     if (data.pokal) data.pokal.lastTwo.forEach(g => urls.push(g.opponentLogo));
+    if (VIEW === "tabelle") (data.rows || []).forEach(r => urls.push(r.logo));
     let images = await loadLogos(urls);
 
-    if (VIEW === "ergebnisse" && !COMPACT && data.sections && data.sections.length) {
+    if (VIEW === "tabelle") {
+        buildTable(widget, data, images);
+    } else if (VIEW === "ergebnisse" && !COMPACT && data.sections && data.sections.length) {
         buildMatchdays(widget, data, images);
     } else if (VIEW === "ergebnisse") {
         buildResults(widget, data, columns, perColumn, images);
