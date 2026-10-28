@@ -146,23 +146,18 @@ function addHeader(widget, data) {
 }
 
 // Zwei Zeilen pro Leistung: Name und Punkte, darunter Disziplin, Leistung, Ort, Datum
-function addPerformance(parent, p, compact) {
-    // Weltweite Liste: deutsche Athletinnen und Athleten gold hinterlegt (wie das Lieblingsteam im Fußball-Widget);
-    // Innenabstand immer, damit hinterlegte und normale Einträge bündig bleiben
-    let stack = parent.addStack();
-    stack.layoutVertically();
-    stack.setPadding(0, 2, 0, 2);
-    if (!GERMANY && p.nat === "GER") {
-        stack.backgroundColor = new Color("#FFE08A", 0.35);
-        stack.cornerRadius = 4;
-    }
+// Weltweite Liste: Namen deutscher Athletinnen und Athleten in Gold wie in den Biathlon-Widgets
+const GERMAN = new Color("#FFCE00");
+
+function addPerformance(stack, p, compact) {
     let top = stack.addStack();
     top.centerAlignContent();
     let rank = top.addStack();
     rank.size = new Size(compact ? 12 : 14, 0);
     addLabel(rank, `${p.rank}`, Font.semiboldMonospacedSystemFont(compact ? 10 : 11), WHITE, 0.6);
     let f = GERMANY ? "" : flag(p.nat);
-    addLabel(top, `${f ? f + " " : ""}${shortName(p.name)}`, Font.semiboldSystemFont(compact ? 12 : 13), WHITE);
+    addLabel(top, `${f ? f + " " : ""}${shortName(p.name)}`, Font.semiboldSystemFont(compact ? 12 : 13),
+        !GERMANY && p.nat === "GER" ? GERMAN : WHITE);
     top.addSpacer(4);
     top.addSpacer();
     addLabel(top, `${p.score}`, Font.boldRoundedSystemFont(compact ? 12 : 13), GOLD);
