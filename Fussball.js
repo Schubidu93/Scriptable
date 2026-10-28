@@ -679,16 +679,23 @@ async function loadWithCache(count) {
 
 // ESPN-Logos sind 500×500 px – auf dem Homescreen reicht der Speicher dafür nicht.
 // Über den ESPN-Bildserver in 64 px laden.
-function smallLogo(url) {
-    let m = /^https?:\/\/a\.espncdn\.com(\/i\/[^?]+)/.exec(url || "");
-    return m ? `https://a.espncdn.com/combiner/i?img=${m[1]}&w=64&h=64` : url;
+// ESPN-Logos sind 500×500 px – zu groß für den Widget-Speicher. Über den ESPN-Bildserver verkleinert
+// laden (auch von a1…a4.espncdn.com); in Tabellen werden Logos von anderen Servern weggelassen.
+function smallLogo(url, px = 64) {
+    let m = /^https?:\/\/a\d?\.espncdn\.com(\/i\/[^?]+)/.exec(url || "");
+    return m ? `https://a.espncdn.com/combiner/i?img=${m[1]}&w=${px}&h=${px}` : null;
 }
 
 async function loadLogos(urls) {
     let images = {};
+    // Tabellen mit 36 Teams: kleinere Logos, sonst reicht der Speicher auf dem Homescreen nicht
+    let px = VIEW === "tabelle" ? 40 : 64;
     await Promise.all([...new Set(urls.filter(Boolean))].map(async url => {
+        let small = smallLogo(url, px);
+        if (!small && VIEW === "tabelle") return; // Tabellen: unbekannte (große) Logos weglassen
+        small = small || url;
         try {
-            images[url] = await new Request(smallLogo(url)).loadImage();
+            images[url] = await new Request(small).loadImage();
         } catch (e) {
             console.log(`Logo nicht geladen: ${url}`);
         }
