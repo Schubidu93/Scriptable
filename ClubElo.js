@@ -1,6 +1,6 @@
 // ClubElo – die besten Vereine nach Elo, mit Veränderung zum Vormonat.
-// Die Daten holt alle 6 Stunden ein GitHub-Workflow (scripts/clubelo.mjs); das Widget lädt die
-// fertige Datei. Fehlt sie, fragt es ClubElo direkt. Der letzte Stand wird auf dem iPhone gespeichert.
+// Die Daten holt alle 6 Stunden ein GitHub-Workflow (scripts/clubelo.mjs); das Widget zeigt nur gespeicherte
+// Daten (GitHub-Datei oder der Stand auf dem iPhone). Antippen lädt in der App direkt von ClubElo und speichert.
 // Kleines Widget: Top 5. Mittleres Widget: Top 10 in zwei Spalten mit Flaggen und Elo-Änderung.
 
 const DATA_URL = "https://raw.githubusercontent.com/Schubidu93/Scriptable/main/data/clubelo.json";
@@ -87,38 +87,43 @@ async function loadDirect() {
     };
 }
 
-// Reihenfolge: Datei auf GitHub (ist sie älter als 2 Tage, zuerst ClubElo direkt versuchen),
-// dann ClubElo direkt, zuletzt der Zwischenspeicher auf dem iPhone
+function readCache() {
+    try {
+        if (fm.fileExists(cachePath)) return JSON.parse(fm.readString(cachePath));
+    } catch (e) {}
+    return null;
+}
+
+const age = data => (data && data.generated ? Date.now() - new Date(data.generated).getTime() : Infinity);
+
+// Auf dem Homescreen nur gespeicherte Daten: die Datei auf GitHub oder der Stand auf dem iPhone (der neuere gilt) –
+// sonst bricht iOS das Widget wegen Zeitüberschreitung ab. Nur in der App (Widget antippen) wird ClubElo direkt
+// gefragt, notfalls über den unsichtbaren Browser; was dabei ankommt, wird sofort gespeichert.
 async function loadData() {
     let fromGitHub = null;
     try {
-        let data = await new Request(DATA_URL).loadJSON();
+        let req = new Request(`${DATA_URL}?t=${Math.floor(Date.now() / 600000)}`);
+        req.timeoutInterval = 8;
+        let data = await req.loadJSON();
         if (data && data.clubs && data.clubs.length) fromGitHub = data;
     } catch (e) {
         console.log(`GitHub: ${e}`);
     }
-    let fresh = fromGitHub && Date.now() - new Date(fromGitHub.generated).getTime() < 2 * 86400000;
-    let data = fresh ? fromGitHub : null;
-    if (!data) {
+    let cached = readCache();
+    let data = age(fromGitHub) <= age(cached) ? fromGitHub : cached;
+    if (!config.runsInWidget && age(data) > 6 * 3600000) {
         try {
             data = await loadDirect();
         } catch (e) {
             console.log(`ClubElo direkt: ${e}`);
-            data = fromGitHub;
         }
     }
-    if (data) {
-        fm.writeString(cachePath, JSON.stringify(data));
-        UPDATED = new Date(data.generated).getTime();
-        return data;
-    }
-    if (fm.fileExists(cachePath)) {
-        let data = JSON.parse(fm.readString(cachePath));
-        data.stale = true;
-        UPDATED = new Date(data.generated).getTime();
-        return data;
-    }
-    return null;
+    if (!data) return null;
+    if (data !== cached) fm.writeString(cachePath, JSON.stringify(data));
+    UPDATED = new Date(data.generated).getTime();
+    // Älter als zwei Tage: im Widget als "alt" kennzeichnen
+    if (age(data) > 2 * 86400000) data.stale = true;
+    return data;
 }
 
 // ClubElo-Länderkürzel → Flagge (England, Schottland als eigene Flaggen)
@@ -187,7 +192,7 @@ function addHeader(widget, data, compact) {
     header.centerAlignContent();
     addLabel(header, compact ? "ClubElo" : "⚽️ ClubElo", Font.semiboldSystemFont(compact ? 13 : 15), WHITE);
     header.addSpacer();
-    let info = `ggü. ${compact ? "Vormonat" : "vor 30 Tagen"}${data && data.stale ? " · offline" : ""}`;
+    let info = `ggü. ${compact ? "Vormonat" : "vor 30 Tagen"}${data && data.stale ? " · älterer Stand" : ""}`;
     addLabel(header, info, Font.semiboldSystemFont(compact ? 8 : 10), WHITE, 0.55);
 }
 
@@ -269,7 +274,8 @@ const FAMILY = config.widgetFamily || "medium";
 async function createWidget() {
     let data = await loadData();
     let widget = new ListWidget();
-    widget.url = "http://clubelo.com/";
+    // Antippen startet das Skript in der App – dort darf es ClubElo direkt laden und speichert das Ergebnis
+    widget.url = URLScheme.forRunningScript();
     widget.refreshAfterDate = new Date(Date.now() + 3 * 60 * 60 * 1000);
     background(widget);
     widget.setPadding(12, 14, 4, 14);
@@ -277,7 +283,8 @@ async function createWidget() {
     if (!data) {
         addHeader(widget, null, FAMILY !== "medium");
         widget.addSpacer(6);
-        addLabel(widget, "Keine Daten – später erneut versuchen", Font.mediumSystemFont(11), WHITE, 0.8);
+        addLabel(widget, config.runsInWidget ? "Noch keine Daten – antippen zum Laden" : "ClubElo nicht erreichbar – später erneut versuchen",
+            Font.mediumSystemFont(11), WHITE, 0.8);
         widget.addSpacer();
         return widget;
     }
