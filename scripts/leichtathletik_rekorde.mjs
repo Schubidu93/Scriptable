@@ -98,7 +98,14 @@ function entries(results, today) {
     });
 }
 
-// Die jüngsten Einträge (bei gleichem Datum der bedeutendere zuerst), höchstens 2 je Disziplin
+// Rekorde und Welt-Top-3 werden nie von der Grenze je Disziplin verdrängt
+// (z. B. Assefa, Berlin-Marathon: Welt 2 – trotz zwei jüngerer Marathon-Einträge)
+function outstanding(h) {
+    return h.badges.some(b => b.rank === 1 || (b.type === "WT" && b.rank <= 3));
+}
+
+// Die jüngsten Einträge (bei gleichem Datum der bedeutendere zuerst), höchstens 2 je Disziplin –
+// außer Rekorden und Welt-Top-3
 function newest(list, count) {
     let perEvent = {};
     return list
@@ -107,7 +114,7 @@ function newest(list, count) {
         .filter(h => {
             let key = `${h.gender}|${h.event}`;
             perEvent[key] = (perEvent[key] || 0) + 1;
-            return perEvent[key] <= MAX_PER_EVENT;
+            return perEvent[key] <= MAX_PER_EVENT || outstanding(h);
         })
         .slice(0, count)
         .map(({ time, ...h }) => h);
