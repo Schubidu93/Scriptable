@@ -24,6 +24,17 @@ function addUpdated(widget, note) {
     t.textOpacity = 0.5;
 }
 
+async function loadInBrowser(url) {
+    let wv = new WebView();
+    await wv.loadURL(url);
+    for (let i = 0; i < 12; i++) {
+        let text = await wv.evaluateJavaScript("document.body ? document.body.innerText : ''");
+        if (/^\s*Rank,Club/.test(text || "")) return text;
+        await new Promise(resolve => Timer.schedule(1000, false, resolve));
+    }
+    throw new Error("ClubElo: Browser-Prüfung nicht bestanden");
+}
+
 // Direkt bei ClubElo: CSV mit Rank,Club,Country,Level,Elo,From,To
 async function loadRanking(date) {
     // Erst https, dann http (je nach Netz klappt nur eins von beiden)
@@ -33,8 +44,17 @@ async function loadRanking(date) {
             let req = new Request(base + date.toISOString().slice(0, 10));
             req.timeoutInterval = 15;
             text = await req.loadString();
-            if (req.response && req.response.statusCode === 200 && /Club/.test(text)) break;
+            if (req.response && req.response.statusCode === 200 && /^\s*Rank,Club/.test(text)) break;
             text = null;
+        } catch (e) {
+            lastError = e;
+        }
+    }
+    // ClubElo steht teils hinter einer Cloudflare-Prüfung: dann im unsichtbaren Browser laden,
+    // der die Prüfung (JavaScript) selbst besteht, und den angezeigten CSV-Text lesen
+    if (!text) {
+        try {
+            text = await loadInBrowser("https://api.clubelo.com/" + date.toISOString().slice(0, 10));
         } catch (e) {
             lastError = e;
         }
