@@ -1274,14 +1274,36 @@ function addTableRow(stack, r, images, full) {
     addLogo(row, images, r.logo, 13);
     // Name in fester Breite, damit er nicht von den Zahlenspalten zusammengedrückt wird
     let nameBox = row.addStack();
-    nameBox.size = new Size(full ? 90 : 38, 0);
+    nameBox.size = new Size(full ? 86 : 38, 0);
     nameBox.setPadding(0, 4, 0, 0);
     let size = full ? 11 : 10.5;
     let name = addLabel(nameBox, full ? r.name : r.abbr, fav ? Font.boldSystemFont(size) : Font.mediumSystemFont(size), fav ? ACCENT : WHITE);
     name.minimumScaleFactor = full ? 0.85 : 1;
     nameBox.addSpacer();
     row.addSpacer();
+    if (full) {
+        let num = Font.regularMonospacedSystemFont(NUM_SIZE);
+        tableColumns(true).forEach(col => addLeagueCell(row, col[0], String(col[2](r)), num, WHITE, 0.7));
+        addLeagueCell(row, "Pkt", String(r.points), Font.boldMonospacedSystemFont(NUM_SIZE), fav ? ACCENT : WHITE, 1);
+        return;
+    }
     addNumbers(row, full, col => col[2](r), WHITE, 0.7, padCell(r.points, 3), fav ? ACCENT : WHITE, 1);
+}
+
+// Liga-Tabelle: feste Spaltenbreiten (Inhalt + 7 pt Abstand links), Inhalt rechtsbündig,
+// „Tore“ (am Doppelpunkt ausgerichtet) mittig – Überschrift und Zahlen stehen genau übereinander
+const LEAGUE_COLUMNS = { Sp: 14, S: 14, U: 14, N: 14, Tore: 33, Diff: 21, Pkt: 20 };
+const LEAGUE_GAP = 7;
+function addLeagueCell(row, column, text, font, color, opacity) {
+    let cell = row.addStack();
+    cell.layoutVertically();
+    cell.size = new Size(LEAGUE_COLUMNS[column] + LEAGUE_GAP, 0);
+    cell.setPadding(0, LEAGUE_GAP, 0, 0);
+    if (column === "Tore") cell.centerAlignContent();
+    else cell.bottomAlignContent(); // senkrechter Stapel: rechtsbündig
+    let t = addLabel(cell, text, font, color, opacity);
+    t.minimumScaleFactor = 1;
+    t.lineLimit = 1;
 }
 
 // Zahlenspalten in einem Text, dann die Punkte (fett)
@@ -1296,12 +1318,12 @@ function addTableHeader(stack, full) {
     let row = stack.addStack();
     row.setPadding(0, 2, 0, 2);
     if (full) {
-        // Bundesliga: Überschriften halbfett in einem Text
-        let font = Font.semiboldMonospacedSystemFont(NUM_SIZE);
-        addLabel(row, padCell("#", 2), font, WHITE, 0.45).minimumScaleFactor = 1;
+        // Bundesliga: kleine Überschriften über den festen Spalten
+        let font = Font.semiboldSystemFont(9);
+        addLabel(row, " #", font, WHITE, 0.45).minimumScaleFactor = 1;
         row.addSpacer();
-        addLabel(row, numberText(tableColumns(full), col => col[0]) + " " + padCell("Pkt", 3), font, WHITE, 0.45)
-            .minimumScaleFactor = 1;
+        tableColumns(true).forEach(col => addLeagueCell(row, col[0], col[0], font, WHITE, 0.45));
+        addLeagueCell(row, "Pkt", "Pkt", font, WHITE, 0.45);
         return;
     }
     addLabel(row, padCell("#", 2), Font.regularMonospacedSystemFont(NUM_SIZE), WHITE, 0.45).minimumScaleFactor = 1;
