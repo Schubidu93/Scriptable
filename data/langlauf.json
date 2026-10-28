@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-28T12:59:21.511Z",
+  "generated": "2026-10-28T13:03:58.550Z",
   "areas": [
     {
       "id": "vogt",
@@ -54,14 +54,15 @@
     {
       "id": "isny",
       "name": "Isny",
-      "url": "http://www.loipen-allgaeu.de/loipen.php?name=Isny%20/%20Maierhoefen",
-      "network": 97.7,
+      "url": "https://www.isny.de/freizeit-urlaub/wintersport/schneehoehen-loipenbericht.html",
+      "network": 45.4,
       "groomed": 0,
       "classic": 0,
       "skating": 0,
-      "snow": 0,
-      "updated": "2026-04-02T12:41",
-      "status": "closed"
+      "snow": null,
+      "updated": "2026-10-22",
+      "status": "closed",
+      "note": "Der erste Schnee ist schon in Sichtweite. Die Vorbereitungen für die Wintersaison beginnen."
     },
     {
       "id": "argenbuehl",
