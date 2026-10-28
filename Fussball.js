@@ -1209,22 +1209,36 @@ function addTableRow(stack, r, images, full) {
     name.minimumScaleFactor = full ? 0.85 : 1;
     nameBox.addSpacer();
     row.addSpacer();
-    let nums = addLabel(row, numberText(tableColumns(full), col => col[2](r)),
-        Font.regularMonospacedSystemFont(NUM_SIZE), WHITE, 0.7);
-    nums.minimumScaleFactor = 1;
-    let points = addLabel(row, " " + padCell(r.points, 3), Font.boldMonospacedSystemFont(NUM_SIZE), fav ? ACCENT : WHITE);
-    points.minimumScaleFactor = 1;
+    addNumbers(row, full, col => col[2](r), WHITE, 0.7, padCell(r.points, 3), fav ? ACCENT : WHITE, 1);
+}
+
+// Zahlenspalten und Punkte. Liga (eine Spalte, Platz genug): je Spalte ein Text mit festem Abstand.
+// Ligaphase (36 Teams, zwei Spalten): alle Zahlen in einem Text – sonst reicht der Speicher nicht.
+// Überschriften nutzen dieselben Schriften wie die Zahlen, damit sie genau darüber stehen.
+const COLUMN_GAP = 7;
+function addNumbers(row, full, pick, color, opacity, points, pointsColor, pointsOpacity) {
+    let cols = tableColumns(full);
+    let num = Font.regularMonospacedSystemFont(NUM_SIZE);
+    if (full) {
+        cols.forEach((col, i) => {
+            if (i > 0) row.addSpacer(COLUMN_GAP);
+            addLabel(row, padCell(pick(col), col[1]), num, color, opacity).minimumScaleFactor = 1;
+        });
+        row.addSpacer(COLUMN_GAP);
+    } else {
+        addLabel(row, numberText(cols, pick) + " ", num, color, opacity).minimumScaleFactor = 1;
+    }
+    addLabel(row, points, Font.boldMonospacedSystemFont(NUM_SIZE), pointsColor, pointsOpacity).minimumScaleFactor = 1;
 }
 
 // Überschriften in derselben Schrift(-größe) wie die Zahlen, damit die Spalten genau passen
 function addTableHeader(stack, full) {
     let row = stack.addStack();
     row.setPadding(0, 2, 0, 2);
-    let font = Font.semiboldMonospacedSystemFont(NUM_SIZE);
-    addLabel(row, padCell("#", 2), font, WHITE, 0.45).minimumScaleFactor = 1;
+    addLabel(row, padCell("#", 2), Font.regularMonospacedSystemFont(NUM_SIZE), WHITE, 0.45).minimumScaleFactor = 1;
     row.addSpacer();
-    addLabel(row, numberText(tableColumns(full), col => col[0]) + " " + padCell("Pkt", 3), font, WHITE, 0.45)
-        .minimumScaleFactor = 1;
+    // Überschrift über einstelligen Zahlen rechtsbündig, „Tore“ mittig über dem Doppelpunkt
+    addNumbers(row, full, col => col[0] === "Tore" ? "Tore" + FIG : col[0], WHITE, 0.45, "Pkt", WHITE, 0.45);
 }
 
 // Legende der Zonen (in Tabellenreihenfolge)
