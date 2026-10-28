@@ -321,7 +321,7 @@ async function atsPlaces() {
                 updated: stamp ? `${isoDate(stamp[1])}T${stamp[2].padStart(5, "0")}` : null,
                 // Infotext ohne Eislauf-/Rodel-Teil: "Schneebericht für die Saison eingestellt."
                 info: info ? text(info[1]).split(/\n/).map(x => x.trim()).filter(x => x && !/^Loipen$/i.test(x))
-                    .find(x => !/eis|rodel|telefon|hier\s*\.?$/i.test(x)) || null : null,
+                    .find(x => !/eis|rodel|telefon|skigebiet|lift|hier\s*\.?$/i.test(x)) || null : null,
             };
         }
         if (!Object.keys(places).length) throw new Error("Schneebericht nicht gefunden");
@@ -368,6 +368,9 @@ async function ats(place) {
     };
 }
 
+// Freitext-Berichte: "wieder in Betrieb" vom März darf im Herbst nicht als gespurt gelten – ältere Meldungen zählen nicht als offen
+const recent = (iso, days = 10) => iso && (Date.now() - new Date(iso).getTime()) / 86400000 <= days;
+
 // Tourismus Lenggries: "Loipenbericht Lenggries: Langlaufloipe Hinterriss-Eng ab 28.03.26 wieder in Betrieb!"
 async function lenggries() {
     let t = text(await load("https://www.lenggries.de/aktiv/winter/schneebericht")).replace(/[ \t]+/g, " ");
@@ -377,11 +380,12 @@ async function lenggries() {
     let stamp = /(\d{1,2}\.\d{1,2}\.\d{4})\s*\|\s*(\d{1,2}:\d{2})\s*Uhr/.exec(t);
     let snow = /Schneeh(?:ö|o)he Tal(?:\/Lifte)?:?\s*(\d+)\s*cm/i.exec(t);
     let closed = /geschlossen|gesperrt|nicht (gespurt|befahrbar|möglich)|keine? (Loipen|Spur)|eingestellt|zu wenig Schnee/i.test(body);
-    let open = !closed && /gespurt|befahrbar|in Betrieb|geöffnet|offen/i.test(body);
+    let updated = stamp ? `${isoDate(stamp[1])}T${stamp[2].padStart(5, "0")}` : null;
+    let open = !closed && /gespurt|befahrbar|in Betrieb|geöffnet|offen/i.test(body) && recent(updated);
     return {
         network: null, groomed: null, classic: null, skating: null,
         snow: snow ? Number(snow[1]) : null,
-        updated: stamp ? `${isoDate(stamp[1])}T${stamp[2].padStart(5, "0")}` : null,
+        updated,
         status: closed ? "closed" : open ? "open" : "unknown",
         note: body.length > 70 ? body.slice(0, 68).replace(/\s+\S*$/, "") + " …" : body,
     };
@@ -397,7 +401,7 @@ async function baierbrunn() {
     let date = `${m[3]}-${String(MONTHS.indexOf(m[2].toLowerCase()) + 1).padStart(2, "0")}-${m[1].padStart(2, "0")}`;
     let body = m[4].replace(/Bilder leider[^.]*\.{0,3}\s*/i, "").trim();
     let closed = /keine Loipe|nicht ausreichend|nicht (gespurt|befahrbar)|geschlossen|gesperrt|zu wenig Schnee/i.test(body);
-    let open = !closed && /gespurt|befahrbar|Loipe ist (gezogen|offen)/i.test(body);
+    let open = !closed && /gespurt|befahrbar|Loipe ist (gezogen|offen)/i.test(body) && recent(date);
     let last = body.split(/(?<=[.!])\s+/).filter(Boolean).pop() || "";
     return {
         network: null, groomed: null, classic: null, skating: null, snow: null,
