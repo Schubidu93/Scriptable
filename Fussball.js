@@ -730,6 +730,22 @@ function smallLogo(url, px = 64) {
     return m ? `https://a.espncdn.com/combiner/i?img=${m[1]}&w=${px}&h=${px}` : null;
 }
 
+// Logos mit durchsichtigen Innenflächen, die auf dunklem Grund verschwinden (Schalke: ESPN-ID 133):
+// auf einen weißen Kreis gesetzt – als ein Bild, kein zusätzliches Element
+const WHITE_BACKING = /\/(133)\.png/;
+function withWhiteBacking(img) {
+    let px = 64;
+    let ctx = new DrawContext();
+    ctx.size = new Size(px, px);
+    ctx.opaque = false;
+    ctx.respectScreenScale = false;
+    ctx.setFillColor(Color.white());
+    ctx.fillEllipse(new Rect(0, 0, px, px));
+    let inset = 7;
+    ctx.drawImageInRect(img, new Rect(inset, inset, px - 2 * inset, px - 2 * inset));
+    return ctx.getImage();
+}
+
 async function loadLogos(urls) {
     let images = {};
     let wikiCache = {};
@@ -762,7 +778,7 @@ async function loadLogos(urls) {
             try {
                 let img = await new Request(src).loadImage();
                 if (img) {
-                    images[url] = img;
+                    images[url] = WHITE_BACKING.test(url) ? withWhiteBacking(img) : img;
                     break;
                 }
             } catch (e) {
