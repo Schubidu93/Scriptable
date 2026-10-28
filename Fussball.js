@@ -1160,7 +1160,9 @@ function tableColumns(full) {
     let cols = [["Sp", 2, r => r.played]];
     if (full) {
         cols.push(["S", 2, r => r.wins], ["U", 2, r => r.ties], ["N", 2, r => r.losses],
-            ["Tore", 5, r => `${r.goalsFor}:${r.goalsAgainst}`], ["Diff", 4, r => sign(r.diff)]);
+            // Tore am Doppelpunkt ausgerichtet: " 6:16", "25:6 "
+            ["Tore", 5, r => `${String(r.goalsFor).padStart(2, "\u2007")}:${String(r.goalsAgainst).padEnd(2, "\u2007")}`],
+            ["Diff", 4, r => sign(r.diff)]);
     } else {
         cols.push(["+/-", 3, r => sign(r.diff)]);
     }
@@ -1183,7 +1185,7 @@ function addTableRow(stack, r, images, full) {
     row.addSpacer(4);
     // Name in fester Breite, damit er nicht von den Zahlenspalten zusammengedrückt wird
     let nameBox = row.addStack();
-    nameBox.size = new Size(full ? 98 : 34, 0);
+    nameBox.size = new Size(full ? 86 : 34, 0);
     let size = full ? 11 : 10.5;
     let name = addLabel(nameBox, full ? r.name : r.abbr, fav ? Font.boldSystemFont(size) : Font.mediumSystemFont(size), fav ? ACCENT : WHITE);
     name.minimumScaleFactor = full ? 0.85 : 1;
@@ -1193,7 +1195,7 @@ function addTableRow(stack, r, images, full) {
     let cols = tableColumns(full);
     cols.forEach(([title, chars, value], i) => {
         let last = i === cols.length - 1;
-        if (i > 0) row.addSpacer(2);
+        if (i > 0) row.addSpacer(full ? 4 : 2);
         addCell(row, value(r), chars, last ? Font.boldMonospacedSystemFont(10.5) : num,
             last && fav ? ACCENT : WHITE, last ? 1 : 0.7);
     });
@@ -1206,7 +1208,7 @@ function addTableHeader(stack, full) {
     addCell(row, "#", 2, font, WHITE, 0.45);
     row.addSpacer();
     tableColumns(full).forEach(([title, chars], i) => {
-        if (i > 0) row.addSpacer(2);
+        if (i > 0) row.addSpacer(full ? 4 : 2);
         addCell(row, title, chars, font, WHITE, 0.45);
     });
 }
