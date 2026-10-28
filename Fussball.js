@@ -1143,14 +1143,29 @@ async function loadTable() {
     return { rows, matchday };
 }
 
-// Zelle mit fester Breite, Inhalt rechtsbündig ohne Abstandhalter (der kostet selbst Platz)
-function addCell(row, text, width, font, color = WHITE, opacity = 1) {
+// Zahlenzelle: Text in Festbreitenschrift, links mit Ziffern-Leerzeichen auf eine feste Zeichenzahl
+// aufgefüllt – so stehen Zahlen rechtsbündig untereinander (Abstandhalter kosten selbst Platz).
+const CHAR = 6.4; // Breite eines Zeichens in Festbreitenschrift 10,5 pt
+function addCell(row, text, chars, font, color = WHITE, opacity = 1) {
     let cell = row.addStack();
-    cell.size = new Size(width, 0);
-    let t = addLabel(cell, text, font, color, opacity);
+    cell.size = new Size(Math.ceil(chars * CHAR) + 1, 0);
+    let t = addLabel(cell, String(text).padStart(chars, "\u2007"), font, color, opacity);
     t.minimumScaleFactor = 1;
-    t.rightAlignText();
     return t;
+}
+
+// Spalten: [Überschrift, Zeichen, Wert]
+function tableColumns(full) {
+    let sign = n => (n > 0 ? `+${n}` : `${n}`);
+    let cols = [["Sp", 2, r => r.played]];
+    if (full) {
+        cols.push(["S", 2, r => r.wins], ["U", 2, r => r.ties], ["N", 2, r => r.losses],
+            ["Tore", 5, r => `${r.goalsFor}:${r.goalsAgainst}`], ["Diff", 4, r => sign(r.diff)]);
+    } else {
+        cols.push(["+/-", 3, r => sign(r.diff)]);
+    }
+    cols.push(["Pkt", 3, r => r.points]);
+    return cols;
 }
 
 function addTableRow(stack, r, images, full) {
@@ -1162,42 +1177,34 @@ function addTableRow(stack, r, images, full) {
         row.cornerRadius = 4;
     }
     row.setPadding(0, 2, 0, 2);
-    let mono = Font.semiboldMonospacedSystemFont(10.5);
-    addCell(row, `${r.rank}`, 18, mono, r.zone ? new Color(r.zone.color) : WHITE, r.zone ? 1 : 0.6);
-    row.addSpacer(5);
-    addLogo(row, images, r.logo, 13);
-    row.addSpacer(5);
-    let name = addLabel(row, full ? r.name : r.abbr, fav ? Font.boldSystemFont(11) : Font.mediumSystemFont(11), fav ? ACCENT : WHITE);
-    name.minimumScaleFactor = full ? 0.8 : 1;
+    addCell(row, r.rank, 2, Font.semiboldMonospacedSystemFont(10.5), r.zone ? new Color(r.zone.color) : WHITE, r.zone ? 1 : 0.6);
     row.addSpacer(4);
+    addLogo(row, images, r.logo, 13);
+    row.addSpacer(4);
+    // Name in fester Breite, damit er nicht von den Zahlenspalten zusammengedrückt wird
+    let nameBox = row.addStack();
+    nameBox.size = new Size(full ? 108 : 38, 0);
+    let size = full ? 11 : 10.5;
+    let name = addLabel(nameBox, full ? r.name : r.abbr, fav ? Font.boldSystemFont(size) : Font.mediumSystemFont(size), fav ? ACCENT : WHITE);
+    name.minimumScaleFactor = full ? 0.85 : 1;
+    nameBox.addSpacer();
     row.addSpacer();
     let num = Font.regularMonospacedSystemFont(10.5);
-    addCell(row, `${r.played}`, 18, num, WHITE, 0.7);
-    if (full) {
-        addCell(row, `${r.wins}`, 18, num, WHITE, 0.7);
-        addCell(row, `${r.ties}`, 18, num, WHITE, 0.7);
-        addCell(row, `${r.losses}`, 18, num, WHITE, 0.7);
-        addCell(row, `${r.goalsFor}:${r.goalsAgainst}`, 42, num, WHITE, 0.7);
-    }
-    addCell(row, r.diff > 0 ? `+${r.diff}` : `${r.diff}`, full ? 30 : 28, num, WHITE, 0.7);
-    addCell(row, `${r.points}`, full ? 26 : 24, Font.boldMonospacedSystemFont(10.5), fav ? ACCENT : WHITE);
+    let cols = tableColumns(full);
+    cols.forEach(([title, chars, value], i) => {
+        let last = i === cols.length - 1;
+        addCell(row, value(r), chars, last ? Font.boldMonospacedSystemFont(10.5) : num,
+            last && fav ? ACCENT : WHITE, last ? 1 : 0.7);
+    });
 }
 
 function addTableHeader(stack, full) {
     let row = stack.addStack();
     row.setPadding(0, 2, 0, 2);
-    let font = Font.semiboldSystemFont(8.5);
-    addCell(row, "#", 18, font, WHITE, 0.5);
+    let font = Font.semiboldMonospacedSystemFont(9);
+    addCell(row, "#", 2, font, WHITE, 0.45);
     row.addSpacer();
-    addCell(row, "Sp", 18, font, WHITE, 0.5);
-    if (full) {
-        addCell(row, "S", 18, font, WHITE, 0.5);
-        addCell(row, "U", 18, font, WHITE, 0.5);
-        addCell(row, "N", 18, font, WHITE, 0.5);
-        addCell(row, "Tore", 42, font, WHITE, 0.5);
-    }
-    addCell(row, "Diff", full ? 30 : 28, font, WHITE, 0.5);
-    addCell(row, "Pkt", full ? 26 : 24, font, WHITE, 0.5);
+    tableColumns(full).forEach(([title, chars]) => addCell(row, title, chars, font, WHITE, 0.45));
 }
 
 // Legende der Zonen (in Tabellenreihenfolge)
