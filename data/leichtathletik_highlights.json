@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-28T12:09:06.323Z",
+  "generated": "2026-10-28T12:10:23.339Z",
   "items": [
     {
       "type": "WT",
@@ -77,6 +77,31 @@
       "score": 1266
     },
     {
+      "type": "WT",
+      "label": "Platz 10 ewig Welt",
+      "priority": 60,
+      "rank": 10,
+      "records": [],
+      "badges": [
+        {
+          "type": "WT",
+          "rank": 10
+        }
+      ],
+      "lists": [
+        "world"
+      ],
+      "gender": "women",
+      "event": "Halbmarathon",
+      "name": "Daisilah JERONO",
+      "nat": "KEN",
+      "mark": "1:04:11",
+      "wind": "",
+      "venue": "Valencia (ESP)",
+      "date": "25 OCT 2026",
+      "score": 1252
+    },
+    {
       "type": "ET",
       "label": "Platz 2 ewig Europa",
       "priority": 48,
@@ -100,6 +125,31 @@
       "venue": "Valencia (ESP)",
       "date": "25 OCT 2026",
       "score": 1262
+    },
+    {
+      "type": "ET",
+      "label": "Platz 6 ewig Europa",
+      "priority": 44,
+      "rank": 6,
+      "records": [],
+      "badges": [
+        {
+          "type": "ET",
+          "rank": 6
+        }
+      ],
+      "lists": [
+        "europe"
+      ],
+      "gender": "men",
+      "event": "Halbmarathon",
+      "name": "Emmanuel ROUDOLFF LEVISSE",
+      "nat": "FRA",
+      "mark": "59:23",
+      "wind": "",
+      "venue": "Valencia (ESP)",
+      "date": "25 OCT 2026",
+      "score": 1211
     },
     {
       "type": "ET",
@@ -183,14 +233,14 @@
     },
     {
       "type": "WT",
-      "label": "Platz 3 ewig Welt",
-      "priority": 67,
-      "rank": 3,
+      "label": "Platz 8 ewig Welt",
+      "priority": 62,
+      "rank": 8,
       "records": [],
       "badges": [
         {
           "type": "WT",
-          "rank": 3
+          "rank": 8
         }
       ],
       "lists": [
@@ -198,70 +248,13 @@
       ],
       "gender": "women",
       "event": "Marathon",
-      "name": "Tigst ASSEFA",
-      "nat": "ETH",
-      "mark": "2:11:04",
+      "name": "Sharon LOKEDI",
+      "nat": "KEN",
+      "mark": "2:14:07",
       "wind": "",
-      "venue": "Berlin (GER)",
-      "date": "27 SEP 2026",
-      "score": 1300
-    },
-    {
-      "type": "ER",
-      "label": "Europarekord",
-      "priority": 90,
-      "rank": 1,
-      "records": [
-        "ER"
-      ],
-      "badges": [
-        {
-          "type": "ER",
-          "rank": 1
-        },
-        {
-          "type": "WT",
-          "rank": 10
-        }
-      ],
-      "lists": [
-        "europe",
-        "world"
-      ],
-      "gender": "men",
-      "event": "Halbmarathon",
-      "name": "Andreas ALMGREN",
-      "nat": "SWE",
-      "mark": "58:06",
-      "wind": "",
-      "venue": "København (DEN)",
-      "date": "20 SEP 2026",
-      "score": 1264
-    },
-    {
-      "type": "ET",
-      "label": "Platz 6 ewig Europa",
-      "priority": 44,
-      "rank": 6,
-      "records": [],
-      "badges": [
-        {
-          "type": "ET",
-          "rank": 6
-        }
-      ],
-      "lists": [
-        "europe"
-      ],
-      "gender": "women",
-      "event": "400 m",
-      "name": "Henriette JÆGER",
-      "nat": "NOR",
-      "mark": "48.78",
-      "wind": "",
-      "venue": "StoneX Stadium, Hendon, London (GBR)",
-      "date": "18 SEP 2026",
-      "score": 1255
+      "venue": "Chicago, IL (USA)",
+      "date": "11 OCT 2026",
+      "score": 1270
     }
   ],
   "scopes": {
@@ -340,6 +333,31 @@
         "venue": "Valencia (ESP)",
         "date": "25 OCT 2026",
         "score": 1266
+      },
+      {
+        "type": "WT",
+        "label": "Platz 10 ewig Welt",
+        "priority": 60,
+        "rank": 10,
+        "records": [],
+        "badges": [
+          {
+            "type": "WT",
+            "rank": 10
+          }
+        ],
+        "lists": [
+          "world"
+        ],
+        "gender": "women",
+        "event": "Halbmarathon",
+        "name": "Daisilah JERONO",
+        "nat": "KEN",
+        "mark": "1:04:11",
+        "wind": "",
+        "venue": "Valencia (ESP)",
+        "date": "25 OCT 2026",
+        "score": 1252
       },
       {
         "type": "WT",
@@ -509,31 +527,6 @@
         "venue": "Nemzeti Atlétikai Központ, Budapest (HUN)",
         "date": "13 SEP 2026",
         "score": 1279
-      },
-      {
-        "type": "WT",
-        "label": "Platz 3 ewig Welt",
-        "priority": 67,
-        "rank": 3,
-        "records": [],
-        "badges": [
-          {
-            "type": "WT",
-            "rank": 3
-          }
-        ],
-        "lists": [
-          "world"
-        ],
-        "gender": "women",
-        "event": "200 m",
-        "name": "Melissa JEFFERSON-WOODEN",
-        "nat": "USA",
-        "mark": "21.47",
-        "wind": "-0.6",
-        "venue": "Nemzeti Atlétikai Központ, Budapest (HUN)",
-        "date": "13 SEP 2026",
-        "score": 1297
       }
     ],
     "europe": [
