@@ -6,9 +6,10 @@
 // Antippen aktualisiert das Widget.
 
 const DATA_URL = "https://raw.githubusercontent.com/Schubidu93/Scriptable/main/data/langlauf.json";
-// Luftlinie ab Kißlegg (km)
-const DISTANCE = { vogt: 9, leutkirch: 11, wangen: 12, argenbuehl: 12, isny: 16, waldsee: 18, heimenkirch: 18,
-    lindenberg: 21, scheidegg: 23, missen: 28 };
+// Autostrecke ab Rathaus Kißlegg zum Loipeneinstieg (km, schnellste Route laut OpenStreetMap/OSRM, Okt. 2026):
+// Vogt, Leutkirch-Wilhelmshöhe, Eisenharz (Argenbühl), Niederwangen, Isny-Langlaufstadion, Golfplatz Bad Waldsee …
+const DISTANCE = { vogt: 11.6, leutkirch: 16.7, argenbuehl: 18.6, wangen: 20.9, isny: 22.5, waldsee: 23.2,
+    heimenkirch: 25.4, lindenberg: 28.4, missen: 37.2, scheidegg: 45.6 };
 // Plätze: mittel 6, groß 8 (mit Hinweiszeile)
 const SLOTS = { medium: 6, large: 8 };
 
@@ -165,7 +166,7 @@ function addAreaRow(widget, area, large) {
     addLabel(nameBox, area.name, Font.semiboldSystemFont(12), WHITE, open ? 1 : 0.8).minimumScaleFactor = 0.85;
     if (large && DISTANCE[area.id]) {
         nameBox.addSpacer(4);
-        addLabel(nameBox, `${DISTANCE[area.id]} km`, Font.mediumSystemFont(9), WHITE, 0.5);
+        addLabel(nameBox, `${Math.round(DISTANCE[area.id])} km`, Font.mediumSystemFont(9), WHITE, 0.5);
     }
     nameBox.addSpacer();
     let num = Font.mediumSystemFont(11.5);
