@@ -153,6 +153,16 @@ function flagEmoji(html) {
     return String.fromCodePoint(...[...iso].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
 }
 
+// Deutsche Fahrerinnen und Fahrer gold hinterlegt (wie das Lieblingsteam im Fußball-Widget);
+// Innenabstand immer, damit hinterlegte und normale Zeilen bündig bleiben
+function highlightGerman(row, rider) {
+    row.setPadding(0, 2, 0, 2);
+    if (rider && rider.flag === "🇩🇪") {
+        row.backgroundColor = new Color("#FFE08A", 0.35);
+        row.cornerRadius = 4;
+    }
+}
+
 function withFlag(flag, text) {
     return flag ? `${flag} ${text}` : text;
 }
@@ -1114,6 +1124,7 @@ function addPastRace(stack, race, podiumSize) {
         block.addSpacer(3);
         let row = block.addStack();
         row.centerAlignContent();
+        highlightGerman(row, p);
         addSymbol(row, `${i + 1}.circle.fill`, 12, MEDALS[i]);
         row.addSpacer(5);
         // Gleiche Namensgröße wie in den Biathlon-Widgets, ohne automatisches Verkleinern
@@ -1191,6 +1202,7 @@ function buildMedium(widget, data) {
         addLabel(block, withFlag(race.flag, race.label ? `${race.name} · ${race.label}` : race.name), Font.semiboldSystemFont(12), WHITE);
         let winner = block.addStack();
         winner.centerAlignContent();
+        highlightGerman(winner, race.podium[0]);
         addSymbol(winner, "trophy.fill", 10, MEDALS[0]);
         winner.addSpacer(4);
         addLabel(winner, race.podium[0] ? withFlag(race.podium[0].flag, race.podium[0].rider) : "–", Font.mediumSystemFont(NAME_SIZE), WHITE, 0.8);
