@@ -278,6 +278,47 @@ function liveDetail(status) {
     return [label, clock].filter(Boolean).join(" · ") || detail.trim();
 }
 
+// Torschützen eines laufenden Spiels: aus dem Scoreboard (competitions[0].details), sonst aus der Spielzusammenfassung
+// (keyEvents) – der Team-Spielplan liefert keine. Ohne Elfmeterschießen.
+function goalsOf(list) {
+    return (list || []).filter(d => d && d.scoringPlay && !d.shootout).map(d => {
+        let athlete = (d.athletesInvolved && d.athletesInvolved[0]) || (d.participants && d.participants[0] && d.participants[0].athlete) || {};
+        let full = athlete.displayName || athlete.fullName || "";
+        let name = athlete.shortName ? athlete.shortName.replace(/^[^\s.]+\.\s*/, "") : full.split(" ").slice(-1)[0];
+        let text = `${(d.type && (d.type.text || d.type.type)) || ""} ${d.text || ""}`;
+        return {
+            team: String((d.team && d.team.id) || athlete.team && athlete.team.id || ""),
+            name: name || "?",
+            minute: (d.clock && d.clock.displayValue) || "",
+            ownGoal: d.ownGoal === true || /own/i.test(text),
+            penalty: d.penaltyKick === true || /penalty/i.test(text),
+        };
+    });
+}
+
+async function loadGoals(event) {
+    let board = (SEASON_EVENTS || []).find(e => e.id === event.id);
+    let details = ((board || event).competitions[0] || {}).details;
+    if (details && details.length) return goalsOf(details);
+    try {
+        let summary = await loadJSON(`site/v2/sports/soccer/${LEAGUE.slug}/summary?event=${event.id}&_=${Math.floor(Date.now() / 60000)}`);
+        return goalsOf(summary.keyEvents);
+    } catch (e) {
+        return [];
+    }
+}
+
+// "Kane 12' 40' (FE), Musiala 33'" – gleiche Schützen zusammengefasst
+function scorerText(goals) {
+    let byName = [];
+    goals.forEach(g => {
+        let entry = byName.find(x => x.name === g.name && x.ownGoal === g.ownGoal);
+        if (!entry) byName.push(entry = { name: g.name, ownGoal: g.ownGoal, minutes: [] });
+        entry.minutes.push(g.minute + (g.penalty ? " (FE)" : ""));
+    });
+    return byName.map(x => `${x.name}${x.ownGoal ? " (ET)" : ""} ${x.minutes.join(" ")}`).join(", ");
+}
+
 // Aus Sicht des eigenen Teams: Gegner, Heim/Auswärts, Ergebnis S/U/N
 function gameInfo(event) {
     let comp = event.competitions[0];
@@ -423,10 +464,12 @@ async function loadSeasonEvents() {
     }
     // Gestern und heute frisch (mit Zeitstempel in der Adresse): Monatsabfragen liefern laufende Spiele
     // teils mit Verzögerung bzw. aus dem Zwischenspeicher von iOS – die aktuelle Abfrage gewinnt
+    // (ESPN kennt hier keinen Datumsbereich "von-bis", daher beide Tage einzeln)
     let today = new Date();
-    let fresh = await loadJSON(`${base}?dates=${ymd(new Date(today.getTime() - 86400000))}-${ymd(today)}`
-        + `&_=${Math.floor(Date.now() / 60000)}`).catch(() => null);
-    if (fresh && Array.isArray(fresh.events) && fresh.events.length) events = mergeEvents([events, fresh.events]);
+    let fresh = await Promise.all([new Date(today.getTime() - 86400000), today].map(day =>
+        loadJSON(`${base}?dates=${ymd(day)}&_=${Math.floor(Date.now() / 60000)}`).catch(() => null)));
+    let recent = fresh.flatMap(json => (json && Array.isArray(json.events) && json.events) || []);
+    if (recent.length) events = mergeEvents([events, recent]);
     SEASON_EVENTS = events;
     return SEASON_EVENTS;
 }
@@ -519,7 +562,7 @@ async function loadData() {
     };
     let last = finished.length ? info(finished[finished.length - 1]) : null;
     let form = finished.slice(-5).map(info);
-    let live = liveEvent ? { ...info(liveEvent), detail: liveDetail(statusOf(liveEvent)) } : null;
+    let live = liveEvent ? { ...info(liveEvent), detail: liveDetail(statusOf(liveEvent)), goals: await loadGoals(liveEvent) } : null;
     let next = upcoming.length ? info(upcoming[0]) : null;
 
     // CL: Nach der Ligaphase statt Tabelle die aktuelle K.-o.-Runde mit Hin- und Rückspiel
@@ -915,7 +958,7 @@ function addForm(stack, data, images) {
 }
 
 // Live-Spielstand: eigener Score groß, Halbzeit und Minute farbig
-function addLiveGame(stack, live, images) {
+function addLiveGame(stack, live, images, compact = false) {
     addSectionTitle(stack, "● Live", LIVE_RED, 1);
     stack.addSpacer(2);
     let row = stack.addStack();
@@ -928,6 +971,27 @@ function addLiveGame(stack, live, images) {
     row.addSpacer(3);
     addLabel(row, live.opponent, Font.semiboldSystemFont(12), WHITE);
     addLabel(stack, live.detail, Font.semiboldSystemFont(10), LIVE_RED);
+    addScorers(stack, live, compact);
+}
+
+// Torschützen klein unter dem Spielstand: eigene Tore, darunter die des Gegners (kleines Widget: eine Zeile, zeitlich)
+function addScorers(stack, live, compact) {
+    let goals = live.goals || [];
+    if (!goals.length) return;
+    let ours = goals.filter(g => g.team === TEAM_ID);
+    let theirs = goals.filter(g => g.team !== TEAM_ID);
+    stack.addSpacer(2);
+    let line = (text, opacity) => {
+        let t = addLabel(stack, text, Font.mediumSystemFont(compact ? 8 : 9), WHITE, opacity);
+        t.lineLimit = compact ? 2 : 1;
+        t.minimumScaleFactor = 0.75;
+    };
+    if (compact) {
+        line(`⚽︎ ${scorerText(goals)}`, 0.75);
+        return;
+    }
+    if (ours.length) line(`⚽︎ ${scorerText(ours)}`, 0.85);
+    if (theirs.length) line(`${live.opponent}: ${scorerText(theirs)}`, 0.6);
 }
 
 function addNextGame(stack, next, images) {
@@ -1779,7 +1843,7 @@ function buildSmall(widget, data, images) {
     widget.addSpacer(6);
     addLastGame(widget, data.last, images, true);
     widget.addSpacer();
-    if (data.live) addLiveGame(widget, data.live, images);
+    if (data.live) addLiveGame(widget, data.live, images, true);
     else addNextGame(widget, data.next, images);
 }
 
