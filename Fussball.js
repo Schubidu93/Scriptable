@@ -1195,6 +1195,38 @@ function buildMatchdays(widget, data, images) {
 // ---------- Vollständige Tabelle ----------
 // Lieblingsteams (Schrift gold, fett): FC Bayern, Hajduk Split und das per TEAM gewählte
 const FAVORITES = new Set(["132", "489", TEAM_ID]);
+// Europapokale: übrige deutsche Vereine dezent hinterlegt (Lieblingsteams haben Vorrang)
+const FAV_BACKGROUND = new Color("#FFE08A", 0.14);
+const GERMAN_BACKGROUND = new Color("#FFFFFF", 0.08);
+const GERMAN_CLUBS_PATH = fm.joinPath(fm.cacheDirectory(), "fussball-deutsche-clubs.json");
+// Startwert aus dem Zwischenspeicher – auch offline (Tabelle aus dem Cache) bleiben die Vereine markiert
+let GERMAN_CLUBS = new Set(EUROPE && fm.fileExists(GERMAN_CLUBS_PATH) ? (() => {
+    try { return JSON.parse(fm.readString(GERMAN_CLUBS_PATH)).ids; } catch (e) { return []; }
+})() : []);
+
+// Vereine der 1. und 2. Bundesliga (ESPN-IDs), eine Woche zwischengespeichert
+async function loadGermanClubs() {
+    let cached = null;
+    try {
+        if (fm.fileExists(GERMAN_CLUBS_PATH)) cached = JSON.parse(fm.readString(GERMAN_CLUBS_PATH));
+    } catch (e) {}
+    if (cached && Date.now() - cached.time < 7 * 86400000) return new Set(cached.ids);
+    try {
+        let tables = await Promise.all(["ger.1", "ger.2"].map(slug => loadJSON(`v2/sports/soccer/${slug}/standings`)));
+        let ids = tables.flatMap(json => collectGroups(json).flatMap(g => g.standings.entries.map(e => String(e.team.id))));
+        if (ids.length) {
+            fm.writeString(GERMAN_CLUBS_PATH, JSON.stringify({ time: Date.now(), ids }));
+            return new Set(ids);
+        }
+    } catch (e) {
+        console.log(`Deutsche Vereine: ${e}`);
+    }
+    return new Set(cached ? cached.ids : []);
+}
+
+function rowBackground(id) {
+    return FAVORITES.has(id) ? FAV_BACKGROUND : GERMAN_CLUBS.has(id) ? GERMAN_BACKGROUND : null;
+}
 
 // ESPN-Zonen (note.description) → Kurzname und Farbe der Platzziffer
 const ZONES = [
@@ -1218,11 +1250,13 @@ function zoneOf(note) {
 async function loadTable() {
     let path = `v2/sports/soccer/${LEAGUE.slug}/standings`;
     // Zeitstempel in der Adresse: iOS liefert sonst gern eine zwischengespeicherte (alte) Tabelle
-    let [json, board] = await Promise.all([
+    let [json, board, german] = await Promise.all([
         loadJSON(`${path}?_=${Math.floor(Date.now() / 60000)}`).catch(() => loadJSON(path)),
         // Anstoßzeiten und laufende Spiele des aktuellen Spieltags – bestimmen, wann neu geladen wird
         loadJSON(`site/v2/sports/soccer/${LEAGUE.slug}/scoreboard`).catch(() => null),
+        EUROPE ? loadGermanClubs() : new Set(),
     ]);
+    GERMAN_CLUBS = german;
     let schedule = ((board && board.events) || []).map(e => ({ state: stateOf(e), date: e.date }));
     let group = collectGroups(json).sort((a, b) => b.standings.entries.length - a.standings.entries.length)[0];
     if (!group) return { rows: [] };
@@ -1355,8 +1389,9 @@ function addTableRow(stack, r, images, full) {
     let fav = FAVORITES.has(r.id);
     let row = stack.addStack();
     row.centerAlignContent();
-    if (fav) {
-        row.backgroundColor = new Color("#FFE08A", 0.14);
+    let background = rowBackground(r.id);
+    if (background) {
+        row.backgroundColor = background;
         row.cornerRadius = 4;
     }
     row.setPadding(0, 2, 0, 2);
@@ -1500,6 +1535,12 @@ function addTie(stack, tie, images, width) {
         }
         let fav = FAVORITES.has(team.id);
         let out = tie.winner && tie.winner !== team.id;
+        let background = rowBackground(team.id);
+        if (background) {
+            row.backgroundColor = background;
+            row.cornerRadius = 3;
+            row.setPadding(0, 2, 0, 2);
+        }
         addLogo(row, images, team.logo, 10);
         row.addSpacer(3);
         let name = addLabel(row, team.abbr, tie.winner === team.id ? Font.boldSystemFont(9) : Font.semiboldSystemFont(9),
