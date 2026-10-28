@@ -5,7 +5,10 @@
 // Antippen aktualisiert das Widget.
 
 const DATA_URL = "https://raw.githubusercontent.com/Schubidu93/Scriptable/main/data/langlauf.json";
-const MEDIUM_AREAS = ["vogt", "waldsee", "leutkirch", "wangen", "isny", "missen"];
+// Luftlinie ab Kißlegg (km) – Reihenfolge im Widget: nächstes Gebiet zuerst
+const DISTANCE = { vogt: 9, leutkirch: 11, wangen: 12, argenbuehl: 12, isny: 16, waldsee: 18, missen: 28 };
+// Mittleres Widget: sechs Gebiete (Argenbühl nur im großen)
+const MEDIUM_AREAS = ["vogt", "leutkirch", "wangen", "isny", "waldsee", "missen"];
 
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), "langlauf.json");
@@ -114,24 +117,35 @@ function addHeader(widget, data, large) {
     addLabel(header, "Loipen Allgäu", Font.semiboldSystemFont(15));
     header.addSpacer();
     let open = data ? data.areas.filter(a => a.status === "open").length : 0;
-    let info = data ? (open ? `${open} ${open === 1 ? "Gebiet" : "Gebiete"} gespurt` : "nichts gespurt") : "";
-    addLabel(header, `${info}${data && data.stale ? " · offline" : ""}`, Font.semiboldSystemFont(11), WHITE, 0.65);
-    widget.addSpacer(large ? 8 : 6);
+    let info = data ? (open ? `${open} gespurt` : "nichts gespurt") : "";
+    let df = new DateFormatter();
+    df.dateFormat = "HH:mm";
+    let stamp = data && data.stale ? "offline" : `aktualisiert ${df.string(new Date(UPDATED))}`;
+    let right = header.addStack();
+    right.layoutVertically();
+    let a = right.addStack();
+    a.addSpacer();
+    addLabel(a, info, Font.semiboldSystemFont(11), WHITE, 0.75);
+    let b = right.addStack();
+    b.addSpacer();
+    addLabel(b, stamp, Font.mediumSystemFont(8), WHITE, 0.5);
+    widget.addSpacer(large ? 8 : 4);
 }
 
-const COL = { name: 102, classic: 46, skating: 46, snow: 40 };
+// Breiten passend für das mittlere/große Widget (338 pt); jede Zelle mit ~8 pt Reserve gegen „…“
+const COL = { name: 98, classic: 50, skating: 52, snow: 38 };
 
 function addColumnTitles(widget, large) {
     let row = widget.addStack();
     let font = Font.semiboldSystemFont(9);
     row.addSpacer(14);
-    addCell(row, "GEBIET", COL.name, font, WHITE, 0.55);
+    addCell(row, "GEBIET", large ? COL.name - 6 : COL.name, font, WHITE, 0.55);
     addCell(row, "KLASS.", COL.classic, font, WHITE, 0.55);
     addCell(row, "SKATING", COL.skating, font, WHITE, 0.55);
     if (large) addCell(row, "SCHNEE", COL.snow, font, WHITE, 0.55);
     row.addSpacer();
     addLabel(row, "STAND", font, WHITE, 0.55);
-    widget.addSpacer(3);
+    widget.addSpacer(2);
 }
 
 function addAreaRow(widget, area, large) {
@@ -141,12 +155,21 @@ function addAreaRow(widget, area, large) {
     row.addSpacer(5);
     let open = area.status === "open";
     // Lange Namen („Missen-Wilhams“) dürfen minimal schrumpfen statt abgeschnitten zu werden
-    addCell(row, area.name, COL.name, Font.semiboldSystemFont(12), WHITE, open ? 1 : 0.8).minimumScaleFactor = 0.85;
-    let num = Font.mediumMonospacedSystemFont(12);
+    let nameBox = row.addStack();
+    nameBox.size = new Size(large ? COL.name - 6 : COL.name, 0);
+    nameBox.centerAlignContent();
+    addLabel(nameBox, area.name, Font.semiboldSystemFont(12), WHITE, open ? 1 : 0.8).minimumScaleFactor = 0.85;
+    if (large && DISTANCE[area.id]) {
+        nameBox.addSpacer(4);
+        addLabel(nameBox, `${DISTANCE[area.id]} km`, Font.mediumSystemFont(9), WHITE, 0.5);
+    }
+    nameBox.addSpacer();
+    let num = Font.mediumSystemFont(11.5);
     if (area.classic === null || area.classic === undefined) {
         // Keine Kilometer (z. B. Vogt: Text-Bericht) – Kurzhinweis über beide Spalten
-        let span = addCell(row, area.groomed ? `${km(area.groomed)} km gespurt` : (open ? "gespurt" : "–"),
-            COL.classic + COL.skating, Font.mediumSystemFont(11), WHITE, open ? 0.9 : 0.6);
+        let word = area.groomed ? `${km(area.groomed)} km gespurt` : open ? "gespurt"
+            : area.status === "closed" ? "geschlossen" : "keine Info";
+        let span = addCell(row, word, COL.classic + COL.skating, Font.mediumSystemFont(11), WHITE, open ? 0.9 : 0.55);
         span.lineLimit = 1;
     } else {
         addCell(row, `${km(area.classic)} km`, COL.classic, num, WHITE, area.classic ? 1 : 0.5);
@@ -164,18 +187,6 @@ function addAreaRow(widget, area, large) {
     }
 }
 
-function addUpdated(widget, data) {
-    let row = widget.addStack();
-    row.addSpacer();
-    let df = new DateFormatter();
-    df.dateFormat = "HH:mm";
-    let note = data && data.generated ? `Berichte gesammelt ${formatStand(data.generated)} · ` : "";
-    let t = row.addText(`${note}aktualisiert ${df.string(new Date(UPDATED))}`);
-    t.font = Font.mediumSystemFont(8);
-    t.textColor = WHITE;
-    t.textOpacity = 0.5;
-}
-
 const FAMILY = config.widgetFamily || "medium";
 
 async function createWidget() {
@@ -185,7 +196,7 @@ async function createWidget() {
     widget.url = URLScheme.forRunningScript();
     widget.refreshAfterDate = new Date(Date.now() + 30 * 60 * 1000);
     background(widget);
-    widget.setPadding(12, 16, 6, 16);
+    widget.setPadding(large ? 14 : 11, 16, large ? 12 : 8, 16);
 
     addHeader(widget, data, large);
     if (!data) {
@@ -194,13 +205,13 @@ async function createWidget() {
         return widget;
     }
     addColumnTitles(widget, large);
-    let areas = large ? data.areas : MEDIUM_AREAS.map(id => data.areas.find(a => a.id === id)).filter(Boolean);
+    let areas = (large ? data.areas : data.areas.filter(a => MEDIUM_AREAS.includes(a.id)))
+        .slice().sort((a, b) => (DISTANCE[a.id] || 99) - (DISTANCE[b.id] || 99));
     areas.forEach((area, i) => {
-        if (i > 0) widget.addSpacer(large ? 7 : 4);
+        if (i > 0) widget.addSpacer(large ? 7 : 2);
         addAreaRow(widget, area, large);
     });
     widget.addSpacer();
-    addUpdated(widget, data);
     return widget;
 }
 
