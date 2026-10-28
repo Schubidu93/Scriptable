@@ -966,7 +966,7 @@ function addForm(stack, data, images) {
 }
 
 // Live-Spielstand: eigener Score groß, Halbzeit und Minute farbig
-function addLiveGame(stack, live, images, compact = false, width = 0) {
+function addLiveGame(stack, live, images, compact = false, width = 0, lines = 1) {
     addSectionTitle(stack, "● Live", LIVE_RED, 1);
     stack.addSpacer(2);
     let row = stack.addStack();
@@ -979,11 +979,12 @@ function addLiveGame(stack, live, images, compact = false, width = 0) {
     row.addSpacer(3);
     addLabel(row, live.opponent, Font.semiboldSystemFont(12), WHITE);
     addLabel(stack, live.detail, Font.semiboldSystemFont(10), LIVE_RED);
-    addScorers(stack, live, compact, width);
+    addScorers(stack, live, compact, width, lines);
 }
 
 // Torschützen klein unter dem Spielstand: eigene Tore, darunter die des Gegners (kleines Widget: eine Zeile, zeitlich)
-function addScorers(stack, live, compact, width = 0) {
+// lines: Zeilen je Mannschaft (wo Platz ist, z. B. Pokal-Widget, dürfen lange Listen umbrechen)
+function addScorers(stack, live, compact, width = 0, lines = 1) {
     let goals = live.goals || [];
     if (!goals.length) return;
     let ours = goals.filter(g => g.team === TEAM_ID);
@@ -998,8 +999,8 @@ function addScorers(stack, live, compact, width = 0) {
         }
         let t = addLabel(box, text, Font.mediumSystemFont(compact ? 8 : 9), WHITE, opacity);
         if (width) box.addSpacer();
-        t.lineLimit = compact ? 2 : 1;
-        t.minimumScaleFactor = 0.75;
+        t.lineLimit = compact ? 2 : lines;
+        t.minimumScaleFactor = 0.7;
     };
     if (compact) {
         line(`⚽︎ ${scorerText(goals)}`, 0.75);
@@ -1734,13 +1735,13 @@ function addPokalGame(stack, game, images) {
     addLogo(row, images, game.opponentLogo, 15);
     row.addSpacer(3);
     addLabel(row, game.opponent, Font.semiboldSystemFont(11), WHITE);
-    addScorers(stack, game, false, 170);
+    addScorers(stack, game, false, 170, 2);
 }
 
 function addPokalNext(stack, data, images) {
     let pokal = data.pokal;
     if (data.live) {
-        addLiveGame(stack, data.live, images, false, 120);
+        addLiveGame(stack, data.live, images, false, 120, 3);
         return;
     }
     if (pokal.status === "sieger") {
@@ -1809,7 +1810,10 @@ function buildPokal(widget, data, images) {
         left.addSpacer(3);
         addLabel(left, "Noch kein Spiel", Font.mediumSystemFont(12), WHITE, 0.7);
     }
-    data.pokal.lastTwo.forEach(game => {
+    // Am Spieltag (Torschützen unter dem Ergebnis) nur das heutige Spiel – für beide reicht die Höhe nicht
+    let shown = data.pokal.lastTwo[0] && data.pokal.lastTwo[0].goals && data.pokal.lastTwo[0].goals.length
+        ? data.pokal.lastTwo.slice(0, 1) : data.pokal.lastTwo;
+    shown.forEach(game => {
         left.addSpacer(5);
         addPokalGame(left, game, images);
     });
