@@ -1,6 +1,6 @@
-// Radsport – die drei neuesten Rennen (WorldTour-Kalender und Straßen-WM) mit Top 3 und die nächsten 3 Rennen.
-// Laufende Rundfahrt: letzte Etappe; beendete Rundfahrt: Gesamtwertung. Enden Rundfahrt und
-// Eintagesrennen am selben Tag, gilt die Rundfahrt als neuer.
+// Radsport – die drei neuesten Ergebnisse (WorldTour-Kalender und Straßen-WM) mit Top 3 und die nächsten 3 Rennen.
+// Gesamtwertung und Etappen zählen einzeln: nach einer Rundfahrt z. B. GC, letzte und vorletzte Etappe;
+// während einer Rundfahrt ihre letzten Etappen. Am selben Tag gilt: GC vor Etappe, Rundfahrt vor Eintagesrennen.
 // Quelle: ProCyclingStats (procyclingstats.com). Großes Widget, im Stil der iOS-Widgets.
 //
 // Männer (Standard) oder Frauen: im Loader per Function("GESCHLECHT", code)("frauen")
@@ -411,33 +411,52 @@ function wikiRider(cell) {
     return parts.length > 1 ? `${parts[0].charAt(0)}. ${parts.slice(1).join(" ")}` : full;
 }
 
-// Alle GC-Tabellen eines Artikels; die beste ist die Schlusswertung („Final …“ oder höchste Etappe)
-function parseWikiGC(text) {
+// Alle Ergebnistabellen ({{cyclingresult}}) eines Artikels mit Titel bzw. Abschnittsüberschrift
+function parseWikiBlocks(text) {
     let blocks = [];
-    let score = title => /final/i.test(title) ? 1000 : (Number((/stage\s+(\d+)/i.exec(title) || [])[1]) || 999);
     for (let m of text.matchAll(/\{\{\s*cyclingresult start([^}]*)\}\}([\s\S]*?)\{\{\s*cyclingresult end/gi)) {
         let title = (/title\s*=\s*([^|}<]*)/i.exec(m[1]) || [])[1] || "";
         if (!title) {
             let heading = [...text.slice(Math.max(0, m.index - 300), m.index).matchAll(/=+\s*([^=\n]+?)\s*=+/g)].pop();
             title = heading ? heading[1] : "";
         }
-        if (!/general classification/i.test(title)) continue;
         let rows = [...m[2].matchAll(/\{\{\s*cyclingresult\s*\|\s*(\d+)\s*\|((?:\[\[[^\]]*\]\]|[^|\[}])+)\|\s*([A-Z]{3})/gi)]
             .map(r => ({ rank: Number(r[1]), rider: wikiRider(r[2]), flag: iocFlag(r[3]), team: "" }));
-        blocks.push({ score: score(title), rows });
+        blocks.push({ title, rows });
     }
+    return blocks;
+}
+
+function podiumOf(rows) {
+    return rows.length >= 3 && rows[0].rank === 1 ? rows.slice(0, CONFIG.podium).map(({ rank, ...rest }) => rest) : null;
+}
+
+// Alle GC-Tabellen eines Artikels; die beste ist die Schlusswertung („Final …“ oder höchste Etappe)
+function parseWikiGC(text) {
+    let score = title => /final/i.test(title) ? 1000 : (Number((/stage\s+(\d+)/i.exec(title) || [])[1]) || 999);
+    let blocks = parseWikiBlocks(text).filter(b => /general classification/i.test(b.title))
+        .map(b => ({ score: score(b.title), rows: b.rows }));
     // Tabelle mit Überschrift „Final general classification“ und {{flagathlete|[[Name]]|NAT}}
     for (let m of text.matchAll(/\|\+([^\n]*general classification[^\n]*)\n([\s\S]*?)\n\|\}/gi)) {
         let rows = [...m[2].matchAll(/\{\{\s*flagathlete\s*\|((?:\[\[[^\]]*\]\]|[^|\[}])+)\|\s*([A-Z]{3})/gi)]
             .map((r, i) => ({ rank: i + 1, rider: wikiRider(r[1]), flag: iocFlag(r[2]), team: "" }));
         blocks.push({ score: score(m[1]), rows });
     }
-    let best = blocks.filter(b => b.rows.length >= 3 && b.rows[0].rank === 1).sort((a, b) => b.score - a.score)[0];
-    return best ? best.rows.slice(0, CONFIG.podium).map(({ rank, ...rest }) => rest) : null;
+    let best = blocks.filter(b => podiumOf(b.rows)).sort((a, b) => b.score - a.score)[0];
+    return best ? podiumOf(best.rows) : null;
 }
 
-// Artikel suchen ("2026 La Vuelta Ciclista a España" → "2026 Vuelta a España"), dann Etappenseiten
-async function wikiGC(race) {
+// Tagesergebnis einer Etappe („Stage 6 result“), nicht die Wertungen danach
+function parseWikiStage(text, n) {
+    let stage = new RegExp(`\\bstage\\s*${n}\\b`, "i");
+    let block = parseWikiBlocks(text).find(b => stage.test(b.title) && !/classification/i.test(b.title) && podiumOf(b.rows));
+    return block ? podiumOf(block.rows) : null;
+}
+
+// Artikel suchen ("2026 La Vuelta Ciclista a España" → "2026 Vuelta a España") – Hauptartikel und Etappenseiten
+const WIKI_TITLES = {};
+async function wikiTitles(race) {
+    if (WIKI_TITLES[race.path]) return WIKI_TITLES[race.path];
     let year = (race.end || race.start || new Date()).getFullYear();
     // PCS-Namen auf die Wikipedia-Schreibweise bringen: "La Vuelta Ciclista a España" → "Vuelta a España"
     let name = race.name.replace(/^(La|Le|Il)\s+(?=Vuelta|Tour)/i, "").replace(/\bCiclista\s+/i, "");
@@ -450,9 +469,35 @@ async function wikiGC(race) {
     let main = titles.filter(t => !/stage/i.test(t)).slice(0, 1);
     let stagePages = titles.filter(t => /stage/i.test(t))
         .sort((a, b) => (Number((/(\d+)\D*$/.exec(b) || [])[1]) || 0) - (Number((/(\d+)\D*$/.exec(a) || [])[1]) || 0));
+    return (WIKI_TITLES[race.path] = { main, stagePages });
+}
+
+const WIKI_TEXTS = {};
+async function wikiTextCached(title) {
+    if (!(title in WIKI_TEXTS)) WIKI_TEXTS[title] = await wikiText(title);
+    return WIKI_TEXTS[title];
+}
+
+async function wikiGC(race) {
+    let { main, stagePages } = await wikiTitles(race);
     for (let title of main.concat(stagePages).slice(0, 3)) {
         if (timeLeft() < 3000) break;
-        let rows = parseWikiGC(await wikiText(title));
+        let rows = parseWikiGC(await wikiTextCached(title));
+        if (rows) return rows;
+    }
+    return null;
+}
+
+async function wikiStage(race, n) {
+    let { main, stagePages } = await wikiTitles(race);
+    // Eigene Etappenseite („… Stage 6“) zuerst, sonst der Hauptartikel
+    let own = stagePages.filter(t => new RegExp(`stage\\s*${n}\\D*$`, "i").test(t));
+    for (let title of own.concat(main)) {
+        if (timeLeft() < 3000) break;
+        let text = await wikiTextCached(title);
+        let rows = own.includes(title)
+            ? (parseWikiStage(text, n) || podiumOf(parseWikiBlocks(text).find(b => !/classification/i.test(b.title))?.rows || []))
+            : parseWikiStage(text, n);
         if (rows) return rows;
     }
     return null;
@@ -625,38 +670,53 @@ async function loadData() {
     finished.sort((a, b) => b.end - a.end || (b.stageRace ? 1 : 0) - (a.stageRace ? 1 : 0));
     upcoming.sort((a, b) => a.start - b.start);
 
-    // Laufende Rundfahrten zuerst, dann die beendeten Rennen – bis 3 Ergebnisse beisammen sind.
-    // Zwei Durchgänge, damit das Zeitlimit reicht: zuerst alle Ergebnisse schnell (Podium, Etappe),
-    // danach mit der Restzeit die aufwendige Suche nach der Gesamtwertung (GC).
+    // Gezählt werden Ergebnisse, nicht Rennen: eine beendete Rundfahrt liefert GC und ihre letzten
+    // Etappen (Guangxi: GC, Etappe 6, Etappe 5), eine laufende ihre letzten Etappen.
+    // Zwei Durchgänge, damit das Zeitlimit reicht: zuerst die Rennseiten (Podium, Etappe),
+    // danach mit der Restzeit Gesamtwertung (GC) und weitere Etappen.
     let running = upcoming.filter(r => r.stageRace && r.start <= today);
-    let collected = []; // { race, entries }
-    let pending = [];   // beendete Rundfahrten ohne GC: { item, ctx }
-    // Gezählt werden Rennen, nicht Einträge: immer die drei neuesten Rennen
-    let count = () => collected.length;
-    let GC_RETRY = 12 * 60 * 60 * 1000; // fehlgeschlagene GC-Suche frühestens nach 12 Stunden wiederholen
+    let collected = []; // { race, entries, ctx, meta, needGC, needStages }
+    let GC_RETRY = 12 * 60 * 60 * 1000; // fehlgeschlagene Suche frühestens nach 12 Stunden wiederholen
+    let newestDate = race => race.finished ? race.end : today;
+
+    // Daten der bisher gesammelten Ergebnisse, neueste zuerst. Noch nicht geladene Etappen einer
+    // Rundfahrt werden geschätzt (eine je Tag vor dem Ende), damit ältere Rennen nicht unnötig laden.
+    let virtualDates = () => collected.flatMap(c => {
+        let dates = c.entries.map(e => e.date || c.race.end);
+        if (c.race.stageRace && c.needStages) {
+            for (let k = dates.length; k < CONFIG.past; k++) {
+                let d = new Date(newestDate(c.race));
+                d.setDate(d.getDate() - (c.race.finished ? Math.max(0, k - 1) : k));
+                dates.push(d);
+            }
+        }
+        return dates;
+    }).sort((a, b) => b - a);
+    // Kann das Rennen noch unter die neuesten drei Ergebnisse kommen?
+    let outOfReach = race => {
+        let third = virtualDates()[CONFIG.past - 1];
+        let newest = newestDate(race);
+        return Boolean(third && (newest < third || (newest.getTime() === third.getTime() && !race.stageRace)));
+    };
 
     for (let race of running.concat(finished)) {
-        if (count() >= CONFIG.past) break;
+        if (outOfReach(race)) break;
         let key = resultPath(race);
         let stored = race.finished && saved[key];
-        let gcWithoutTeams = stored && !stored.teamsTried
-            && stored.entries.some(e => e.isGC && e.podium.length && e.podium.every(p => !p.team));
-        if (stored && stored.complete !== false && !gcWithoutTeams) {
+        if (stored && race.stageRace) {
+            let gcWithoutTeams = !stored.teamsTried
+                && stored.entries.some(e => e.isGC && e.podium.length && e.podium.every(p => !p.team));
+            let { entries, savedAt, ...meta } = stored;
+            collected.push({
+                race, entries: entries.map(revive), ctx: null, meta,
+                // GC fehlte (oder ohne Teams aus Wikipedia) – erneut suchen
+                needGC: gcWithoutTeams || (stored.complete === false && Date.now() - (stored.gcTry || 0) > GC_RETRY),
+                needStages: !stored.stagesDone && Date.now() - (stored.stageTry || 0) > GC_RETRY,
+            });
+            continue;
+        }
+        if (stored && stored.complete !== false) {
             collected.push({ race, entries: stored.entries.map(revive) });
-            continue;
-        }
-        if (gcWithoutTeams) {
-            // Gesamtwertung ohne Teams (aus Wikipedia) – einmal mit der PCS-Seite ergänzen
-            let item = { race, entries: stored.entries.map(revive) };
-            collected.push(item);
-            pending.push({ item, ctx: null });
-            continue;
-        }
-        if (stored) {
-            // Etappe schon bekannt, GC fehlte – anzeigen und ggf. später erneut suchen
-            let item = { race, entries: stored.entries.map(revive) };
-            collected.push(item);
-            if (Date.now() - (stored.gcTry || 0) > GC_RETRY) pending.push({ item, ctx: null });
             continue;
         }
         if (timeLeft() < 5000) {
@@ -669,13 +729,16 @@ async function loadData() {
                 // Weder Etappe noch GC und Hinweis auf Absage: überspringen
                 if (race.finished && result.entries.every(e => !e.podium.length)
                     && /cancel|abgesagt|annul/i.test(cleanText(result.ctx.html))) continue;
-                let item = { race, entries: result.entries };
+                let complete = result.entries.some(e => e.isGC);
+                let item = {
+                    race, entries: result.entries, ctx: result.ctx,
+                    meta: { complete, gcTry: 0, stagesDone: false },
+                    needGC: race.finished && !complete, needStages: true,
+                };
                 collected.push(item);
                 if (race.finished) {
-                    let complete = result.entries.some(e => e.isGC);
-                    saved[key] = { entries: result.entries, savedAt: Date.now(), complete, gcTry: 0 };
+                    saved[key] = { entries: item.entries, savedAt: Date.now(), ...item.meta };
                     saveResults(saved);
-                    if (!complete) pending.push({ item, ctx: result.ctx });
                 }
             } else {
                 let html = await loadResultPage(key, hasPodium);
@@ -695,35 +758,54 @@ async function loadData() {
         }
     }
 
-    // Zweiter Durchgang: Gesamtwertungen, solange Zeit bleibt
-    for (let { item, ctx } of pending) {
+    // Zweiter Durchgang: Gesamtwertungen und weitere Etappen, solange Zeit bleibt
+    for (let item of collected) {
+        if (!item.needGC && !item.needStages) continue;
         if (timeLeft() < 8000) break;
-        let race = item.race, key = resultPath(race);
+        let race = item.race, key = resultPath(race), meta = item.meta;
+        if (outOfReach(race)) continue;
         try {
-            if (!ctx) ctx = (await loadStageEntries(race, today, false)).ctx;
-            let gc = await loadGC(race, ctx.path, ctx.html, ctx.number, ctx.stagePodium);
-            let stageEntries = item.entries.filter(e => !e.isGC && e.podium.length);
-            if (gc && gc.stageIsGC) {
-                // Die vermeintliche Etappe war die Gesamtwertung – als GC anzeigen
-                item.entries = [{ ...race, label: "GC", date: race.end, path: ctx.path, podium: gc.slice(), isGC: true }];
-                saved[key] = { entries: item.entries, savedAt: Date.now(), complete: true };
-            } else if (isGC(gc, ctx.stagePodium)) {
-                gc = withTeams(gc, ctx.html);
-                item.entries = [{ ...race, label: "GC", date: race.end, path: ctx.path, podium: gc, isGC: true }].concat(stageEntries);
-                saved[key] = { entries: item.entries, savedAt: Date.now(), complete: true, teamsTried: true };
-            } else {
-                saved[key] = { entries: item.entries, savedAt: Date.now(), complete: false, gcTry: Date.now() };
+            if (!item.ctx && (item.needGC || meta.lastStage == null)) {
+                item.ctx = (await loadStageEntries(race, today, false)).ctx;
             }
+            let ctx = item.ctx;
+            if (item.needGC) {
+                let gc = await loadGC(race, ctx.path, ctx.html, ctx.number, ctx.stagePodium);
+                let others = item.entries.filter(e => !e.isGC && e.podium.length);
+                if (gc && gc.stageIsGC) {
+                    // Die vermeintliche Etappe war die Gesamtwertung – als GC anzeigen
+                    item.entries = [{ ...race, label: "GC", date: race.end, path: ctx.path, podium: gc.slice(), isGC: true }];
+                    meta.complete = true;
+                } else if (isGC(gc, ctx.stagePodium)) {
+                    gc = withTeams(gc, ctx.html);
+                    item.entries = [{ ...race, label: "GC", date: race.end, path: ctx.path, podium: gc, isGC: true }].concat(others);
+                    meta.complete = true;
+                    meta.teamsTried = true;
+                } else {
+                    meta.complete = item.entries.some(e => e.isGC);
+                    meta.gcTry = Date.now();
+                }
+                item.needGC = false;
+            }
+            if (item.needStages) {
+                meta.stagesDone = await addStages(item, ctx, saved, revive, today);
+                if (!meta.stagesDone) meta.stageTry = Date.now();
+                item.needStages = false;
+            }
+            if (race.finished) saved[key] = { entries: item.entries, savedAt: Date.now(), ...meta };
             saveResults(saved);
         } catch (e) {
-            console.log(`${race.name}: GC nicht geladen: ${e}`);
+            console.log(`${race.name}: GC/Etappen nicht geladen: ${e}`);
         }
     }
-    // Je Rennen ein Eintrag: beendete Rundfahrt → Gesamtwertung (falls gefunden), sonst das Ergebnis
-    let entries = collected.flatMap(c => {
-        let gc = c.entries.find(e => e.isGC);
-        return [c.race.finished && gc ? gc : c.entries[0]].filter(Boolean);
-    });
+
+    // Neueste Ergebnisse zuerst; am selben Tag GC vor Etappe, Rundfahrt vor Eintagesrennen
+    let weight = e => (e.isGC ? 2 : 0) + (e.stageRace ? 1 : 0);
+    let entries = collected.flatMap(c => c.entries).sort((a, b) =>
+        (b.running ? 1 : 0) - (a.running ? 1 : 0)
+        || (b.date || b.end) - (a.date || a.end)
+        || weight(b) - weight(a)
+        || (b.stage || 0) - (a.stage || 0));
 
     return {
         past: entries.slice(0, CONFIG.past),
@@ -732,7 +814,86 @@ async function loadData() {
     };
 }
 
-// Rundfahrt in zwei Einträge aufteilen: letzte Etappe und – wenn beendet – Gesamtwertung.
+// Grundadresse der Etappenseiten: "race/tour-of-guangxi/2026/gc" → "race/tour-of-guangxi/2026"
+function stageBase(race) {
+    let m = /^(race\/[^/]+?)[\/-](\d{4})(?:[\/-]|$)/.exec(race.path);
+    return m ? `${m[1]}/${m[2]}` : null;
+}
+
+// Nummer der letzten Etappe: laufend die gezeigte, beendet die höchste verlinkte
+function lastStageNumber(race, ctx) {
+    if (!ctx) return null;
+    if (!race.finished) return ctx.number || null;
+    let base = stageBase(race);
+    let numbers = base ? [...ctx.html.matchAll(new RegExp(`${base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/stage-(\\d+)`, "g"))]
+        .map(m => Number(m[1])) : [];
+    if (ctx.number) numbers.push(ctx.number);
+    return numbers.length ? Math.max(...numbers) : null;
+}
+
+// Ergebnis einer Etappe; einmal gefunden, dauerhaft gespeichert
+async function loadStage(race, n, saved, revive, approxDate) {
+    let base = stageBase(race);
+    if (!base) return null;
+    let path = `${base}/stage-${n}`;
+    let stored = saved[path];
+    if (stored && stored.entries && stored.entries.length) return revive(stored.entries[0]);
+    let html = "", podium = [], date = null;
+    try {
+        html = await load(path);
+        let number = parseStageNumber(html);
+        // Andere Seite (z. B. Weiterleitung auf die Übersicht) nicht als Etappe werten
+        if (number === null || number === n) {
+            let tab = parseTab(html, "STAGE");
+            podium = tab && tab.length ? tab : parsePodium(html);
+            date = parseDate(html);
+        }
+    } catch (e) {
+        console.log(`${race.name} Etappe ${n}: ${e}`);
+    }
+    if (!podium.length && timeLeft() >= 6000) {
+        try {
+            let rows = await wikiStage(race, n);
+            if (rows) podium = withTeams(rows, html);
+        } catch (e) {
+            console.log(`${race.name} Etappe ${n} über Wikipedia: ${e}`);
+        }
+    }
+    if (!podium.length) return null;
+    let entry = { ...race, label: `Etappe ${n}`, stage: n, date: date || approxDate, path, podium, running: false };
+    saved[path] = { entries: [entry], savedAt: Date.now(), complete: true };
+    return entry;
+}
+
+// Etappen einer Rundfahrt ergänzen: GC (falls vorhanden) und die letzten Etappen, zusammen 3 Einträge.
+// Ergebnis: true, wenn nichts mehr fehlt.
+async function addStages(item, ctx, saved, revive, today) {
+    let race = item.race;
+    let last = item.meta.lastStage != null ? item.meta.lastStage : lastStageNumber(race, ctx);
+    if (last == null) return false;
+    item.meta.lastStage = last;
+    let gc = item.entries.find(e => e.isGC);
+    // Laufend: die gerade geladene Etappe behalten; beendet: Etappen von ihren eigenen Seiten
+    let known = race.finished ? [] : item.entries.filter(e => !e.isGC && e.stage != null);
+    let wanted = CONFIG.past - (gc ? 1 : 0);
+    let stages = [];
+    let done = true;
+    for (let n = last; n >= 1 && stages.length < wanted; n--) {
+        let entry = known.find(e => e.stage === n);
+        if (!entry) {
+            if (timeLeft() < 6000) { done = false; break; }
+            let approx = new Date(race.finished ? race.end : today);
+            approx.setDate(approx.getDate() - (last - n));
+            entry = await loadStage(race, n, saved, revive, approx);
+        }
+        if (!entry) { done = false; break; }
+        stages.push(entry);
+    }
+    if (stages.length) item.entries = (gc ? [gc] : []).concat(stages);
+    return done;
+}
+
+// Rundfahrt in Einträge aufteilen: letzte Etappe und – wenn beendet – Gesamtwertung.
 // Ohne searchGC nur, was die Seite direkt hergibt (schnell); die GC-Suche übernimmt loadData.
 // Ergebnis: { entries, ctx } – ctx enthält die geladene Seite für die spätere GC-Suche.
 async function loadStageEntries(race, today, searchGC) {
@@ -762,7 +923,7 @@ async function loadStageEntries(race, today, searchGC) {
         entries.push({ ...race, label: "GC", date: race.end, path, podium: gcPodium, isGC: true });
     }
     if (stagePodium && stagePodium.length) {
-        entries.push({ ...race, label: stageLabel, date, path, podium: stagePodium, running: isRunning });
+        entries.push({ ...race, label: stageLabel, stage: number || undefined, date, path, podium: stagePodium, running: isRunning });
     }
     if (!entries.length) {
         let debug = (gcPodium && gcPodium.debug) || `${pageTitle(html)} · keine Etappen-/GC-Tabelle`;
