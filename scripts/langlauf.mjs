@@ -2,7 +2,7 @@
 // Läuft stündlich per GitHub Actions und schreibt data/langlauf.json (gelesen von Langlauf.js).
 // Quellen – wo möglich direkt beim Betreiber (Primärquelle), sonst Loipen-Allgäu (private Sammelseite,
 // wird von Hand gepflegt und oft erst später aktualisiert):
-//   Vogt: SC Vogt (Text-Bericht) · Bad Waldsee: Sportpark (Tabelle) · Isny: isny.de (je Loipe offen/zu,
+//   Vogt: SC Vogt (Text-Bericht) · Waldburg: ASV Waldburg (Text-Bericht) · Bad Waldsee: Sportpark (Tabelle) · Isny: isny.de (je Loipe offen/zu,
 //   zuletzt gespurt, Tagesmeldung) · Leutkirch: Loipen-Allgäu (km) + Stadt Leutkirch (gespurt am …) ·
 //   Wangen: Loipen-Allgäu (km) + Skilift Berger Höhe/Niederwangen (Loipenzustand mit Datum) ·
 //   Argenbühl, Missen-Wilhams, Heimenkirch, Lindenberg, Scheidegg: Loipen-Allgäu
@@ -71,8 +71,26 @@ async function loadOnce(url) {
 
 // Loipen-Allgäu: "von insgesamt 120,00 Loipen-km sind aktuell 12,50 km gespurt, davon 8,00 km für die klassische
 // Technik und 4,50 km für Skating · aktuelle Schneehöhe: 15 cm · zuletzt aktualisiert am 07.01.2026, um 12:07"
+// Einzelloipen: je Loipe eine Tabelle <th colspan="5">Name</th> … "klassisch: 4.40 km | nicht gespurt!"
+function loipenAllgaeuLoipen(html) {
+    return html.split(/<th colspan="?5"?>/i).slice(1).map(block => {
+        let name = text(block.slice(0, block.search(/<\/th>/i))).replace(/\s+/g, " ").trim()
+            .replace(/^Loipe\s+/i, "").replace(/[-\s]*Loipe$/i, "");
+        let state = technique => {
+            let m = new RegExp(`${technique}:[\\s\\S]*?<\\/tr>`, "i").exec(block);
+            if (!m) return null;
+            let t = text(m[0]);
+            return /gespurt/i.test(t) && !/nicht/i.test(t);
+        };
+        return { name, classic: state("klassisch"), skating: state("skating") };
+    }).filter(l => l.name && (l.classic !== null || l.skating !== null));
+}
+
 async function loipenAllgaeu(name) {
-    let t = text(await load(`http://www.loipen-allgaeu.de/loipen.php?name=${encodeURIComponent(name)}`));
+    let html = await load(`http://www.loipen-allgaeu.de/loipen.php?name=${encodeURIComponent(name)}`);
+    let t = text(html);
+    let loipen = loipenAllgaeuLoipen(html);
+    let groomedNames = loipen.filter(l => l.classic || l.skating).map(l => l.name);
     let total = /insgesamt\s+([\d.,]+)\s+Loipen-km sind aktuell\s+([\d.,]+)\s+km gespurt/i.exec(t);
     let split = /davon\s+([\d.,]+)\s+km f(?:ü|u)r die klassische Technik und\s+([\d.,]+)\s+km f(?:ü|u)r Skating/i.exec(t);
     if (!total || !split) throw new Error("Loipenbericht nicht gefunden");
@@ -86,7 +104,30 @@ async function loipenAllgaeu(name) {
         skating: num(split[2]),
         snow: snow ? Number(snow[1]) : null,
         updated: stamp ? `${isoDate(stamp[1])}T${stamp[2].padStart(5, "0")}` : null,
-        status: groomed > 0 ? "open" : "closed",
+        status: groomed > 0 || groomedNames.length ? "open" : "closed",
+        // Nur die gespurten Loipen nennen ("gespurt: Haslach, Niederwangen - Bergerhoehe")
+        note: groomedNames.length ? `gespurt: ${groomedNames.join(", ")}` : undefined,
+    };
+}
+
+// ASV Waldburg: "Aktueller Loipenbericht (Stand: 12.01.2026)" mit freiem Text bis zum Hinweis auf den Loipenbutton
+async function asvWaldburg() {
+    let t = text(await load("https://www.asv-waldburg.de/ski/langlaufen/loipenbericht"));
+    let start = t.search(/Aktueller Loipenbericht/i);
+    if (start < 0) throw new Error("Loipenbericht nicht gefunden");
+    let rest = t.slice(start);
+    let stand = /Stand:?\s*([^)\n]*)/i.exec(rest);
+    let body = rest.slice(rest.indexOf("\n") + 1, rest.search(/Wir würden uns freuen|Loipenbutton/i) >>> 0 || undefined)
+        .split("\n").map(s => s.trim()).filter(Boolean).join(" ");
+    let date = stand ? isoDate(stand[1]) : null;
+    let closed = !body || /geschlossen|gesperrt|nicht gespurt|keine? (Loipen|Spur)|zu wenig Schnee/i.test(body);
+    let open = !closed && /gespurt|befahrbar|geöffnet|offen/i.test(body);
+    let first = body.split(/(?<=[.!])\s+/)[0] || "";
+    return {
+        network: null, groomed: null, classic: null, skating: null, snow: null,
+        updated: date,
+        status: !date ? "unknown" : closed ? "closed" : open ? "open" : "unknown",
+        note: first ? (first.length > 70 ? first.slice(0, 68).replace(/\s+\S*$/, "") + " …" : first) : "kein aktueller Bericht",
     };
 }
 
@@ -255,6 +296,7 @@ async function leutkirchStadt() {
 
 const AREAS = [
     { id: "vogt", name: "Vogt", load: scVogt, url: "https://www.sc-vogt.de/langlauf.html" },
+    { id: "waldburg", name: "Waldburg", load: asvWaldburg, url: "https://www.asv-waldburg.de/ski/langlaufen/loipenbericht" },
     { id: "waldsee", name: "Bad Waldsee", load: badWaldsee, url: "https://www.sportpark-badwaldsee.de/loipen-info" },
     { id: "leutkirch", name: "Leutkirch", load: () => loipenAllgaeu("Leutkirch"),
         url: "https://www.leutkirch.de/de/Urlaub/Natur-Bewegung/Langlaufen/Loipenbericht" },

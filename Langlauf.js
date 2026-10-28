@@ -1,5 +1,5 @@
 // Langlauf rund um Kißlegg – gespurte Loipen-Kilometer (klassisch / Skating), Schneehöhe und Stand
-// für zehn Gebiete (Vogt bis Missen-Wilhams). Gespurte Gebiete haben Vorrang (nach Entfernung),
+// für elf Gebiete (Vogt bis Scheidegg). Gespurte Gebiete haben Vorrang (nach Entfernung),
 // freie Plätze füllen die nächstgelegenen geschlossenen.
 // Die Berichte sammelt stündlich ein GitHub-Workflow (scripts/langlauf.mjs); das Widget lädt die
 // fertige Datei und merkt sich den letzten Stand. Mittleres Widget: 6 Gebiete, großes: 8 mit Hinweis.
@@ -8,7 +8,7 @@
 const DATA_URL = "https://raw.githubusercontent.com/Schubidu93/Scriptable/main/data/langlauf.json";
 // Autostrecke ab Rathaus Kißlegg zum Loipeneinstieg (km, schnellste Route laut OpenStreetMap/OSRM, Okt. 2026):
 // Vogt, Leutkirch-Wilhelmshöhe, Eisenharz (Argenbühl), Niederwangen, Isny-Langlaufstadion, Golfplatz Bad Waldsee …
-const DISTANCE = { vogt: 11.6, leutkirch: 16.7, argenbuehl: 18.6, wangen: 20.9, isny: 22.5, waldsee: 23.2,
+const DISTANCE = { vogt: 11.6, waldburg: 15.9, leutkirch: 16.7, argenbuehl: 18.6, wangen: 20.9, isny: 22.5, waldsee: 23.2,
     heimenkirch: 25.4, lindenberg: 28.4, missen: 37.2, scheidegg: 45.6 };
 // Plätze: mittel 6, groß 8 (mit Hinweiszeile)
 const SLOTS = { medium: 6, large: 8 };
