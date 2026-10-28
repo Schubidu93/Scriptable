@@ -1724,7 +1724,12 @@ function addPokalGame(stack, game, images) {
     row.centerAlignContent();
     addBadge(row, game.result, 18);
     row.addSpacer(6);
-    addLabel(row, `${game.ourScore}:${game.theirScore}`, Font.boldRoundedSystemFont(20), WHITE);
+    // Ergebnis in eigener, fester Breite – sonst kürzt iOS es bei Platzmangel als Erstes zu "…"
+    let result = `${game.ourScore}:${game.theirScore}`;
+    let scoreBox = row.addStack();
+    scoreBox.size = new Size(result.length * 12 + 4, 0);
+    addLabel(scoreBox, result, Font.boldRoundedSystemFont(20), WHITE).minimumScaleFactor = 1;
+    scoreBox.addSpacer();
     if (game.suffix) {
         row.addSpacer(4);
         addLabel(row, game.suffix, Font.semiboldSystemFont(9), WHITE, 0.7);
@@ -1735,7 +1740,7 @@ function addPokalGame(stack, game, images) {
     addLogo(row, images, game.opponentLogo, 15);
     row.addSpacer(3);
     addLabel(row, game.opponent, Font.semiboldSystemFont(11), WHITE);
-    addScorers(stack, game, false, 170, 2);
+    addScorers(stack, game, false, POKAL_LEFT, 2);
 }
 
 function addPokalNext(stack, data, images) {
@@ -1798,6 +1803,8 @@ function addTeamHeader(widget, data, images) {
     addLabel(header, `${competition}${data.stale ? " · offline" : ""}`, Font.semiboldSystemFont(11), WHITE, 0.6);
 }
 
+const POKAL_LEFT = 166;
+
 function buildPokal(widget, data, images) {
     addTeamHeader(widget, data, images);
     widget.addSpacer(6);
@@ -1805,6 +1812,8 @@ function buildPokal(widget, data, images) {
     let body = widget.addStack();
     let left = body.addStack();
     left.layoutVertically();
+    // Feste Breite: links Ergebnisse und Torschützen, rechts 120 – dazwischen bleibt der Rest als Abstand
+    left.size = new Size(POKAL_LEFT, 0);
     addSectionTitle(left, "Letzte Spiele");
     if (!data.pokal.lastTwo.length) {
         left.addSpacer(3);
@@ -1819,7 +1828,6 @@ function buildPokal(widget, data, images) {
     });
     left.addSpacer();
 
-    body.addSpacer(12);
     body.addSpacer();
 
     let right = body.addStack();
