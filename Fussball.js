@@ -739,10 +739,11 @@ function withWhiteBacking(img) {
     ctx.size = new Size(px, px);
     ctx.opaque = false;
     ctx.respectScreenScale = false;
+    // Das Schalke-Logo ist selbst rund: Weiß nur hinter dem Logo (leicht kleiner), kein sichtbarer Rand
+    let inset = 3;
     ctx.setFillColor(Color.white());
-    ctx.fillEllipse(new Rect(0, 0, px, px));
-    let inset = 7;
-    ctx.drawImageInRect(img, new Rect(inset, inset, px - 2 * inset, px - 2 * inset));
+    ctx.fillEllipse(new Rect(inset, inset, px - 2 * inset, px - 2 * inset));
+    ctx.drawImageInRect(img, new Rect(0, 0, px, px));
     return ctx.getImage();
 }
 
