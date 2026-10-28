@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-28T13:03:58.550Z",
+  "generated": "2026-10-28T13:15:38.330Z",
   "areas": [
     {
       "id": "vogt",
@@ -81,6 +81,42 @@
       "name": "Missen-Wilhams",
       "url": "http://www.loipen-allgaeu.de/loipen.php?name=Missen-Wilhams",
       "network": 41,
+      "groomed": 0,
+      "classic": 0,
+      "skating": 0,
+      "snow": 0,
+      "updated": "2026-04-02T12:41",
+      "status": "closed"
+    },
+    {
+      "id": "heimenkirch",
+      "name": "Heimenkirch",
+      "url": "http://www.loipen-allgaeu.de/loipen.php?name=Heimenkirch",
+      "network": 10,
+      "groomed": 0,
+      "classic": 0,
+      "skating": 0,
+      "snow": 0,
+      "updated": "2026-04-02T12:41",
+      "status": "closed"
+    },
+    {
+      "id": "lindenberg",
+      "name": "Lindenberg",
+      "url": "http://www.loipen-allgaeu.de/loipen.php?name=Lindenberg",
+      "network": 51.4,
+      "groomed": 0,
+      "classic": 0,
+      "skating": 0,
+      "snow": 0,
+      "updated": "2026-04-02T12:41",
+      "status": "closed"
+    },
+    {
+      "id": "scheidegg",
+      "name": "Scheidegg",
+      "url": "http://www.loipen-allgaeu.de/loipen.php?name=Scheidegg",
+      "network": 44.2,
       "groomed": 0,
       "classic": 0,
       "skating": 0,
