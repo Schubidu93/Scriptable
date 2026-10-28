@@ -1,5 +1,6 @@
-// Radsport – die letzten 3 WorldTour-Ergebnisse mit Top 3 und die nächsten 3 Rennen.
-// Rundfahrten erscheinen als zwei Einträge: letzte Etappe und – wenn beendet – Gesamtwertung.
+// Radsport – die drei neuesten Rennen (WorldTour-Kalender und Straßen-WM) mit Top 3 und die nächsten 3 Rennen.
+// Laufende Rundfahrt: letzte Etappe; beendete Rundfahrt: Gesamtwertung. Enden Rundfahrt und
+// Eintagesrennen am selben Tag, gilt die Rundfahrt als neuer.
 // Quelle: ProCyclingStats (procyclingstats.com). Großes Widget, im Stil der iOS-Widgets.
 //
 // Männer (Standard) oder Frauen: im Loader per Function("GESCHLECHT", code)("frauen")
@@ -564,6 +565,37 @@ async function loadCalendar(year) {
     return races;
 }
 
+// Straßen-WM (Elite-Straßenrennen). Datum steht erst nach dem Rennen fest: einmal die Ergebnisseite
+// laden und das Ergebnis dauerhaft speichern; vorher höchstens alle 12 Stunden nachsehen.
+async function loadWorldChampionship(year, saved, revive) {
+    let path = `race/world-championship${WOMEN ? "-we" : ""}/${year}`;
+    let race = { name: "Weltmeisterschaft", flag: "🌈", path, stageRace: false, finished: true };
+    let key = resultPath(race);
+    if (saved[key] && saved[key].entries && saved[key].entries.length) {
+        let e = revive(saved[key].entries[0]);
+        return { ...race, start: e.start, end: e.end };
+    }
+    let checkKey = `wm-check-${path}`;
+    if (saved[checkKey] && Date.now() - saved[checkKey].savedAt < 12 * 60 * 60 * 1000) return null;
+    if (timeLeft() < 15000) return null;
+    try {
+        let html = await load(key);
+        let date = parseDate(html);
+        let podium = parsePodium(html);
+        if (date && podium.length && date <= new Date()) {
+            let found = { ...race, start: date, end: date };
+            saved[key] = { entries: [{ ...found, label: "", date, path: key, podium }], savedAt: Date.now(), complete: true };
+            saveResults(saved);
+            return found;
+        }
+    } catch (e) {
+        console.log(`WM: ${e}`);
+    }
+    saved[checkKey] = { savedAt: Date.now(), entries: [] };
+    saveResults(saved);
+    return null;
+}
+
 async function loadData() {
     let today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -581,20 +613,26 @@ async function loadData() {
         upcoming = upcoming.concat(await loadCalendar(year + 1).catch(() => []));
     }
 
-    // Neueste zuerst; endet eine Rundfahrt am selben Tag wie ein Eintagesrennen, zählt der spätere Start
-    // (Montréal am 13.09. vor der Vuelta, die vom 22.08. bis 13.09. lief)
-    finished.sort((a, b) => b.end - a.end || b.start - a.start);
+    let saved = loadSavedResults();
+    let revive = e => ({ ...e, start: new Date(e.start), end: new Date(e.end), date: e.date ? new Date(e.date) : undefined });
+
+    // Straßen-WM (nicht im WorldTour-Kalender, aber wichtiger) ergänzen
+    let worlds = await loadWorldChampionship(year, saved, revive);
+    if (worlds && !finished.some(r => resultPath(r) === resultPath(worlds))) finished.push(worlds);
+
+    // Neueste zuerst; endet eine Rundfahrt am selben Tag wie ein Eintagesrennen, geht die Rundfahrt vor
+    // (Vuelta 22.08.–13.09. vor dem GP de Montréal am 13.09.)
+    finished.sort((a, b) => b.end - a.end || (b.stageRace ? 1 : 0) - (a.stageRace ? 1 : 0));
     upcoming.sort((a, b) => a.start - b.start);
 
     // Laufende Rundfahrten zuerst, dann die beendeten Rennen – bis 3 Ergebnisse beisammen sind.
     // Zwei Durchgänge, damit das Zeitlimit reicht: zuerst alle Ergebnisse schnell (Podium, Etappe),
     // danach mit der Restzeit die aufwendige Suche nach der Gesamtwertung (GC).
     let running = upcoming.filter(r => r.stageRace && r.start <= today);
-    let saved = loadSavedResults();
-    let revive = e => ({ ...e, start: new Date(e.start), end: new Date(e.end), date: e.date ? new Date(e.date) : undefined });
     let collected = []; // { race, entries }
     let pending = [];   // beendete Rundfahrten ohne GC: { item, ctx }
-    let count = () => collected.reduce((n, c) => n + c.entries.length, 0);
+    // Gezählt werden Rennen, nicht Einträge: immer die drei neuesten Rennen
+    let count = () => collected.length;
     let GC_RETRY = 12 * 60 * 60 * 1000; // fehlgeschlagene GC-Suche frühestens nach 12 Stunden wiederholen
 
     for (let race of running.concat(finished)) {
@@ -681,7 +719,11 @@ async function loadData() {
             console.log(`${race.name}: GC nicht geladen: ${e}`);
         }
     }
-    let entries = collected.flatMap(c => c.entries);
+    // Je Rennen ein Eintrag: beendete Rundfahrt → Gesamtwertung (falls gefunden), sonst das Ergebnis
+    let entries = collected.flatMap(c => {
+        let gc = c.entries.find(e => e.isGC);
+        return [c.race.finished && gc ? gc : c.entries[0]].filter(Boolean);
+    });
 
     return {
         past: entries.slice(0, CONFIG.past),
