@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-28T13:15:38.330Z",
+  "generated": "2026-10-28T13:32:24.408Z",
   "areas": [
     {
       "id": "vogt",
@@ -13,6 +13,19 @@
       "updated": "2026-03-22",
       "status": "closed",
       "note": "wir haben den Winterbetrieb endgültig eingestellt."
+    },
+    {
+      "id": "waldburg",
+      "name": "Waldburg",
+      "url": "https://www.asv-waldburg.de/ski/langlaufen/loipenbericht",
+      "network": null,
+      "groomed": null,
+      "classic": null,
+      "skating": null,
+      "snow": null,
+      "updated": null,
+      "status": "unknown",
+      "note": "kein aktueller Bericht"
     },
     {
       "id": "waldsee",
