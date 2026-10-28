@@ -308,15 +308,31 @@ async function loadGoals(event) {
     }
 }
 
-// "Kane 12' 40' (FE), Musiala 33'" – gleiche Schützen zusammengefasst
-function scorerText(goals) {
+// "Kane 12' 40' (FE)", "Musiala 33'" – gleiche Schützen zusammengefasst
+function scorerEntries(goals) {
     let byName = [];
     goals.forEach(g => {
         let entry = byName.find(x => x.name === g.name && x.ownGoal === g.ownGoal);
         if (!entry) byName.push(entry = { name: g.name, ownGoal: g.ownGoal, minutes: [] });
         entry.minutes.push(g.minute + (g.penalty ? " (FE)" : ""));
     });
-    return byName.map(x => `${x.name}${x.ownGoal ? " (ET)" : ""} ${x.minutes.join(" ")}`).join(", ");
+    return byName.map(x => `${x.name}${x.ownGoal ? " (ET)" : ""} ${x.minutes.join(" ")}`);
+}
+
+function scorerText(goals) {
+    return scorerEntries(goals).join(", ");
+}
+
+// Zeilen selbst umbrechen (nach ganzen Torschützen): iOS staucht mehrzeilige Texte im Widget sonst auf weniger Zeilen
+function wrapEntries(entries, maxChars) {
+    let lines = [];
+    entries.forEach((entry, i) => {
+        let piece = entry + (i < entries.length - 1 ? "," : "");
+        let last = lines[lines.length - 1];
+        if (last !== undefined && (last + " " + piece).length <= maxChars) lines[lines.length - 1] = last + " " + piece;
+        else lines.push(piece);
+    });
+    return lines;
 }
 
 // Aus Sicht des eigenen Teams: Gegner, Heim/Auswärts, Ergebnis S/U/N
@@ -991,25 +1007,32 @@ function addScorers(stack, live, compact, width = 0, lines = 1) {
     let theirs = goals.filter(g => g.team !== TEAM_ID);
     stack.addSpacer(2);
     // Feste Schriftgrößen ohne automatisches Verkleinern (sonst wirkt die lange Bayern-Zeile kleiner als die
-    // kurze des Gegners): Bayern einen Tick größer, lange Listen brechen um statt zu schrumpfen
-    let line = (text, font, opacity, limit) => {
-        // Feste Breite, damit lange Zeilen die Nachbarspalte nicht verdrängen
-        let box = stack;
-        if (width) {
-            box = stack.addStack();
-            box.size = new Size(width, 0);
-        }
-        let t = addLabel(box, text, font, WHITE, opacity);
-        if (width) box.addSpacer();
-        t.lineLimit = limit;
-        t.minimumScaleFactor = 1;
+    // kurze des Gegners): Bayern einen Tick größer; lange Listen auf mehrere einzeilige Texte verteilt
+    let block = (prefix, list, size, font, opacity, limit) => {
+        let entries = scorerEntries(list);
+        // Zeichen je Zeile grob aus Breite und Schriftgröße (eher vorsichtig, damit nichts gekürzt wird)
+        let maxChars = width ? Math.floor(width / (size * 0.52)) : 999;
+        let lines = wrapEntries(entries, maxChars - (prefix.startsWith("⚽") ? 2 : prefix.length));
+        if (lines.length > limit) lines = lines.slice(0, limit - 1).concat([lines.slice(limit - 1).join(" ")]);
+        lines.forEach((text, i) => {
+            let box = stack;
+            if (width) {
+                // Feste Breite, damit lange Zeilen die Nachbarspalte nicht verdrängen
+                box = stack.addStack();
+                box.size = new Size(width, 0);
+            }
+            let t = addLabel(box, (i === 0 ? prefix : "") + text, font, WHITE, opacity);
+            t.minimumScaleFactor = i === lines.length - 1 && lines.length === limit ? 0.8 : 1;
+            if (width) box.addSpacer();
+        });
     };
     if (compact) {
-        line(`⚽︎ ${scorerText(goals)}`, Font.mediumSystemFont(8), 0.75, 2);
+        let t = addLabel(stack, `⚽︎ ${scorerText(goals)}`, Font.mediumSystemFont(8), WHITE, 0.75);
+        t.lineLimit = 2;
         return;
     }
-    if (ours.length) line(`⚽︎ ${scorerText(ours)}`, Font.semiboldSystemFont(9.5), 0.9, lines + 1);
-    if (theirs.length) line(`${live.opponent}: ${scorerText(theirs)}`, Font.mediumSystemFont(8.5), 0.6, lines);
+    if (ours.length) block("⚽︎ ", ours, 9.5, Font.semiboldSystemFont(9.5), 0.9, lines + 1);
+    if (theirs.length) block(`${live.opponent}: `, theirs, 8.5, Font.mediumSystemFont(8.5), 0.6, lines);
 }
 
 function addNextGame(stack, next, images) {
