@@ -421,6 +421,12 @@ async function loadSeasonEvents() {
         events = mergeEvents([(current && current.events) || []]);
         DIAG.push(`Scoreboard aktuell: ${events.length} Spiele`);
     }
+    // Gestern und heute frisch (mit Zeitstempel in der Adresse): Monatsabfragen liefern laufende Spiele
+    // teils mit Verzögerung bzw. aus dem Zwischenspeicher von iOS – die aktuelle Abfrage gewinnt
+    let today = new Date();
+    let fresh = await loadJSON(`${base}?dates=${ymd(new Date(today.getTime() - 86400000))}-${ymd(today)}`
+        + `&_=${Math.floor(Date.now() / 60000)}`).catch(() => null);
+    if (fresh && Array.isArray(fresh.events) && fresh.events.length) events = mergeEvents([events, fresh.events]);
     SEASON_EVENTS = events;
     return SEASON_EVENTS;
 }
@@ -1794,12 +1800,18 @@ function nextRefresh(data) {
     let minute = 60 * 1000;
     let now = Date.now();
     if (data && data.games) {
-        let live = data.games.some(g => g.state === "in") && !data.stale;
-        if (live) return new Date(now + 5 * minute);
-        // Nächster Anstoß innerhalb der nächsten halben Stunde: dann aktualisieren
+        // Während der Spiele so oft wie möglich (iOS entscheidet selbst, meist alle 5–15 Minuten): auch wenn der
+        // letzte Abruf scheiterte oder ein Spiel laut Anstoßzeit laufen müsste, aber noch als "vor dem Spiel" gilt
+        let started = g => {
+            let t = new Date(g.date).getTime();
+            return t <= now && now - t < 150 * minute;
+        };
+        let live = data.games.some(g => g.state === "in" || (g.state === "pre" && started(g)));
+        if (live) return new Date(now + 2 * minute);
+        // Nächster Anstoß innerhalb der nächsten halben Stunde: eine Minute nach Anstoß aktualisieren
         let kickoffs = data.games.filter(g => g.state === "pre").map(g => new Date(g.date).getTime()).filter(t => t > now);
-        let soon = Math.min(...kickoffs, now + 30 * minute);
-        return new Date(Math.max(soon, now + 5 * minute));
+        let soon = Math.min(...kickoffs.map(t => t + minute), now + 30 * minute);
+        return new Date(Math.max(soon, now + 2 * minute));
     }
     if (data && data.schedule) {
         // Tabelle: während der Spiele und bis eine Stunde nach Abpfiff alle 5 Minuten, vor dem Anstoß
