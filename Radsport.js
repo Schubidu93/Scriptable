@@ -545,6 +545,9 @@ async function loadGC(race, path, html, stageNumber, stage) {
     let candidates = [];
     if (tab && tab.path && tab.path !== path) candidates.push(tab.path);
     if (stageNumber) candidates.push(`${base}-stage-${stageNumber}-gc`, `${base}/stage-${stageNumber}-gc`);
+    // Gesamtwertung nach der letzten Etappe: race/tour-of-chongming-island/2026/stage-3-gc
+    let sb = stageBase(race);
+    if (sb && stageNumber && !candidates.includes(`${sb}/stage-${stageNumber}-gc`)) candidates.push(`${sb}/stage-${stageNumber}-gc`);
     // Klassische Adresse der Schlusswertung: race/vuelta-a-espana/2026/gc
     let classic = base.replace(/-(\d{4})$/, "/$1");
     if (/\/\d{4}$/.test(classic)) candidates.push(`${classic}/gc`);
@@ -677,6 +680,7 @@ async function loadData() {
     let running = upcoming.filter(r => r.stageRace && r.start <= today);
     let collected = []; // { race, entries, ctx, meta, needGC, needStages }
     let GC_RETRY = 12 * 60 * 60 * 1000; // fehlgeschlagene Suche frühestens nach 12 Stunden wiederholen
+    let GC_VERSION = 2;
     let newestDate = race => race.finished ? race.end : today;
 
     // Daten der bisher gesammelten Ergebnisse, neueste zuerst. Noch nicht geladene Etappen einer
@@ -710,7 +714,9 @@ async function loadData() {
             collected.push({
                 race, entries: entries.map(revive), ctx: null, meta,
                 // GC fehlte (oder ohne Teams aus Wikipedia) – erneut suchen
-                needGC: gcWithoutTeams || (stored.complete === false && Date.now() - (stored.gcTry || 0) > GC_RETRY),
+                // GC fehlte (oder ohne Teams aus Wikipedia) – erneut suchen; neue Suchwege (GC_VERSION) sofort
+                needGC: gcWithoutTeams || (stored.complete === false
+                    && (stored.gcVersion !== GC_VERSION || Date.now() - (stored.gcTry || 0) > GC_RETRY)),
                 needStages: !stored.stagesDone && Date.now() - (stored.stageTry || 0) > GC_RETRY,
             });
             continue;
@@ -770,11 +776,24 @@ async function loadData() {
             }
             let ctx = item.ctx;
             if (item.needGC) {
-                let gc = await loadGC(race, ctx.path, ctx.html, ctx.number, ctx.stagePodium);
+                let last = lastStageNumber(race, ctx);
+                let gc = null;
+                // Ohne Reiter zeigt die Ergebnisseite oft schon die Gesamtwertung (mit Teams). Weicht sie von
+                // der letzten Etappe (eigene Seite) ab, ist sie die GC.
+                if (race.finished && last && ctx.stagePodium && ctx.stagePodium.length && timeLeft() >= 8000) {
+                    let lastStage = await loadStage(race, last, saved, revive, race.end);
+                    if (lastStage && !samePodium(lastStage.podium, ctx.stagePodium)) {
+                        gc = ctx.stagePodium.slice();
+                        gc.stageIsGC = true;
+                    }
+                }
+                if (!gc) gc = await loadGC(race, ctx.path, ctx.html, last || ctx.number, ctx.stagePodium);
                 let others = item.entries.filter(e => !e.isGC && e.podium.length);
                 if (gc && gc.stageIsGC) {
                     // Die vermeintliche Etappe war die Gesamtwertung – als GC anzeigen
-                    item.entries = [{ ...race, label: "GC", date: race.end, path: ctx.path, podium: gc.slice(), isGC: true }];
+                    // Etappen von ihren eigenen Seiten bleiben
+                    let stages = others.filter(e => e.stage != null && e.path !== ctx.path);
+                    item.entries = [{ ...race, label: "GC", date: race.end, path: ctx.path, podium: gc.slice(), isGC: true }].concat(stages);
                     meta.complete = true;
                 } else if (isGC(gc, ctx.stagePodium)) {
                     gc = withTeams(gc, ctx.html);
@@ -784,6 +803,7 @@ async function loadData() {
                 } else {
                     meta.complete = item.entries.some(e => e.isGC);
                     meta.gcTry = Date.now();
+                    meta.gcVersion = GC_VERSION;
                 }
                 item.needGC = false;
             }
@@ -982,7 +1002,9 @@ function addSymbol(stack, name, size, color) {
     let sym = SFSymbol.named(name);
     sym.applyFont(Font.systemFont(size));
     let img = stack.addImage(sym.image);
-    img.imageSize = new Size(size, size);
+    // Seitenverhältnis des Symbols beibehalten (das Fahrrad ist breiter als hoch)
+    let natural = sym.image.size;
+    img.imageSize = new Size(natural.height ? size * natural.width / natural.height : size, size);
     img.tintColor = color;
     img.resizable = false;
     return img;
