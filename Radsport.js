@@ -680,7 +680,7 @@ async function loadData() {
     let running = upcoming.filter(r => r.stageRace && r.start <= today);
     let collected = []; // { race, entries, ctx, meta, needGC, needStages }
     let GC_RETRY = 12 * 60 * 60 * 1000; // fehlgeschlagene Suche frühestens nach 12 Stunden wiederholen
-    let GC_VERSION = 2;
+    let GC_VERSION = 3;
     let newestDate = race => race.finished ? race.end : today;
 
     // Daten der bisher gesammelten Ergebnisse, neueste zuerst. Noch nicht geladene Etappen einer
@@ -778,12 +778,15 @@ async function loadData() {
             if (item.needGC) {
                 let last = lastStageNumber(race, ctx);
                 let gc = null;
-                // Ohne Reiter zeigt die Ergebnisseite oft schon die Gesamtwertung (mit Teams). Weicht sie von
-                // der letzten Etappe (eigene Seite) ab, ist sie die GC.
-                if (race.finished && last && ctx.stagePodium && ctx.stagePodium.length && timeLeft() >= 8000) {
+                // Die Ergebnisseite …/gc zeigt die Gesamtwertung (mit Teams) – im GC-Reiter oder als sichtbare
+                // Tabelle. Weicht eine davon von der letzten Etappe (eigene Seite) ab, ist sie die GC.
+                if (race.finished && last && timeLeft() >= 8000) {
                     let lastStage = await loadStage(race, last, saved, revive, race.end);
-                    if (lastStage && !samePodium(lastStage.podium, ctx.stagePodium)) {
-                        gc = ctx.stagePodium.slice();
+                    let tab = findTab(ctx.html, "GC");
+                    let options = [tab && tab.rows, parsePodium(ctx.html), ctx.stagePodium];
+                    let found = lastStage && options.find(rows => rows && rows.length && !samePodium(rows, lastStage.podium));
+                    if (found) {
+                        gc = found.slice();
                         gc.stageIsGC = true;
                     }
                 }
