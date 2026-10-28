@@ -26,9 +26,21 @@ function addUpdated(widget, note) {
 
 // Direkt bei ClubElo: CSV mit Rank,Club,Country,Level,Elo,From,To
 async function loadRanking(date) {
-    let req = new Request(`http://api.clubelo.com/${date.toISOString().slice(0, 10)}`);
-    req.timeoutInterval = 15;
-    let lines = (await req.loadString()).trim().split(/\r?\n/);
+    // Erst https, dann http (je nach Netz klappt nur eins von beiden)
+    let text = null, lastError;
+    for (let base of ["https://api.clubelo.com/", "http://api.clubelo.com/"]) {
+        try {
+            let req = new Request(base + date.toISOString().slice(0, 10));
+            req.timeoutInterval = 15;
+            text = await req.loadString();
+            if (req.response && req.response.statusCode === 200 && /Club/.test(text)) break;
+            text = null;
+        } catch (e) {
+            lastError = e;
+        }
+    }
+    if (!text) throw lastError || new Error("ClubElo nicht erreichbar");
+    let lines = text.trim().split(/\r?\n/);
     let header = lines.shift().split(",");
     let col = name => header.indexOf(name);
     let clubs = lines.map(l => l.split(",")).map(c => ({
