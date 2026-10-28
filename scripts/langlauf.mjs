@@ -5,7 +5,8 @@
 //   Vogt: SC Vogt (Text-Bericht) · Bad Waldsee: Sportpark (Tabelle) · Isny: isny.de (je Loipe offen/zu,
 //   zuletzt gespurt, Tagesmeldung) · Leutkirch: Loipen-Allgäu (km) + Stadt Leutkirch (gespurt am …) ·
 //   Wangen: Loipen-Allgäu (km) + Skilift Berger Höhe/Niederwangen (Loipenzustand mit Datum) ·
-//   Argenbühl, Missen-Wilhams: Loipen-Allgäu (Missen meldet selbst nur über ein Skript-Widget).
+//   Argenbühl, Missen-Wilhams, Heimenkirch, Lindenberg, Scheidegg: Loipen-Allgäu
+//   (Missen meldet selbst nur über ein Skript-Widget).
 // Fällt eine Quelle aus, bleibt ihr letzter Stand aus der bisherigen Datei erhalten.
 
 import { readFile, writeFile, mkdir } from "node:fs/promises";
@@ -252,6 +253,13 @@ const AREAS = [
         url: "http://www.loipen-allgaeu.de/loipen.php?name=Argenbuehl" },
     { id: "missen", name: "Missen-Wilhams", load: () => loipenAllgaeu("Missen-Wilhams"),
         url: "http://www.loipen-allgaeu.de/loipen.php?name=Missen-Wilhams" },
+    // Weitere Gebiete in der Nähe (Westallgäu) – das Widget zeigt sie, wenn dort gespurt ist
+    { id: "heimenkirch", name: "Heimenkirch", load: () => loipenAllgaeu("Heimenkirch"),
+        url: "http://www.loipen-allgaeu.de/loipen.php?name=Heimenkirch" },
+    { id: "lindenberg", name: "Lindenberg", load: () => loipenAllgaeu("Lindenberg"),
+        url: "http://www.loipen-allgaeu.de/loipen.php?name=Lindenberg" },
+    { id: "scheidegg", name: "Scheidegg", load: () => loipenAllgaeu("Scheidegg"),
+        url: "http://www.loipen-allgaeu.de/loipen.php?name=Scheidegg" },
 ];
 
 async function main() {
