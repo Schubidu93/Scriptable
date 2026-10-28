@@ -57,7 +57,8 @@ function loaderCode(script) {
 // Mini-Skript: lädt ${script.file} von GitHub und führt es aus
 let githubURL = "${BASE}${script.file}";
 
-let req = new Request(githubURL);
+// Zeitstempel in der Adresse: GitHub und iOS liefern sonst bis zu einige Minuten eine ältere Fassung
+let req = new Request(\`\${githubURL}?t=\${Math.floor(Date.now() / 60000)}\`);
 let code = await req.loadString();
 ${run}
 `;
@@ -99,7 +100,9 @@ async function main() {
                 same.push(script.name);
                 continue;
             }
-            if (!(await confirmOverwrite(script.name))) {
+            // Eigene ältere Mini-Skripte ohne Rückfrage erneuern; nur bei fremden Inhalten nachfragen
+            let ownLoader = fm.readString(path).includes(`// Mini-Skript: lädt ${script.file} von GitHub`);
+            if (!ownLoader && !(await confirmOverwrite(script.name))) {
                 kept.push(script.name);
                 continue;
             }
