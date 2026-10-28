@@ -10,7 +10,6 @@ import { EVENTS, CONCURRENCY, DEBUG, parseDate, loadToplist, mapLimited } from "
 const OUTPUT = "data/leichtathletik_highlights.json";
 const TOP = 10;           // ewige Top 10
 const MAX_ITEMS = 10;     // angezeigte Einträge
-const MAX_PER_EVENT = 2;  // je Disziplin und Geschlecht – sonst dominiert eine einzelne Veranstaltung
 // Junge Disziplinen (z. B. Marathon Gehen seit 2026) haben keine „ewige“ Liste: Ist schon Platz 10
 // jünger als das, wird die Liste übersprungen.
 const MIN_LIST_AGE_DAYS = 3 * 365;
@@ -98,24 +97,11 @@ function entries(results, today) {
     });
 }
 
-// Rekorde und Welt-Top-3 werden nie von der Grenze je Disziplin verdrängt
-// (z. B. Assefa, Berlin-Marathon: Welt 2 – trotz zwei jüngerer Marathon-Einträge)
-function outstanding(h) {
-    return h.badges.some(b => b.rank === 1 || (b.type === "WT" && b.rank <= 3));
-}
-
-// Die jüngsten Einträge (bei gleichem Datum der bedeutendere zuerst), höchstens 2 je Disziplin –
-// außer Rekorden und Welt-Top-3
+// Die jüngsten Einträge (bei gleichem Datum der bedeutendere zuerst) – ohne Grenze je Disziplin
 function newest(list, count) {
-    let perEvent = {};
     return list
         .slice()
         .sort((a, b) => b.time - a.time || b.priority - a.priority)
-        .filter(h => {
-            let key = `${h.gender}|${h.event}`;
-            perEvent[key] = (perEvent[key] || 0) + 1;
-            return perEvent[key] <= MAX_PER_EVENT || outstanding(h);
-        })
         .slice(0, count)
         .map(({ time, ...h }) => h);
 }
