@@ -1166,7 +1166,7 @@ function tableColumns(full) {
     } else {
         cols.push(["+/-", 3, r => sign(r.diff)]);
     }
-    cols.push(["Pkt", full ? 3 : 2, r => r.points]);
+    cols.push(["Pkt", 3, r => r.points]);
     return cols;
 }
 
