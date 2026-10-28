@@ -755,10 +755,19 @@ async function loadLogos(urls) {
         let small = smallLogo(url, px);
         if (!small && VIEW === "tabelle") return; // Tabellen: unbekannte (große) Logos weglassen
         small = small || url;
-        try {
-            images[url] = await new Request(small).loadImage();
-        } catch (e) {
-            console.log(`Logo nicht geladen: ${url}`);
+        // ESPN hat für fast alle Vereine eine Variante für dunkle Hintergründe (z. B. Schalke mit
+        // weißem statt durchsichtigem Innenteil) – zuerst diese, sonst das normale Logo
+        let dark = /\/teamlogos\/[^?&]*\/500\//.test(small) ? small.replace("/500/", "/500-dark/") : null;
+        for (let src of [dark, small].filter(Boolean)) {
+            try {
+                let img = await new Request(src).loadImage();
+                if (img) {
+                    images[url] = img;
+                    break;
+                }
+            } catch (e) {
+                console.log(`Logo nicht geladen: ${src}`);
+            }
         }
     }));
     if (wikiAsked) {
