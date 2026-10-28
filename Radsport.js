@@ -272,6 +272,22 @@ function parsePodium(html) {
     return empty;
 }
 
+// Tabelle unter der Überschrift „General classification“ (PCS: …/stage-3-gc). Eindeutig die GC –
+// auch wenn ihr Podium dem der letzten Etappe gleicht.
+function parseGCTable(html) {
+    for (let t of (html || "").matchAll(/<table[^>]*>[\s\S]*?<\/table>/gi)) {
+        let before = html.slice(Math.max(0, t.index - 1500), t.index);
+        // Überschrift muss direkt vor dieser Tabelle stehen, nicht vor einer früheren
+        let since = before.slice(before.toLowerCase().lastIndexOf("</table>") + 1);
+        if (!/general classification/i.test(cleanText(since))) continue;
+        let tabs = [...before.matchAll(/<div[^>]*class=["']([^"']*\bresTab\b[^"']*)["']/gi)];
+        if (tabs.length && /\bhide\b/.test(tabs[tabs.length - 1][1])) continue;
+        let rows = parseRankedRows(t[0]);
+        if (rows.length) return rows;
+    }
+    return null;
+}
+
 // Reiter (z. B. "STAGE" oder "GC") finden und seine Tabelle lesen.
 // PCS: <ul class="tabs … resultTabs"><li><a data-id="123">GC</a></li> … <div class="resTab" data-id="123">
 // Versteckte Reiter werden oft erst beim Anklicken gefüllt – daher nur innerhalb des eigenen
@@ -526,8 +542,20 @@ function withTeams(rows, html) {
 // Gesamtwertung, wenn der GC-Reiter auf der Seite leer ist:
 // eigener Link des Reiters, dann übliche Adressen, zuletzt Klick im Browser
 async function loadGC(race, path, html, stageNumber, stage) {
+    let headed = parseGCTable(html);
+    if (headed) return headed;
     let tab = findTab(html, "GC");
     if (tab && isGC(tab.rows, stage)) return tab.rows;
+    // Eigene Seite der Gesamtwertung nach der letzten Etappe: race/tour-of-chongming-island/2026/stage-3-gc
+    let sb = stageBase(race);
+    if (sb && stageNumber && timeLeft() >= 8000) {
+        try {
+            let rows = parseGCTable(await load(`${sb}/stage-${stageNumber}-gc`));
+            if (rows) return rows;
+        } catch (e) {
+            console.log(`GC über stage-${stageNumber}-gc: ${e}`);
+        }
+    }
     // Schnellster Weg: Wikipedia
     try {
         let rows = await wikiGC(race);
@@ -545,9 +573,6 @@ async function loadGC(race, path, html, stageNumber, stage) {
     let candidates = [];
     if (tab && tab.path && tab.path !== path) candidates.push(tab.path);
     if (stageNumber) candidates.push(`${base}-stage-${stageNumber}-gc`, `${base}/stage-${stageNumber}-gc`);
-    // Gesamtwertung nach der letzten Etappe: race/tour-of-chongming-island/2026/stage-3-gc
-    let sb = stageBase(race);
-    if (sb && stageNumber && !candidates.includes(`${sb}/stage-${stageNumber}-gc`)) candidates.push(`${sb}/stage-${stageNumber}-gc`);
     // Klassische Adresse der Schlusswertung: race/vuelta-a-espana/2026/gc
     let classic = base.replace(/-(\d{4})$/, "/$1");
     if (/\/\d{4}$/.test(classic)) candidates.push(`${classic}/gc`);
@@ -555,6 +580,8 @@ async function loadGC(race, path, html, stageNumber, stage) {
         if (timeLeft() < 8000) return null;
         try {
             let page = await load(candidate);
+            let headed = parseGCTable(page);
+            if (headed) return headed;
             let rows = parseTab(page, "GC");
             if (isGC(rows, stage)) return rows;
             // Seite ohne Reiter: sichtbare Tabelle
@@ -680,7 +707,7 @@ async function loadData() {
     let running = upcoming.filter(r => r.stageRace && r.start <= today);
     let collected = []; // { race, entries, ctx, meta, needGC, needStages }
     let GC_RETRY = 12 * 60 * 60 * 1000; // fehlgeschlagene Suche frühestens nach 12 Stunden wiederholen
-    let GC_VERSION = 3;
+    let GC_VERSION = 4;
     let newestDate = race => race.finished ? race.end : today;
 
     // Daten der bisher gesammelten Ergebnisse, neueste zuerst. Noch nicht geladene Etappen einer
@@ -780,7 +807,11 @@ async function loadData() {
                 let gc = null;
                 // Die Ergebnisseite …/gc zeigt die Gesamtwertung (mit Teams) – im GC-Reiter oder als sichtbare
                 // Tabelle. Weicht eine davon von der letzten Etappe (eigene Seite) ab, ist sie die GC.
-                if (race.finished && last && timeLeft() >= 8000) {
+                let headed = race.finished ? parseGCTable(ctx.html) : null;
+                if (headed) {
+                    gc = headed.slice();
+                    gc.stageIsGC = true;
+                } else if (race.finished && last && timeLeft() >= 8000) {
                     let lastStage = await loadStage(race, last, saved, revive, race.end);
                     let tab = findTab(ctx.html, "GC");
                     let options = [tab && tab.rows, parsePodium(ctx.html), ctx.stagePodium];
