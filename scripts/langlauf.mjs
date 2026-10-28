@@ -1,7 +1,11 @@
 // Loipenberichte rund um Kißlegg: gespurte Kilometer (klassisch / Skating), Schneehöhe, Stand.
 // Läuft stündlich per GitHub Actions und schreibt data/langlauf.json (gelesen von Langlauf.js).
-// Quellen: Loipen-Allgäu (Wangen, Leutkirch, Isny, Argenbühl, Missen-Wilhams), SC Vogt (Text-Bericht),
-// Sportpark Bad Waldsee (Tabelle am Golfplatz), Stadt Leutkirch (gespurt am … je Loipe).
+// Quellen – wo möglich direkt beim Betreiber (Primärquelle), sonst Loipen-Allgäu (private Sammelseite,
+// wird von Hand gepflegt und oft erst später aktualisiert):
+//   Vogt: SC Vogt (Text-Bericht) · Bad Waldsee: Sportpark (Tabelle) · Isny: isny.de (je Loipe offen/zu,
+//   zuletzt gespurt, Tagesmeldung) · Leutkirch: Loipen-Allgäu (km) + Stadt Leutkirch (gespurt am …) ·
+//   Wangen: Loipen-Allgäu (km) + Skilift Berger Höhe/Niederwangen (Loipenzustand mit Datum) ·
+//   Argenbühl, Missen-Wilhams: Loipen-Allgäu (Missen meldet selbst nur über ein Skript-Widget).
 // Fällt eine Quelle aus, bleibt ihr letzter Stand aus der bisherigen Datei erhalten.
 
 import { readFile, writeFile, mkdir } from "node:fs/promises";
@@ -155,6 +159,76 @@ async function badWaldsee() {
     };
 }
 
+// Isny (isny.de, gepflegt von Isny Marketing): je Loipe Status, Name, Hinweis, Länge, Technik, zuletzt gespurt;
+// dazu eine datierte Tagesmeldung ("22.10.: Der erste Schnee ist schon in Sichtweite.")
+async function isny() {
+    let t = text(await load("https://www.isny.de/freizeit-urlaub/wintersport/schneehoehen-loipenbericht.html"));
+    let lines = t.split("\n").map(s => s.trim()).filter(Boolean);
+    let start = lines.findIndex(l => /^Loipen$/i.test(l));
+    if (start < 0) throw new Error("Loipenliste nicht gefunden");
+    let loipen = [];
+    for (let i = start + 1; i < lines.length; i++) {
+        let line = lines[i];
+        if (/^(geöffnet|offen|geschlossen|gesperrt|teilweise geöffnet|teilweise offen|in Vorbereitung)$/i.test(line)) {
+            loipen.push({ status: line, name: lines[i + 1] || "", note: "", km: 0, technique: "", last: null });
+            i++;
+            continue;
+        }
+        let l = loipen[loipen.length - 1];
+        if (!l) continue;
+        let m;
+        if ((m = /^Länge:\s*([\d.,]+)\s*(m|km)/i.exec(line))) l.km = m[2].toLowerCase() === "m" ? num(m[1].replace(/\./g, "")) / 1000 : num(m[1]);
+        else if ((m = /^Technik:\s*(.*)$/i.exec(line))) l.technique = m[1];
+        else if ((m = /^Zuletzt gespurt:\s*(.*)$/i.exec(line))) l.last = isoDate(m[1]) || (m[1].trim() ? m[1].trim() : null);
+        else if (/^(Höhenanstieg|Schwierigkeit|Zustand):/i.test(line)) continue;
+        else if (!l.note && !/^(Infos|Isny Info|Marktplatz)/i.test(line)) l.note = line;
+        if (/^Isny Info|^Infos & Kontakt/i.test(line)) break;
+    }
+    if (!loipen.length) throw new Error("keine Loipen gelesen");
+    let open = loipen.filter(l => !/geschlossen|gesperrt|Vorbereitung/i.test(l.status));
+    let classic = open.filter(l => /klassisch/i.test(l.technique) && !/nur skating/i.test(l.note)).reduce((a, l) => a + l.km, 0);
+    let skating = open.filter(l => /skating/i.test(l.technique) && !/nur klassisch/i.test(l.note)).reduce((a, l) => a + l.km, 0);
+    let dates = loipen.map(l => typeof l.last === "string" && /^\d{4}-/.test(l.last) ? l.last : null).filter(Boolean).sort();
+    // Tagesmeldung "22.10.: …" (ohne Jahr: liegt das Datum in der Zukunft, ist es das Vorjahr)
+    let news = /(?:^|\n)\s*(\d{1,2})\.(\d{1,2})\.:?\s*([^\n]+)/.exec(t.slice(0, t.search(/\nLoipen\n/i) + 1 || undefined));
+    let newsDate = null;
+    if (news) {
+        let now = new Date();
+        let year = now.getFullYear();
+        let d = new Date(year, Number(news[2]) - 1, Number(news[1]));
+        if (d > now) year--;
+        newsDate = `${year}-${news[2].padStart(2, "0")}-${news[1].padStart(2, "0")}`;
+    }
+    let updated = [dates[dates.length - 1], newsDate].filter(Boolean).sort().pop() || null;
+    let round = x => Math.round(x * 10) / 10;
+    return {
+        network: round(loipen.reduce((a, l) => a + l.km, 0)),
+        groomed: round(Math.max(classic, skating)),
+        classic: round(classic),
+        skating: round(skating),
+        snow: null,
+        updated,
+        status: open.length ? "open" : "closed",
+        note: news ? news[3].trim() : open.length ? `${open.length} von ${loipen.length} Loipen offen` : "alle Loipen geschlossen",
+    };
+}
+
+// Skilift Berger Höhe (Niederwangen): "Aktuelle Informationen über den Liftbetrieb und den Loipenzustand: …
+// Letzte Aktualisierung: Mittwoch, 07.01.2026, 12:23 Uhr"
+async function bergerHoehe() {
+    let t = text(await load("https://www.skilift-berger-hoehe.de/"));
+    let block = /Loipenzustand:\s*([\s\S]*?)\s*Aktuelle Informationen der SG/i.exec(t);
+    let stamp = /Letzte Aktualisierung:[^\d]*(\d{1,2}\.\d{1,2}\.\d{4}),?\s*(\d{1,2}:\d{2})?/i.exec(t);
+    if (!block) throw new Error("Loipenzustand nicht gefunden");
+    let sentences = block[1].split(/\n/).map(s => s.trim()).filter(Boolean);
+    let loipe = sentences.find(s => /loipe|spur/i.test(s)) || sentences[0] || "";
+    return {
+        note: `Niederwangen: ${loipe}`,
+        updated: stamp ? `${isoDate(stamp[1])}${stamp[2] ? "T" + stamp[2].padStart(5, "0") : ""}` : null,
+        open: /gespurt|befahrbar|geöffnet/i.test(loipe) && !/nicht|zu wenig|kein/i.test(loipe),
+    };
+}
+
 // Stadt Leutkirch: je Loipe "gespurt am" und Zustand (++, +, 0, -). Ergänzt Loipen-Allgäu um das Datum.
 async function leutkirchStadt() {
     let html = await load("https://www.leutkirch.de/de/Urlaub/Natur-Bewegung/Langlaufen/Loipenbericht");
@@ -172,8 +246,8 @@ const AREAS = [
     { id: "leutkirch", name: "Leutkirch", load: () => loipenAllgaeu("Leutkirch"),
         url: "https://www.leutkirch.de/de/Urlaub/Natur-Bewegung/Langlaufen/Loipenbericht" },
     { id: "wangen", name: "Wangen", load: () => loipenAllgaeu("Wangen"), url: "http://www.loipen-allgaeu.de/loipen.php?name=Wangen" },
-    { id: "isny", name: "Isny", load: () => loipenAllgaeu("Isny / Maierhoefen"),
-        url: "http://www.loipen-allgaeu.de/loipen.php?name=Isny%20/%20Maierhoefen" },
+    { id: "isny", name: "Isny", load: isny, fallback: () => loipenAllgaeu("Isny / Maierhoefen"),
+        url: "https://www.isny.de/freizeit-urlaub/wintersport/schneehoehen-loipenbericht.html" },
     { id: "argenbuehl", name: "Argenbühl", load: () => loipenAllgaeu("Argenbuehl"),
         url: "http://www.loipen-allgaeu.de/loipen.php?name=Argenbuehl" },
     { id: "missen", name: "Missen-Wilhams", load: () => loipenAllgaeu("Missen-Wilhams"),
@@ -193,6 +267,16 @@ async function main() {
             entry = { id: area.id, name: area.name, url: area.url, ...(await area.load()) };
         } catch (e) {
             console.log(`::warning::${area.name}: ${e.stack || e.message}`);
+            // Primärquelle ausgefallen: Loipen-Allgäu als Ersatz
+            if (area.fallback) {
+                try {
+                    entry = { id: area.id, name: area.name, url: area.url, ...(await area.fallback()), source: "Loipen-Allgäu" };
+                    areas.push(entry);
+                    continue;
+                } catch (e2) {
+                    console.log(`::warning::${area.name} (Ersatz): ${e2.message}`);
+                }
+            }
             entry = previous[area.id] ? { ...previous[area.id], stale: true } : { id: area.id, name: area.name, url: area.url, status: "unknown" };
         }
         areas.push(entry);
@@ -210,6 +294,20 @@ async function main() {
         }
     } catch (e) {
         console.log(`::warning::Stadt Leutkirch: ${e.message}`);
+    }
+
+    // Wangen: Meldung der Berger Höhe (Niederwangen), wenn neuer als Loipen-Allgäu
+    try {
+        let berger = await bergerHoehe();
+        let wg = areas.find(a => a.id === "wangen");
+        if (DEBUG) console.log("Berger Höhe:", JSON.stringify(berger));
+        if (berger.updated && (!wg.updated || berger.updated.slice(0, 10) >= wg.updated.slice(0, 10))) {
+            wg.updated = berger.updated;
+            wg.note = berger.note;
+            if (berger.open) wg.status = "open";
+        }
+    } catch (e) {
+        console.log(`::warning::Berger Höhe: ${e.message}`);
     }
 
     areas.forEach(a => console.log(`${a.name.padEnd(15)} ${a.status.padEnd(7)} klassisch ${a.classic ?? "–"} · Skating ${a.skating ?? "–"} · `
