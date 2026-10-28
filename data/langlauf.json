@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-28T13:32:24.408Z",
+  "generated": "2026-10-28T13:35:02.885Z",
   "areas": [
     {
       "id": "vogt",
@@ -23,9 +23,10 @@
       "classic": null,
       "skating": null,
       "snow": null,
-      "updated": null,
-      "status": "unknown",
-      "note": "kein aktueller Bericht"
+      "updated": "2026-03-22",
+      "status": "closed",
+      "note": "laut SC Vogt (Netz Vogt-Waldburg)",
+      "source": "SC Vogt"
     },
     {
       "id": "waldsee",
