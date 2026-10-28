@@ -1196,8 +1196,8 @@ function buildMatchdays(widget, data, images) {
 // Lieblingsteams (Schrift gold, fett): FC Bayern, Hajduk Split und das per TEAM gewählte
 const FAVORITES = new Set(["132", "489", TEAM_ID]);
 // Europapokale: übrige deutsche Vereine dezent hinterlegt (Lieblingsteams haben Vorrang)
-const FAV_BACKGROUND = new Color("#FFE08A", 0.24);
-const GERMAN_BACKGROUND = new Color("#FFFFFF", 0.19);
+const FAV_BACKGROUND = new Color("#FFE08A", 0.35);
+const GERMAN_BACKGROUND = new Color("#FFFFFF", 0.25);
 const GERMAN_CLUBS_PATH = fm.joinPath(fm.cacheDirectory(), "fussball-deutsche-clubs.json");
 // Startwert aus dem Zwischenspeicher – auch offline (Tabelle aus dem Cache) bleiben die Vereine markiert
 let GERMAN_CLUBS = new Set(EUROPE && fm.fileExists(GERMAN_CLUBS_PATH) ? (() => {
