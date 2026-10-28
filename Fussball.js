@@ -1292,15 +1292,19 @@ function addTableRow(stack, r, images, full) {
 
 // Liga-Tabelle: feste Spaltenbreiten (Inhalt + 7 pt Abstand links), Inhalt rechtsbündig,
 // „Tore“ (am Doppelpunkt ausgerichtet) mittig – Überschrift und Zahlen stehen genau übereinander
-const LEAGUE_COLUMNS = { Sp: 14, S: 14, U: 14, N: 14, Tore: 33, Diff: 21, Pkt: 20 };
+const LEAGUE_COLUMNS = { Sp: 14, S: 14, U: 14, N: 14, Tore: 33, Diff: 22, Pkt: 20 };
 const LEAGUE_GAP = 7;
 function addLeagueCell(row, column, text, font, color, opacity) {
     let cell = row.addStack();
-    cell.layoutVertically();
     cell.size = new Size(LEAGUE_COLUMNS[column] + LEAGUE_GAP, 0);
-    cell.setPadding(0, LEAGUE_GAP, 0, 0);
-    if (column === "Tore") cell.centerAlignContent();
-    else cell.bottomAlignContent(); // senkrechter Stapel: rechtsbündig
+    if (column === "Tore") {
+        cell.layoutVertically();
+        cell.setPadding(0, LEAGUE_GAP, 0, 0);
+        cell.centerAlignContent();
+    } else {
+        // Rechtsbündig: flexibler Abstand davor (mind. ~8 pt – der Spaltenabstand liegt mit darin)
+        cell.addSpacer();
+    }
     let t = addLabel(cell, text, font, color, opacity);
     t.minimumScaleFactor = 1;
     t.lineLimit = 1;
