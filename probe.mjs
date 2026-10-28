@@ -1,17 +1,34 @@
-const UA = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1", "Accept-Language": "de-DE,de;q=0.9" };
-const text = html => html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ").replace(/<br\s*\/?>|<\/(p|div|tr|li|h\d|td)>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/[ \t]+/g, " ").replace(/\n\s*\n+/g, "\n");
-async function show(url, len = 3000, raw = 0) {
-  try {
-    const r = await fetch(url, { headers: UA, signal: AbortSignal.timeout(20000) });
-    const html = await r.text();
-    console.log(`\n##### ${url} → ${r.status} ${html.length}B\n${text(html).slice(0, len)}`);
-    if (raw) console.log("RAW:", html.slice(0, raw));
-    const links = [...html.matchAll(/(?:href|src)=["']([^"']+)["']/gi)].map(m => m[1]).filter(l => /intermaps|sdds|resort|report|json|api/i.test(l));
-    console.log("LINKS:", [...new Set(links)].slice(0, 30).join(" | "));
-    return html;
-  } catch (e) { console.log(`\n##### ${url} → FEHLER ${e.message}`); return ""; }
+// Straßenentfernung Kißlegg → Loipen-Einstieg: Orte über Nominatim, Route über OSRM
+const UA = { "User-Agent": "Scriptable-Langlauf-Widget/1.0 (github.com/Schubidu93/Scriptable)" };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const places = [
+  ["kisslegg", "Rathaus Kißlegg"],
+  ["vogt", "Vogt, Landkreis Ravensburg"],
+  ["leutkirch", "Wilhelmshöhe, Leutkirch im Allgäu"],
+  ["wangen", "Niederwangen, Wangen im Allgäu"],
+  ["argenbuehl", "Eisenharz, Argenbühl"],
+  ["isny", "Lohbauerstraße, Isny im Allgäu"],
+  ["waldsee", "Hopfenweiler, Bad Waldsee"],
+  ["heimenkirch", "Heimenkirch"],
+  ["lindenberg", "Lindenberg im Allgäu"],
+  ["scheidegg", "Scheidegg, Landkreis Lindau"],
+  ["missen", "Missen-Wilhams"],
+];
+const coords = {};
+for (const [id, q] of places) {
+  const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=de&q=${encodeURIComponent(q)}`, { headers: UA });
+  const j = await r.json();
+  coords[id] = j[0] ? [Number(j[0].lon), Number(j[0].lat), j[0].display_name] : null;
+  console.log(id, coords[id] ? `${coords[id][1].toFixed(4)},${coords[id][0].toFixed(4)} ${coords[id][2].slice(0, 70)}` : "NICHT GEFUNDEN");
+  await sleep(1100);
 }
-await show("https://sdds4.intermaps.com/basic_report/reportdesign_v1.aspx?sddsResortId=36886&font=bayern", 5000, 1500);
-await show("https://www.bayern.by/erlebnisse/winter/schneebericht/", 1500);
-await show("https://www.tourismus-bw.de/schneebericht", 1500);
-await show("https://www.schwarzwald-tourismus.info/service/schneebericht", 600);
+const [x0, y0] = coords.kisslegg;
+for (const [id] of places.slice(1)) {
+  if (!coords[id]) continue;
+  const [x, y] = coords[id];
+  const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${x0},${y0};${x},${y}?overview=false`, { headers: UA });
+  const j = await r.json();
+  const route = j.routes && j.routes[0];
+  console.log(`${id.padEnd(12)} ${route ? (route.distance / 1000).toFixed(1) + " km, " + Math.round(route.duration / 60) + " min" : JSON.stringify(j).slice(0, 100)}`);
+  await sleep(500);
+}
