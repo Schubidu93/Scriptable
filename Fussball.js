@@ -990,24 +990,26 @@ function addScorers(stack, live, compact, width = 0, lines = 1) {
     let ours = goals.filter(g => g.team === TEAM_ID);
     let theirs = goals.filter(g => g.team !== TEAM_ID);
     stack.addSpacer(2);
-    let line = (text, opacity) => {
-        // Feste Breite, damit lange Zeilen die Nachbarspalte nicht verdrängen (sie werden verkleinert)
+    // Feste Schriftgrößen ohne automatisches Verkleinern (sonst wirkt die lange Bayern-Zeile kleiner als die
+    // kurze des Gegners): Bayern einen Tick größer, lange Listen brechen um statt zu schrumpfen
+    let line = (text, font, opacity, limit) => {
+        // Feste Breite, damit lange Zeilen die Nachbarspalte nicht verdrängen
         let box = stack;
         if (width) {
             box = stack.addStack();
             box.size = new Size(width, 0);
         }
-        let t = addLabel(box, text, Font.mediumSystemFont(compact ? 8 : 9), WHITE, opacity);
+        let t = addLabel(box, text, font, WHITE, opacity);
         if (width) box.addSpacer();
-        t.lineLimit = compact ? 2 : lines;
-        t.minimumScaleFactor = 0.7;
+        t.lineLimit = limit;
+        t.minimumScaleFactor = 1;
     };
     if (compact) {
-        line(`⚽︎ ${scorerText(goals)}`, 0.75);
+        line(`⚽︎ ${scorerText(goals)}`, Font.mediumSystemFont(8), 0.75, 2);
         return;
     }
-    if (ours.length) line(`⚽︎ ${scorerText(ours)}`, 0.85);
-    if (theirs.length) line(`${live.opponent}: ${scorerText(theirs)}`, 0.6);
+    if (ours.length) line(`⚽︎ ${scorerText(ours)}`, Font.semiboldSystemFont(9.5), 0.9, lines + 1);
+    if (theirs.length) line(`${live.opponent}: ${scorerText(theirs)}`, Font.mediumSystemFont(8.5), 0.6, lines);
 }
 
 function addNextGame(stack, next, images) {
