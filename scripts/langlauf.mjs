@@ -233,12 +233,19 @@ async function bergerHoehe() {
 // Stadt Leutkirch: je Loipe "gespurt am" und Zustand (++, +, 0, -). Ergänzt Loipen-Allgäu um das Datum.
 async function leutkirchStadt() {
     let html = await load("https://www.leutkirch.de/de/Urlaub/Natur-Bewegung/Langlaufen/Loipenbericht");
-    let rows = [...html.matchAll(/<tr[\s\S]*?<\/tr>/gi)].map(m => cells(m[0])).filter(c => c.length === 4 && /klass|skat/i.test(c[1]));
-    let groomed = rows.map(c => ({ name: c[0], style: c[1], date: isoDate(c[2]), condition: c[3] })).filter(r => r.date);
-    groomed.sort((a, b) => b.date.localeCompare(a.date));
+    // Abschnitte: Leutkirch, Winterstetten, Herlazhofen & Urlau, Friesenhofen, Wuchzenhofen, Hofs & Ausnang, Engerazhofen
+    let rows = [];
+    let section = "Leutkirch";
+    for (let m of html.matchAll(/<tr[\s\S]*?<\/tr>/gi)) {
+        let c = cells(m[0]);
+        if (c.length >= 2 && /Laufstil/i.test(c[1])) section = c[0];
+        else if (c.length === 4 && /klass|skat/i.test(c[1])) rows.push({ section, name: c[0], style: c[1], date: isoDate(c[2]), condition: c[3] });
+    }
+    let groomed = rows.filter(r => r.date).sort((a, b) => b.date.localeCompare(a.date));
     let latest = groomed.length ? groomed[0].date : null;
     let recent = groomed.filter(r => latest && (new Date(latest) - new Date(r.date)) <= 2 * 86400000);
-    return { latest, loipen: rows.length, recent: recent.length, names: recent.map(r => r.name) };
+    let sections = [...new Set(recent.map(r => r.section))];
+    return { latest, loipen: rows.length, recent: recent.length, names: recent.map(r => r.name), sections };
 }
 
 const AREAS = [
@@ -297,7 +304,8 @@ async function main() {
         if (DEBUG) console.log("Stadt Leutkirch:", JSON.stringify(city));
         if (city.latest && (!lk.updated || city.latest >= lk.updated.slice(0, 10))) {
             lk.updated = city.latest;
-            lk.note = `${city.recent} von ${city.loipen} Loipen gespurt`;
+            // Welche Ortschaften gespurt sind (die Entfernung gilt für die Wilhelmshöhe)
+            lk.note = `${city.recent} von ${city.loipen} Loipen gespurt${city.sections.length ? ": " + city.sections.join(", ") : ""}`;
             if (city.recent && lk.status !== "open") lk.status = "open";
         }
     } catch (e) {
