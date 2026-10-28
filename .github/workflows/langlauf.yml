@@ -1,0 +1,37 @@
+name: Langlauf
+
+# Stündlich die Loipenberichte rund um Kißlegg einsammeln (data/langlauf.json für Langlauf.js).
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+  push:
+    branches-ignore: [main]
+    paths:
+      - "scripts/langlauf.mjs"
+      - ".github/workflows/langlauf.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Loipenberichte laden
+        run: node scripts/langlauf.mjs
+        env:
+          DEBUG: ${{ github.ref == 'refs/heads/main' && '0' || '1' }}
+      - name: Ergebnis speichern
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          test -f data/langlauf.json || exit 0
+          git add data/langlauf.json
+          git diff --staged --quiet || (git commit -m "Langlauf: Loipenberichte aktualisiert" && git pull --rebase && git push)
