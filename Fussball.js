@@ -689,7 +689,7 @@ function smallLogo(url, px = 64) {
 async function loadLogos(urls) {
     let images = {};
     // Tabellen mit 36 Teams: kleinere Logos, sonst reicht der Speicher auf dem Homescreen nicht
-    let px = VIEW === "tabelle" ? 40 : 64;
+    let px = VIEW === "tabelle" ? (LEAGUE_KEY === "bundesliga" ? 40 : 32) : 64;
     await Promise.all([...new Set(urls.filter(Boolean))].map(async url => {
         let small = smallLogo(url, px);
         if (!small && VIEW === "tabelle") return; // Tabellen: unbekannte (große) Logos weglassen
@@ -1157,15 +1157,12 @@ async function loadTable() {
     return { rows, matchday, schedule };
 }
 
-// Zahlenzelle: Text in Festbreitenschrift, links mit Ziffern-Leerzeichen auf eine feste Zeichenzahl
-// aufgefüllt – so stehen Zahlen rechtsbündig untereinander (Abstandhalter kosten selbst Platz).
-const CHAR = 7; // Breite eines Zeichens in Festbreitenschrift 10,5 pt (fett etwas breiter – mit Reserve)
-function addCell(row, text, chars, font, color = WHITE, opacity = 1) {
-    let cell = row.addStack();
-    cell.size = new Size(Math.ceil(chars * CHAR) + 1, 0);
-    let t = addLabel(cell, String(text).padStart(chars, "\u2007"), font, color, opacity);
-    t.minimumScaleFactor = 1;
-    return t;
+// Zahlen in Festbreitenschrift, links mit Ziffern-Leerzeichen auf eine feste Zeichenzahl aufgefüllt –
+// so stehen sie rechtsbündig untereinander. Alle Zahlen einer Zeile stehen in EINEM Text: jedes
+// Element kostet auf dem Homescreen Speicher, bei 36 Zeilen blieb das Widget sonst weiß.
+const FIG = "\u2007";
+function padCell(text, chars) {
+    return String(text).padStart(chars, FIG);
 }
 
 // Spalten: [Überschrift, Zeichen, Wert]
@@ -1175,14 +1172,20 @@ function tableColumns(full) {
     if (full) {
         cols.push(["S", 2, r => r.wins], ["U", 2, r => r.ties], ["N", 2, r => r.losses],
             // Tore am Doppelpunkt ausgerichtet: " 6:16", "25:6 "
-            ["Tore", 5, r => `${String(r.goalsFor).padStart(2, "\u2007")}:${String(r.goalsAgainst).padEnd(2, "\u2007")}`],
+            ["Tore", 5, r => `${String(r.goalsFor).padStart(2, FIG)}:${String(r.goalsAgainst).padEnd(2, FIG)}`],
             ["Diff", 4, r => sign(r.diff)]);
     } else {
         cols.push(["+/-", 3, r => sign(r.diff)]);
     }
-    cols.push(["Pkt", 3, r => r.points]);
     return cols;
 }
+
+// Zahlenspalten (ohne Punkte) als eine Zeichenkette; Abstand: ein Zeichen
+function numberText(cols, pick) {
+    return cols.map(col => padCell(pick(col), col[1])).join(" ");
+}
+
+const NUM_SIZE = 10.5;
 
 function addTableRow(stack, r, images, full) {
     let fav = FAVORITES.has(r.id);
@@ -1193,38 +1196,35 @@ function addTableRow(stack, r, images, full) {
         row.cornerRadius = 4;
     }
     row.setPadding(0, 2, 0, 2);
-    addCell(row, r.rank, 2, Font.semiboldMonospacedSystemFont(10.5), r.zone ? new Color(r.zone.color) : WHITE, r.zone ? 1 : 0.6);
-    row.addSpacer(4);
+    let rank = addLabel(row, padCell(r.rank, 2) + " ", Font.semiboldMonospacedSystemFont(NUM_SIZE),
+        r.zone ? new Color(r.zone.color) : WHITE, r.zone ? 1 : 0.6);
+    rank.minimumScaleFactor = 1;
     addLogo(row, images, r.logo, 13);
-    row.addSpacer(4);
     // Name in fester Breite, damit er nicht von den Zahlenspalten zusammengedrückt wird
     let nameBox = row.addStack();
-    nameBox.size = new Size(full ? 86 : 34, 0);
+    nameBox.size = new Size(full ? 90 : 38, 0);
+    nameBox.setPadding(0, 4, 0, 0);
     let size = full ? 11 : 10.5;
     let name = addLabel(nameBox, full ? r.name : r.abbr, fav ? Font.boldSystemFont(size) : Font.mediumSystemFont(size), fav ? ACCENT : WHITE);
     name.minimumScaleFactor = full ? 0.85 : 1;
     nameBox.addSpacer();
     row.addSpacer();
-    let num = Font.regularMonospacedSystemFont(10.5);
-    let cols = tableColumns(full);
-    cols.forEach(([title, chars, value], i) => {
-        let last = i === cols.length - 1;
-        if (i > 0) row.addSpacer(full ? 4 : 2);
-        addCell(row, value(r), chars, last ? Font.boldMonospacedSystemFont(10.5) : num,
-            last && fav ? ACCENT : WHITE, last ? 1 : 0.7);
-    });
+    let nums = addLabel(row, numberText(tableColumns(full), col => col[2](r)),
+        Font.regularMonospacedSystemFont(NUM_SIZE), WHITE, 0.7);
+    nums.minimumScaleFactor = 1;
+    let points = addLabel(row, " " + padCell(r.points, 3), Font.boldMonospacedSystemFont(NUM_SIZE), fav ? ACCENT : WHITE);
+    points.minimumScaleFactor = 1;
 }
 
+// Überschriften in derselben Schrift(-größe) wie die Zahlen, damit die Spalten genau passen
 function addTableHeader(stack, full) {
     let row = stack.addStack();
     row.setPadding(0, 2, 0, 2);
-    let font = Font.semiboldMonospacedSystemFont(9);
-    addCell(row, "#", 2, font, WHITE, 0.45);
+    let font = Font.semiboldMonospacedSystemFont(NUM_SIZE);
+    addLabel(row, padCell("#", 2), font, WHITE, 0.45).minimumScaleFactor = 1;
     row.addSpacer();
-    tableColumns(full).forEach(([title, chars], i) => {
-        if (i > 0) row.addSpacer(full ? 4 : 2);
-        addCell(row, title, chars, font, WHITE, 0.45);
-    });
+    addLabel(row, numberText(tableColumns(full), col => col[0]) + " " + padCell("Pkt", 3), font, WHITE, 0.45)
+        .minimumScaleFactor = 1;
 }
 
 // Legende der Zonen (in Tabellenreihenfolge)
