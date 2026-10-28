@@ -42,7 +42,18 @@ function isoDate(s) {
     return `${year}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
 }
 
+// Ein zweiter Versuch nach kurzer Pause – einzelne Seiten antworten gelegentlich nicht
 async function load(url) {
+    try {
+        return await loadOnce(url);
+    } catch (e) {
+        console.log(`${url}: ${e.message} – zweiter Versuch`);
+        await new Promise(r => setTimeout(r, 4000));
+        return loadOnce(url);
+    }
+}
+
+async function loadOnce(url) {
     let res = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(20000) });
     if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
     // Loipen-Allgäu liefert Latin-1
@@ -181,7 +192,7 @@ async function main() {
         try {
             entry = { id: area.id, name: area.name, url: area.url, ...(await area.load()) };
         } catch (e) {
-            console.log(`::warning::${area.name}: ${e.message}`);
+            console.log(`::warning::${area.name}: ${e.stack || e.message}`);
             entry = previous[area.id] ? { ...previous[area.id], stale: true } : { id: area.id, name: area.name, url: area.url, status: "unknown" };
         }
         areas.push(entry);
