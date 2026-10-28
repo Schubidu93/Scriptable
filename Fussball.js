@@ -1145,7 +1145,7 @@ async function loadTable() {
 
 // Zahlenzelle: Text in Festbreitenschrift, links mit Ziffern-Leerzeichen auf eine feste Zeichenzahl
 // aufgefüllt – so stehen Zahlen rechtsbündig untereinander (Abstandhalter kosten selbst Platz).
-const CHAR = 6.4; // Breite eines Zeichens in Festbreitenschrift 10,5 pt
+const CHAR = 7; // Breite eines Zeichens in Festbreitenschrift 10,5 pt (fett etwas breiter – mit Reserve)
 function addCell(row, text, chars, font, color = WHITE, opacity = 1) {
     let cell = row.addStack();
     cell.size = new Size(Math.ceil(chars * CHAR) + 1, 0);
@@ -1164,7 +1164,7 @@ function tableColumns(full) {
     } else {
         cols.push(["+/-", 3, r => sign(r.diff)]);
     }
-    cols.push(["Pkt", 3, r => r.points]);
+    cols.push(["Pkt", full ? 3 : 2, r => r.points]);
     return cols;
 }
 
@@ -1183,7 +1183,7 @@ function addTableRow(stack, r, images, full) {
     row.addSpacer(4);
     // Name in fester Breite, damit er nicht von den Zahlenspalten zusammengedrückt wird
     let nameBox = row.addStack();
-    nameBox.size = new Size(full ? 108 : 38, 0);
+    nameBox.size = new Size(full ? 98 : 34, 0);
     let size = full ? 11 : 10.5;
     let name = addLabel(nameBox, full ? r.name : r.abbr, fav ? Font.boldSystemFont(size) : Font.mediumSystemFont(size), fav ? ACCENT : WHITE);
     name.minimumScaleFactor = full ? 0.85 : 1;
@@ -1193,6 +1193,7 @@ function addTableRow(stack, r, images, full) {
     let cols = tableColumns(full);
     cols.forEach(([title, chars, value], i) => {
         let last = i === cols.length - 1;
+        if (i > 0) row.addSpacer(2);
         addCell(row, value(r), chars, last ? Font.boldMonospacedSystemFont(10.5) : num,
             last && fav ? ACCENT : WHITE, last ? 1 : 0.7);
     });
@@ -1204,7 +1205,10 @@ function addTableHeader(stack, full) {
     let font = Font.semiboldMonospacedSystemFont(9);
     addCell(row, "#", 2, font, WHITE, 0.45);
     row.addSpacer();
-    tableColumns(full).forEach(([title, chars]) => addCell(row, title, chars, font, WHITE, 0.45));
+    tableColumns(full).forEach(([title, chars], i) => {
+        if (i > 0) row.addSpacer(2);
+        addCell(row, title, chars, font, WHITE, 0.45);
+    });
 }
 
 // Legende der Zonen (in Tabellenreihenfolge)
