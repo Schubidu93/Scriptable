@@ -1124,7 +1124,14 @@ function zoneOf(note) {
 }
 
 async function loadTable() {
-    let json = await loadJSON(`v2/sports/soccer/${LEAGUE.slug}/standings`);
+    let path = `v2/sports/soccer/${LEAGUE.slug}/standings`;
+    // Zeitstempel in der Adresse: iOS liefert sonst gern eine zwischengespeicherte (alte) Tabelle
+    let [json, board] = await Promise.all([
+        loadJSON(`${path}?_=${Math.floor(Date.now() / 60000)}`).catch(() => loadJSON(path)),
+        // Anstoßzeiten und laufende Spiele des aktuellen Spieltags – bestimmen, wann neu geladen wird
+        loadJSON(`site/v2/sports/soccer/${LEAGUE.slug}/scoreboard`).catch(() => null),
+    ]);
+    let schedule = ((board && board.events) || []).map(e => ({ state: stateOf(e), date: e.date }));
     let group = collectGroups(json).sort((a, b) => b.standings.entries.length - a.standings.entries.length)[0];
     if (!group) return { rows: [] };
     let rows = group.standings.entries.map((e, i) => {
@@ -1147,7 +1154,7 @@ async function loadTable() {
         };
     }).sort((a, b) => a.rank - b.rank);
     let matchday = Math.max(0, ...rows.map(r => r.played));
-    return { rows, matchday };
+    return { rows, matchday, schedule };
 }
 
 // Zahlenzelle: Text in Festbreitenschrift, links mit Ziffern-Leerzeichen auf eine feste Zeichenzahl
@@ -1443,6 +1450,16 @@ function nextRefresh(data) {
         // Nächster Anstoß innerhalb der nächsten halben Stunde: dann aktualisieren
         let kickoffs = data.games.filter(g => g.state === "pre").map(g => new Date(g.date).getTime()).filter(t => t > now);
         let soon = Math.min(...kickoffs, now + 30 * minute);
+        return new Date(Math.max(soon, now + 5 * minute));
+    }
+    if (data && data.schedule) {
+        // Tabelle: während der Spiele und bis eine Stunde nach Abpfiff alle 5 Minuten, vor dem Anstoß
+        // zum Anstoß, sonst halbstündlich
+        let starts = data.schedule.map(g => new Date(g.date).getTime());
+        let busy = data.schedule.some((g, i) => g.state === "in"
+            || (g.state === "post" && now - starts[i] < 3 * 60 * minute));
+        if (busy) return new Date(now + 5 * minute);
+        let soon = Math.min(...starts.filter(t => t > now), now + 30 * minute);
         return new Date(Math.max(soon, now + 5 * minute));
     }
     if (data && data.live && !data.stale) return new Date(now + 5 * minute);
