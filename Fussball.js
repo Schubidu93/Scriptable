@@ -204,7 +204,44 @@ function logoUrl(team) {
     if (!team) return null;
     if (team.logo) return team.logo;
     if (team.logos && team.logos.length) return team.logos[0].href;
-    return null;
+    // Kein ESPN-Logo (meist Amateurvereine im DFB-Pokal): später auf Wikipedia suchen
+    let name = team.displayName || team.shortDisplayName || team.name;
+    return name ? `wiki:${name}` : null;
+}
+
+// Vereinslogo aus der deutschen Wikipedia (Bild des Vereinsartikels, 96 px).
+// Ergebnisse werden gespeichert; nicht gefundene Logos frühestens nach 7 Tagen erneut gesucht.
+const WIKI_LOGOS_PATH = fm.joinPath(fm.cacheDirectory(), "fussball-wikilogos.json");
+async function wikiLogo(name, cache) {
+    let hit = cache[name];
+    if (hit && (hit.url || Date.now() - hit.t < 7 * 86400000)) return hit.url;
+    // Der Artikeltitel muss ein markantes Wort des Namens enthalten (sonst z. B. „Schott“ → Crystal Palace),
+    // das Bild muss nach Logo aussehen (SVG oder „Logo“/„Wappen“ im Namen, kein Foto)
+    let words = name.toLowerCase().split(/[^\p{L}\d]+/u).filter(w => w.length >= 4);
+    let fits = page => page.thumbnail && words.some(w => page.title.toLowerCase().includes(w))
+        && /\.svg|logo|wappen|emblem|signet/i.test(decodeURIComponent(page.thumbnail.source));
+    let url = null;
+    for (let term of [`${name} Fußballverein`, `${name} Fußball`]) {
+        try {
+            let req = new Request("https://de.wikipedia.org/w/api.php?format=json&action=query&generator=search"
+                + `&gsrnamespace=0&gsrlimit=3&gsrsearch=${encodeURIComponent(term)}`
+                + "&prop=pageimages&piprop=thumbnail&pithumbsize=96");
+            req.headers = { "User-Agent": "Scriptable-Fussball-Widget/1.0" };
+            req.timeoutInterval = 8;
+            let json = await req.loadJSON();
+            let pages = Object.values((json.query && json.query.pages) || {}).sort((a, b) => a.index - b.index);
+            let page = pages.find(fits);
+            if (page) {
+                url = page.thumbnail.source;
+                break;
+            }
+        } catch (e) {
+            console.log(`Wikipedia-Logo ${name}: ${e}`);
+            break;
+        }
+    }
+    cache[name] = { url, t: Date.now() };
+    return url;
 }
 
 function statusOf(event) {
@@ -688,9 +725,26 @@ function smallLogo(url, px = 64) {
 
 async function loadLogos(urls) {
     let images = {};
+    let wikiCache = {};
+    try {
+        if (fm.fileExists(WIKI_LOGOS_PATH)) wikiCache = JSON.parse(fm.readString(WIKI_LOGOS_PATH));
+    } catch (e) {}
+    let wikiAsked = false;
     // Tabellen mit 36 Teams: kleinere Logos, sonst reicht der Speicher auf dem Homescreen nicht
     let px = VIEW === "tabelle" ? (LEAGUE_KEY === "bundesliga" ? 40 : 32) : 64;
     await Promise.all([...new Set(urls.filter(Boolean))].map(async url => {
+        if (url.startsWith("wiki:")) {
+            if (VIEW === "tabelle") return;
+            wikiAsked = true;
+            let found = await wikiLogo(url.slice(5), wikiCache);
+            if (!found) return;
+            try {
+                images[url] = await new Request(found).loadImage();
+            } catch (e) {
+                console.log(`Logo nicht geladen: ${found}`);
+            }
+            return;
+        }
         let small = smallLogo(url, px);
         if (!small && VIEW === "tabelle") return; // Tabellen: unbekannte (große) Logos weglassen
         small = small || url;
@@ -700,6 +754,11 @@ async function loadLogos(urls) {
             console.log(`Logo nicht geladen: ${url}`);
         }
     }));
+    if (wikiAsked) {
+        try {
+            fm.writeString(WIKI_LOGOS_PATH, JSON.stringify(wikiCache));
+        } catch (e) {}
+    }
     return images;
 }
 
