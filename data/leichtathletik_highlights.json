@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-28T10:34:24.578Z",
+  "generated": "2026-10-28T12:09:06.323Z",
   "items": [
     {
       "type": "WT",
@@ -182,6 +182,63 @@
       "score": 1296
     },
     {
+      "type": "WT",
+      "label": "Platz 3 ewig Welt",
+      "priority": 67,
+      "rank": 3,
+      "records": [],
+      "badges": [
+        {
+          "type": "WT",
+          "rank": 3
+        }
+      ],
+      "lists": [
+        "world"
+      ],
+      "gender": "women",
+      "event": "Marathon",
+      "name": "Tigst ASSEFA",
+      "nat": "ETH",
+      "mark": "2:11:04",
+      "wind": "",
+      "venue": "Berlin (GER)",
+      "date": "27 SEP 2026",
+      "score": 1300
+    },
+    {
+      "type": "ER",
+      "label": "Europarekord",
+      "priority": 90,
+      "rank": 1,
+      "records": [
+        "ER"
+      ],
+      "badges": [
+        {
+          "type": "ER",
+          "rank": 1
+        },
+        {
+          "type": "WT",
+          "rank": 10
+        }
+      ],
+      "lists": [
+        "europe",
+        "world"
+      ],
+      "gender": "men",
+      "event": "Halbmarathon",
+      "name": "Andreas ALMGREN",
+      "nat": "SWE",
+      "mark": "58:06",
+      "wind": "",
+      "venue": "København (DEN)",
+      "date": "20 SEP 2026",
+      "score": 1264
+    },
+    {
       "type": "ET",
       "label": "Platz 6 ewig Europa",
       "priority": 44,
@@ -205,68 +262,6 @@
       "venue": "StoneX Stadium, Hendon, London (GBR)",
       "date": "18 SEP 2026",
       "score": 1255
-    },
-    {
-      "type": "DR",
-      "label": "Deutscher Rekord",
-      "priority": 80,
-      "rank": 1,
-      "records": [
-        "DR"
-      ],
-      "badges": [
-        {
-          "type": "DR",
-          "rank": 1
-        },
-        {
-          "type": "WT",
-          "rank": 9
-        },
-        {
-          "type": "ET",
-          "rank": 2
-        }
-      ],
-      "lists": [
-        "germany",
-        "world",
-        "europe"
-      ],
-      "gender": "men",
-      "event": "400 m Hürden",
-      "name": "Emil AGYEKUM",
-      "nat": "GER",
-      "mark": "47.10",
-      "wind": "",
-      "venue": "Nemzeti Atlétikai Központ, Budapest (HUN)",
-      "date": "13 SEP 2026",
-      "score": 1279
-    },
-    {
-      "type": "WT",
-      "label": "Platz 3 ewig Welt",
-      "priority": 67,
-      "rank": 3,
-      "records": [],
-      "badges": [
-        {
-          "type": "WT",
-          "rank": 3
-        }
-      ],
-      "lists": [
-        "world"
-      ],
-      "gender": "women",
-      "event": "200 m",
-      "name": "Melissa JEFFERSON-WOODEN",
-      "nat": "USA",
-      "mark": "21.47",
-      "wind": "-0.6",
-      "venue": "Nemzeti Atlétikai Központ, Budapest (HUN)",
-      "date": "13 SEP 2026",
-      "score": 1297
     }
   ],
   "scopes": {
@@ -422,6 +417,31 @@
         "score": 1270
       },
       {
+        "type": "WT",
+        "label": "Platz 3 ewig Welt",
+        "priority": 67,
+        "rank": 3,
+        "records": [],
+        "badges": [
+          {
+            "type": "WT",
+            "rank": 3
+          }
+        ],
+        "lists": [
+          "world"
+        ],
+        "gender": "women",
+        "event": "Marathon",
+        "name": "Tigst ASSEFA",
+        "nat": "ETH",
+        "mark": "2:11:04",
+        "wind": "",
+        "venue": "Berlin (GER)",
+        "date": "27 SEP 2026",
+        "score": 1300
+      },
+      {
         "type": "ER",
         "label": "Europarekord",
         "priority": 90,
@@ -514,31 +534,6 @@
         "venue": "Nemzeti Atlétikai Központ, Budapest (HUN)",
         "date": "13 SEP 2026",
         "score": 1297
-      },
-      {
-        "type": "WT",
-        "label": "Platz 7 ewig Welt",
-        "priority": 63,
-        "rank": 7,
-        "records": [],
-        "badges": [
-          {
-            "type": "WT",
-            "rank": 7
-          }
-        ],
-        "lists": [
-          "world"
-        ],
-        "gender": "men",
-        "event": "200 m",
-        "name": "Kenneth BEDNAREK",
-        "nat": "USA",
-        "mark": "19.52",
-        "wind": "-0.1",
-        "venue": "Nemzeti Atlétikai Központ, Budapest (HUN)",
-        "date": "13 SEP 2026",
-        "score": 1297
       }
     ],
     "europe": [
@@ -621,6 +616,38 @@
         "venue": "Frankfurt (GER)",
         "date": "25 OCT 2026",
         "score": 1205
+      },
+      {
+        "type": "ER",
+        "label": "Europarekord",
+        "priority": 90,
+        "rank": 1,
+        "records": [
+          "ER"
+        ],
+        "badges": [
+          {
+            "type": "ER",
+            "rank": 1
+          },
+          {
+            "type": "WT",
+            "rank": 10
+          }
+        ],
+        "lists": [
+          "europe",
+          "world"
+        ],
+        "gender": "men",
+        "event": "Halbmarathon",
+        "name": "Andreas ALMGREN",
+        "nat": "SWE",
+        "mark": "58:06",
+        "wind": "",
+        "venue": "København (DEN)",
+        "date": "20 SEP 2026",
+        "score": 1264
       },
       {
         "type": "ET",
@@ -798,31 +825,6 @@
         "venue": "Letzigrund, Zürich (SUI)",
         "date": "27 AUG 2026",
         "score": 1259
-      },
-      {
-        "type": "ET",
-        "label": "Platz 9 ewig Europa",
-        "priority": 41,
-        "rank": 9,
-        "records": [],
-        "badges": [
-          {
-            "type": "ET",
-            "rank": 9
-          }
-        ],
-        "lists": [
-          "europe"
-        ],
-        "gender": "men",
-        "event": "400 m Hürden",
-        "name": "Matic Ian GUČEK",
-        "nat": "SLO",
-        "mark": "47.80",
-        "wind": "",
-        "venue": "Letzigrund, Zürich (SUI)",
-        "date": "27 AUG 2026",
-        "score": 1242
       }
     ],
     "germany": [
