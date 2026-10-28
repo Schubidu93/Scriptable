@@ -1,34 +1,19 @@
-// Straßenentfernung Kißlegg → Loipen-Einstieg: Orte über Nominatim, Route über OSRM
-const UA = { "User-Agent": "Scriptable-Langlauf-Widget/1.0 (github.com/Schubidu93/Scriptable)" };
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-const places = [
-  ["kisslegg", "Rathaus Kißlegg"],
-  ["vogt", "Vogt, Landkreis Ravensburg"],
-  ["leutkirch", "Wilhelmshöhe, Leutkirch im Allgäu"],
-  ["wangen", "Niederwangen, Wangen im Allgäu"],
-  ["argenbuehl", "Eisenharz, Argenbühl"],
-  ["isny", "Lohbauerstraße, Isny im Allgäu"],
-  ["waldsee", "Hopfenweiler, Bad Waldsee"],
-  ["heimenkirch", "Heimenkirch"],
-  ["lindenberg", "Lindenberg im Allgäu"],
-  ["scheidegg", "Scheidegg, Landkreis Lindau"],
-  ["missen", "Missen-Wilhams"],
-];
-const coords = {};
-for (const [id, q] of places) {
-  let j = [];
-  try { j = await (await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=de&q=${encodeURIComponent(q)}`, { headers: UA, signal: AbortSignal.timeout(15000) })).json(); } catch (e) { console.log(id, e.message); }
-  coords[id] = j[0] ? [Number(j[0].lon), Number(j[0].lat), j[0].display_name] : null;
-  console.log(id, coords[id] ? `${coords[id][1].toFixed(4)},${coords[id][0].toFixed(4)} ${coords[id][2].slice(0, 70)}` : "NICHT GEFUNDEN");
-  await sleep(1100);
-}
-const [x0, y0] = coords.kisslegg;
-for (const [id] of places.slice(1)) {
-  if (!coords[id]) continue;
-  const [x, y] = coords[id];
-  let j = {};
-  try { j = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${x0},${y0};${x},${y}?overview=false`, { headers: UA, signal: AbortSignal.timeout(20000) })).json(); } catch (e) { j = { error: e.message }; }
-  const route = j.routes && j.routes[0];
-  console.log(`${id.padEnd(12)} ${route ? (route.distance / 1000).toFixed(1) + " km, " + Math.round(route.duration / 60) + " min" : JSON.stringify(j).slice(0, 100)}`);
-  await sleep(500);
+const UA = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1", "Accept-Language": "de-DE,de;q=0.9" };
+const text = html => html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ").replace(/<br\s*\/?>|<\/(p|div|tr|li|h\d|td)>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&auml;/g,"ä").replace(/&ouml;/g,"ö").replace(/&uuml;/g,"ü").replace(/&szlig;/g,"ß").replace(/[ \t]+/g, " ").replace(/\n\s*\n+/g, "\n");
+async function get(url) { const r = await fetch(url, { headers: UA, signal: AbortSignal.timeout(15000) }); return { status: r.status, url: r.url, html: await r.text() }; }
+// Loipen-Allgäu Wangen: alles nach dem Loipenbericht (Einzelloipen?)
+try {
+  const { html } = await get("http://www.loipen-allgaeu.de/loipen.php?name=Wangen");
+  const t = text(html); const i = t.search(/schwere Loipen/i);
+  console.log("##### LA Wangen nach Summen\n" + t.slice(i, i + 3500));
+  const j = html.search(/Berger|Niederwangen|Deuchelried/i);
+  console.log("##### LA Wangen RAW Einzelloipe\n" + html.slice(Math.max(0, j - 1500), j + 1500));
+} catch (e) { console.log("LA", e.message); }
+for (const url of ["https://www.nordicarena.de/loipeninformationen/", "https://www.gemeinde-vogt.de/de/tourismus/langlaufloipen", "https://www.waldburg.de/", "https://www.sc-vogt.de/langlauf.html"]) {
+  try {
+    const { status, url: u, html } = await get(url); const t = text(html);
+    const i = Math.max(0, t.search(/Loipenbericht|gespurt|Loipe/i) - 300);
+    console.log(`\n##### ${url} → ${status} ${u}\n${t.slice(i, i + (url.includes("sc-vogt") ? 1500 : 2500))}`);
+    console.log("LINKS:", [...new Set([...html.matchAll(/href=["']([^"']*(?:loipe|langlauf|bericht|winter)[^"']*)["']/gi)].map(m => m[1]))].slice(0, 20).join(" | "));
+  } catch (e) { console.log(`\n##### ${url} → FEHLER ${e.message}`); }
 }
