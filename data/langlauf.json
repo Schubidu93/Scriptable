@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-28T12:54:04.616Z",
+  "generated": "2026-10-28T12:59:21.511Z",
   "areas": [
     {
       "id": "vogt",
@@ -18,7 +18,14 @@
       "id": "waldsee",
       "name": "Bad Waldsee",
       "url": "https://www.sportpark-badwaldsee.de/loipen-info",
-      "status": "unknown"
+      "network": 23.2,
+      "groomed": 0,
+      "classic": 0,
+      "skating": 0,
+      "snow": null,
+      "updated": "2023-12-03",
+      "status": "closed",
+      "note": "alle Loipen geschlossen"
     },
     {
       "id": "leutkirch",
