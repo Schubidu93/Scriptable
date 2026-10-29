@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-28T18:57:59.347Z",
+  "generated": "2026-10-29T17:00:15.070Z",
   "areas": [
     {
       "id": "vogt",
@@ -173,8 +173,7 @@
       "snow": null,
       "updated": "2026-01-12",
       "status": "closed",
-      "note": "Keine Loipe.",
-      "stale": true
+      "note": "Keine Loipe."
     },
     {
       "id": "holzkirchen",
