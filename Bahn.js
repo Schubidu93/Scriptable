@@ -3,22 +3,17 @@
 // Als Widget-Parameter erzwingt "nach münchen" bzw. "nach kißlegg" eine Richtung.
 // Gezeigt werden die frühesten drei Verbindungen, die höchstens eine Stunde vor jetzt abfahren
 // (auch schon abgefahrene, solange sie unterwegs sind – mit Verspätung).
-// Quelle: Fahrplanauskunft von bahn.de, direkt vom iPhone abgefragt. Mittleres Widget.
+// Quelle: offizielle Timetables-API der DB (DB API Marketplace, kostenlos). Einrichten: Skript in der App starten
+// und Client ID sowie API Key eingeben – sie liegen nur in der Keychain dieses iPhones. Mittleres Widget.
 
 const STATIONS = {
     kisslegg: { name: "Kißlegg", query: "Kißlegg", lat: 47.7886, lon: 9.8809 },
     muenchen: { name: "München Hbf", short: "München", query: "München Hbf", lat: 48.1402, lon: 11.5600 },
 };
-const API = "https://www.bahn.de/web/api/";
-const HEADERS = {
-    "Accept": "application/json",
-    "Accept-Language": "de-DE,de;q=0.9",
-    "Content-Type": "application/json; charset=utf-8",
-};
 
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), "bahn-verbindungen.json");
-const stationPath = fm.joinPath(fm.cacheDirectory(), "bahn-bahnhoefe.json");
+const stationPath = fm.joinPath(fm.cacheDirectory(), "bahn-bahnhoefe-eva.json");
 const locationPath = fm.joinPath(fm.cacheDirectory(), "bahn-ort.json");
 
 const WHITE = Color.white();
@@ -61,98 +56,168 @@ async function chooseDirection() {
     return ["kisslegg", "muenchen"];
 }
 
-// ---------- bahn.de ----------
+// ---------- DB Timetables-API ----------
+// Offizielle Schnittstelle der Deutschen Bahn (DB API Marketplace, kostenlos): Fahrplan je Bahnhof und Stunde
+// (/plan) und alle bekannten Änderungen (/fchg: Verspätung, Gleis, Ausfall). Eine Direktverbindung ist ein Zug,
+// dessen weiterer Laufweg ab dem Startbahnhof den Zielbahnhof enthält; die Ankunft steht im Fahrplan des Ziels
+// unter derselben Fahrt-ID.
 
-async function request(path, body) {
-    let req = new Request(API + path);
-    req.timeoutInterval = 15;
-    req.headers = HEADERS;
-    if (body) {
-        req.method = "POST";
-        req.body = JSON.stringify(body);
-    }
-    let text = await req.loadString();
-    let status = req.response && req.response.statusCode;
-    let json = null;
-    try { json = JSON.parse(text); } catch (e) {}
-    if (status !== 200 || !json) {
-        throw new Error(`bahn.de ${status || "?"}${json && json.code ? " " + json.code : ""}`);
-    }
-    return json;
+const KEY = { clientId: "db_api_client_id", apiKey: "db_api_key" };
+
+function credentials() {
+    let get = key => (Keychain.contains(key) ? Keychain.get(key) : "");
+    return { clientId: get(KEY.clientId), apiKey: get(KEY.apiKey) };
 }
 
-// Bahnhofs-Kennung (lid) über die Ortssuche, einmal ermittelt und gespeichert
-async function stationId(key) {
+async function setup() {
+    let alert = new Alert();
+    alert.title = "DB-Zugang einrichten";
+    alert.message = "Client ID und API Key aus dem DB API Marketplace (Anwendung mit der API „Timetables“). "
+        + "Sie werden nur in der Keychain dieses iPhones gespeichert.";
+    let cred = credentials();
+    alert.addTextField("Client ID", cred.clientId);
+    alert.addSecureTextField("API Key", cred.apiKey);
+    alert.addAction("Speichern");
+    alert.addCancelAction("Abbrechen");
+    if ((await alert.present()) !== 0) return false;
+    let id = alert.textFieldValue(0).trim(), key = alert.textFieldValue(1).trim();
+    if (!id || !key) return false;
+    Keychain.set(KEY.clientId, id);
+    Keychain.set(KEY.apiKey, key);
+    fm.writeString(stationPath, "{}");
+    return true;
+}
+
+const API = "https://apis.deutschebahn.com/db-api-marketplace/apis/timetables/v1/";
+const planPath = fm.joinPath(fm.cacheDirectory(), "bahn-fahrplan.json");
+
+async function request(path) {
+    let cred = credentials();
+    if (!cred.clientId || !cred.apiKey) throw new Error("Zugang fehlt – Skript in der App starten");
+    let req = new Request(API + path);
+    req.timeoutInterval = 15;
+    req.headers = { "DB-Client-Id": cred.clientId, "DB-Api-Key": cred.apiKey, "Accept": "application/xml" };
+    let text = await req.loadString();
+    let status = req.response && req.response.statusCode;
+    // 404 bei /plan: in dieser Stunde fährt nichts
+    if (status === 404) return "";
+    if (status !== 200) throw new Error(`DB ${status || "?"}${status === 401 ? " (Zugang prüfen)" : ""}`);
+    return text;
+}
+
+function decodeXml(s) {
+    return String(s || "").replace(/&#(\d+);/g, (m, n) => String.fromCharCode(Number(n)))
+        .replace(/&quot;/g, "\"").replace(/&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+}
+
+function attrs(tag) {
+    let out = {};
+    for (let m of tag.matchAll(/(\w+)="([^"]*)"/g)) out[m[1]] = decodeXml(m[2]);
+    return out;
+}
+
+// <s id="…"><tl c="RE" n="57412"/><ar pt="…" pp="2" ppth="…"/><dp pt="…" pp="2" ppth="…" l="96"/></s>
+function parseStops(xml) {
+    let stops = {};
+    for (let m of String(xml || "").matchAll(/<s\s([^>]*?)(?:\/>|>([\s\S]*?)<\/s>)/g)) {
+        let s = attrs(m[1]);
+        let inner = m[2] || "";
+        let tl = /<tl\s([^>]*?)\/?>/.exec(inner);
+        let ar = /<ar\s([^>]*?)\/?>/.exec(inner);
+        let dp = /<dp\s([^>]*?)\/?>/.exec(inner);
+        stops[s.id] = { id: s.id, tl: tl ? attrs(tl[1]) : {}, ar: ar ? attrs(ar[1]) : null, dp: dp ? attrs(dp[1]) : null };
+    }
+    return stops;
+}
+
+// Fahrt-ID ohne Halt-Nummer: "-7874571842864554321-2210290952-3" → "-7874571842864554321-2210290952"
+const tripKey = id => String(id).replace(/-\d+$/, "");
+
+// "2210290952" (yyMMddHHmm, deutsche Ortszeit) → Date
+function parseTime(t) {
+    if (!t) return null;
+    return new Date(2000 + Number(t.slice(0, 2)), Number(t.slice(2, 4)) - 1, Number(t.slice(4, 6)), Number(t.slice(6, 8)), Number(t.slice(8, 10)));
+}
+
+const pad = n => String(n).padStart(2, "0");
+
+// Bahnhof (EVA-Nummer und Name, wie er im Laufweg steht) einmal suchen und speichern
+async function station(key) {
     let saved = {};
     try { if (fm.fileExists(stationPath)) saved = JSON.parse(fm.readString(stationPath)); } catch (e) {}
     if (saved[key]) return saved[key];
-    let list = await request(`reiseloesung/orte?suchbegriff=${encodeURIComponent(STATIONS[key].query)}&typ=ALL&limit=5`);
-    let hit = list.find(o => o.type === "ST") || list[0];
-    if (!hit || !hit.id) throw new Error(`${STATIONS[key].name} nicht gefunden`);
-    saved[key] = hit.id;
+    let xml = await request(`station/${encodeURIComponent(STATIONS[key].query)}`);
+    let list = [...xml.matchAll(/<station\s([^>]*?)\/?>/g)].map(m => attrs(m[1]));
+    let hit = list.find(x => x.name === STATIONS[key].query) || list[0];
+    if (!hit || !hit.eva) throw new Error(`${STATIONS[key].name} nicht gefunden`);
+    saved[key] = { eva: hit.eva, name: hit.name };
     fm.writeString(stationPath, JSON.stringify(saved));
-    return hit.id;
+    return saved[key];
+}
+
+// Fahrplan einer Stunde – ändert sich kaum, daher bis zu 6 Stunden zwischengespeichert
+let PLAN_CACHE = null;
+
+async function plan(eva, date) {
+    if (!PLAN_CACHE) {
+        try { PLAN_CACHE = fm.fileExists(planPath) ? JSON.parse(fm.readString(planPath)) : {}; } catch (e) { PLAN_CACHE = {}; }
+        for (let k of Object.keys(PLAN_CACHE)) if (Date.now() - PLAN_CACHE[k].time > 6 * 3600000) delete PLAN_CACHE[k];
+    }
+    let day = `${String(date.getFullYear()).slice(2)}${pad(date.getMonth() + 1)}${pad(date.getDate())}`;
+    let key = `${eva}/${day}/${pad(date.getHours())}`;
+    if (!PLAN_CACHE[key]) PLAN_CACHE[key] = { time: Date.now(), stops: parseStops(await request(`plan/${key}`)) };
+    return PLAN_CACHE[key].stops;
+}
+
+async function plans(eva, from, hours) {
+    let lists = await Promise.all(Array.from({ length: hours }, (_, i) => plan(eva, new Date(from.getTime() + i * 3600000))));
+    return Object.assign({}, ...lists);
+}
+
+async function loadJourneys(fromKey, toKey) {
+    let [from, to] = await Promise.all([station(fromKey), station(toKey)]);
+    let since = new Date(Date.now() - 60 * MINUTE);
+    // Abfahrten ab vor einer Stunde bis in 8 Stunden (die Direktzüge fahren etwa alle zwei Stunden)
+    let departures = Object.values(await plans(from.eva, since, 9))
+        .filter(s => s.dp && (s.dp.ppth || "").split("|").includes(to.name))
+        .map(s => ({ ...s, depTime: parseTime(s.dp.pt) }))
+        .filter(s => s.depTime >= since)
+        .sort((a, b) => a.depTime - b.depTime)
+        .slice(0, 3);
+    if (!departures.length) return [];
+    // Ankunft: Fahrplan des Ziels in den Stunden nach der jeweiligen Abfahrt, gleiche Fahrt-ID
+    let first = departures[0].depTime, last = departures[departures.length - 1].depTime;
+    let arrHours = Math.ceil((last - first) / 3600000) + 4;
+    let [arrivals, depChanges, arrChanges] = await Promise.all([
+        plans(to.eva, new Date(first.getTime() + 3600000), arrHours),
+        request(`fchg/${from.eva}`).then(parseStops).catch(() => ({})),
+        request(`fchg/${to.eva}`).then(parseStops).catch(() => ({})),
+    ]);
+    let byTrip = {};
+    Object.values(arrivals).forEach(s => { if (s.ar) byTrip[tripKey(s.id)] = s; });
+    let iso = d => (d ? localStamp(d) : null);
+    let parsed = departures.map(s => {
+        let dc = (depChanges[s.id] || {}).dp || {};
+        let arr = byTrip[tripKey(s.id)];
+        let ac = arr ? ((arrChanges[arr.id] || {}).ar || {}) : {};
+        let train = `${s.tl.c || ""} ${s.dp.l || s.tl.n || ""}`.trim();
+        return {
+            train: train || "Zug",
+            dep: iso(s.depTime),
+            depReal: iso(parseTime(dc.ct)),
+            arr: arr && arr.ar && arr.ar.pt ? iso(parseTime(arr.ar.pt)) : null,
+            arrReal: iso(parseTime(ac.ct)),
+            platform: dc.cp || s.dp.pp || null,
+            cancelled: dc.cs === "c" || ac.cs === "c",
+        };
+    });
+    PLAN_CACHE && fm.writeString(planPath, JSON.stringify(PLAN_CACHE));
+    return parsed;
 }
 
 // "2026-10-29T09:42:00" in deutscher Ortszeit
 function localStamp(date) {
-    let pad = n => String(n).padStart(2, "0");
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
-}
-
-function journeyBody(from, to, when) {
-    return {
-        abfahrtsHalt: from, ankunftsHalt: to, anfrageZeitpunkt: localStamp(when), ankunftSuche: "ABFAHRT",
-        klasse: "KLASSE_2",
-        produktgattungen: ["ICE", "EC_IC", "IR", "REGIONAL", "SBAHN", "BUS", "SCHIFF", "UBAHN", "TRAM", "ANRUFPFLICHTIG"],
-        reisende: [{ typ: "ERWACHSENER", ermaessigungen: [{ art: "KEINE_ERMAESSIGUNG", klasse: "KLASSENLOS" }], alter: [], anzahl: 1 }],
-        schnelleVerbindungen: true, sitzplatzOnly: false, bikeCarriage: false, reservierungsKontingenteVorhanden: false,
-        nurDeutschlandTicketVerbindungen: false, deutschlandTicketVorhanden: false,
-        maxUmstiege: 0,
-    };
-}
-
-// Eine Verbindung ohne Umstieg: Zug, Gleis, Plan- und Echtzeiten, Ausfall
-function parseJourney(v) {
-    let legs = (v.verbindungsAbschnitte || []).filter(a => a.verkehrsmittel && a.verkehrsmittel.typ !== "WALK"
-        && !/fu(ß|ss)weg|transfer/i.test(a.verkehrsmittel.typ || ""));
-    if (legs.length !== 1) return null;
-    let leg = legs[0];
-    let first = (leg.halte || [])[0] || {};
-    let last = (leg.halte || [])[(leg.halte || []).length - 1] || {};
-    let text = JSON.stringify(v);
-    let cancelled = Boolean(v.cancelled || leg.cancelled || first.canceled || first.cancelled
-        || /"(canceled|cancelled)":true|Halt entfällt|fällt (heute )?aus/i.test(text));
-    let vm = leg.verkehrsmittel;
-    return {
-        train: vm.mittelText || vm.kurzText || vm.name || "Zug",
-        dep: leg.abfahrtsZeitpunkt,
-        depReal: leg.ezAbfahrtsZeitpunkt || null,
-        arr: leg.ankunftsZeitpunkt,
-        arrReal: leg.ezAnkunftsZeitpunkt || null,
-        platform: first.ezGleis || first.gleis || null,
-        cancelled,
-    };
-}
-
-async function loadJourneys(fromKey, toKey) {
-    let [from, to] = await Promise.all([stationId(fromKey), stationId(toKey)]);
-    let since = new Date(Date.now() - 60 * MINUTE);
-    let json = await request("angebote/fahrplan", journeyBody(from, to, since));
-    let list = (json.verbindungen || []).map(parseJourney).filter(Boolean)
-        .filter(j => new Date(j.dep).getTime() >= since.getTime() - MINUTE)
-        .sort((a, b) => new Date(a.dep) - new Date(b.dep));
-    // Weniger als drei: später weitersuchen (nächste Seite)
-    if (list.length < 3 && json.spaeterContext) {
-        try {
-            let more = await request("angebote/fahrplan", { ...journeyBody(from, to, since), pagingReference: json.spaeterContext });
-            let seen = new Set(list.map(j => j.dep + j.train));
-            (more.verbindungen || []).map(parseJourney).filter(Boolean).forEach(j => { if (!seen.has(j.dep + j.train)) list.push(j); });
-        } catch (e) {
-            console.log(`Weitere Verbindungen: ${e}`);
-        }
-    }
-    return list.slice(0, 3);
 }
 
 async function loadData() {
@@ -239,14 +304,15 @@ function addTime(stack, planned, real, width, strike) {
 function addJourney(widget, j) {
     let now = Date.now();
     let departed = new Date(j.depReal || j.dep).getTime() < now;
-    let arrived = new Date(j.arrReal || j.arr).getTime() < now;
+    let arrived = j.arr ? new Date(j.arrReal || j.arr).getTime() < now : false;
     let row = widget.addStack();
     row.centerAlignContent();
     // Abfahrt, Ankunft, Zug, Gleis bzw. Status
     addTime(row, j.dep, j.depReal, 66, j.cancelled);
     addSymbol(row, "arrow.right", 9, WHITE).imageOpacity = 0.5;
     row.addSpacer(6);
-    addTime(row, j.arr, j.arrReal, 66, j.cancelled);
+    if (j.arr) addTime(row, j.arr, j.arrReal, 66, j.cancelled);
+    else addLabel(addCell(row, 66), "–", Font.semiboldMonospacedSystemFont(14), WHITE, 0.5);
     let train = addCell(row, 74);
     addLabel(train, j.train, Font.mediumSystemFont(11), WHITE, 0.8).minimumScaleFactor = 0.8;
     train.addSpacer();
@@ -269,7 +335,7 @@ function background(widget) {
 async function createWidget() {
     let data = await loadData();
     let widget = new ListWidget();
-    widget.url = URLScheme.forRunningScript();
+    widget.url = `${URLScheme.forRunningScript()}?aus=widget`;
     background(widget);
     widget.setPadding(12, 16, 6, 16);
 
@@ -306,6 +372,21 @@ async function createWidget() {
 }
 
 async function main() {
+    // In der App: ohne Zugang (oder auf Wunsch) einrichten
+    // (Antippen des Widgets öffnet die App mit ?aus=widget – dann ohne Rückfrage)
+    let fromWidget = (args.queryParameters || {}).aus === "widget";
+    if (!config.runsInWidget) {
+        let cred = credentials();
+        if (!cred.clientId || !cred.apiKey) {
+            await setup();
+        } else if (!fromWidget) {
+            let alert = new Alert();
+            alert.title = "Bahn";
+            alert.addAction("Verbindungen anzeigen");
+            alert.addAction("DB-Zugang ändern");
+            if ((await alert.presentSheet()) === 1) await setup();
+        }
+    }
     let widget = await createWidget();
     if (config.runsInWidget) Script.setWidget(widget);
     else await widget.presentMedium();
