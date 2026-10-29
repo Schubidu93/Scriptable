@@ -23,6 +23,7 @@ const SCRIPTS = [
     { name: "Biathlon Frauen", file: "Biathlon.js", params: { ANSICHT: "rennen", GESCHLECHT: "frauen" }, glyph: "skiing-nordic", color: "pink" },
     { name: "Biathlon Weltcup", file: "Biathlon.js", params: { ANSICHT: "weltcup" }, glyph: "trophy", color: "blue" },
     { name: "Langlauf", file: "Langlauf.js", glyph: "skiing-nordic", color: "blue" },
+    { name: "Bahn", file: "Bahn.js", glyph: "train", color: "red" },
     { name: "ClubElo", file: "ClubElo.js", glyph: "chart-line", color: "deep-gray" },
     { name: "Bayern Bundesliga", file: "Fussball.js", params: { LIGA: "bundesliga" }, glyph: "futbol", color: "red" },
     { name: "Bayern CL", file: "Fussball.js", params: { LIGA: "cl" }, glyph: "futbol", color: "deep-blue" },
