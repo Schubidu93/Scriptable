@@ -179,7 +179,7 @@ function addGameRow(stack, game, images, compact = false) {
     let team = (side, alignRight) => {
         let box = row.addStack();
         // Spalten breit genug, dass in der Mitte nur ein schmaler Abstand bleibt (wie bei den Fußball-Ergebnissen)
-        box.size = new Size(compact ? 37 : 36, 0);
+        box.size = new Size(compact ? 35 : 36, 0);
         if (alignRight) box.addSpacer();
         let loser = game.state === "post" && !side.winner && !tie;
         let font = !played || tie ? Font.semiboldSystemFont(fontSize) : side.winner ? Font.boldSystemFont(fontSize) : Font.mediumSystemFont(fontSize);
@@ -200,7 +200,8 @@ function addGameRow(stack, game, images, compact = false) {
     team(game.away, false);
     // Feste Breite, Inhalt zentriert – ohne Abstandhalter, die selbst Platz kosten
     let mid = row.addStack();
-    mid.size = new Size(40, 0);
+    // Kompakt mit Wochentag ("Mo 02:15") breiter, dafür die Kürzel-Spalten schmaler – die Zeile bleibt gleich breit
+    mid.size = new Size(compact ? 44 : 40, 0);
     mid.centerAlignContent();
     let text;
     if (game.state === "pre") {
