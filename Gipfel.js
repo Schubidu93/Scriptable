@@ -389,7 +389,8 @@ function addRow(widget, peak) {
     }
     info.addSpacer();
     let name = addLabel(row, peak.name, Font.semiboldSystemFont(SIZE.name));
-    name.minimumScaleFactor = 0.8;
+    // Lange Namen ("Immenstädter Horn") dürfen deutlicher schrumpfen statt abgeschnitten zu werden
+    name.minimumScaleFactor = 0.65;
     row.addSpacer(6);
     row.addSpacer();
     let ele = row.addStack();
