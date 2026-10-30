@@ -82,11 +82,16 @@ async function overpass(here, radius) {
 }
 
 // Wikidata (Berge, Gipfel, Hügel mit Koordinate und Höhe, nach Entfernung) – schnell und zuverlässig erreichbar
+// Gipfel-Typen in Wikidata: Berg, Gipfel, Hügel, Bergspitze, Nebengipfel, Hauptgipfel, Bergrücken, Kammerhebung,
+// Eintausender – der Schwarze Grat etwa ist nur als "Bergrücken"/"Nebengipfel" erfasst
+const PEAK_TYPES = ["Q8502", "Q207326", "Q54050", "Q1595289", "Q3618634", "Q111177881", "Q820144", "Q131860194", "Q12059057"]
+    .map(q => `wd:${q}`).join(" ");
+
 // notable: nur Gipfel mit Wikipedia-Artikel (sitelinks), die bekanntesten zuerst – für "markant im Umkreis"
 async function wikidata(here, radius, notable = false) {
     let query = `SELECT ?item ?label ?ele ?coord ?links WHERE {
  SERVICE wikibase:around { ?item wdt:P625 ?coord. bd:serviceParam wikibase:center "Point(${here.lon.toFixed(5)} ${here.lat.toFixed(5)})"^^geo:wktLiteral. bd:serviceParam wikibase:radius "${radius / 1000}". bd:serviceParam wikibase:distance ?dist. }
- VALUES ?type { wd:Q8502 wd:Q207326 wd:Q54050 wd:Q1595289 }
+ VALUES ?type { ${PEAK_TYPES} }
  ?item wdt:P31 ?type.
  ?item wikibase:sitelinks ?links.
  ${notable ? "FILTER(?links > 0)" : ""}
@@ -123,7 +128,7 @@ async function loadPeaks(here) {
     let cached = null;
     try { if (fm.fileExists(cachePath)) cached = JSON.parse(fm.readString(cachePath)); } catch (e) {}
     // Gleicher Ort (unter 1 km) und höchstens eine Woche alt: gespeicherte Gipfel verwenden
-    if (cached && cached.peaks && cached.version === 2 && distanceKm(here, cached.center) < 1 && Date.now() - cached.time < 7 * 86400000) return cached;
+    if (cached && cached.peaks && cached.version === 3 && distanceKm(here, cached.center) < 1 && Date.now() - cached.time < 7 * 86400000) return cached;
     try {
         // Zuerst Wikidata (antwortet in wenigen Sekunden), nur ersatzweise die oft überlasteten Overpass-Server
         let peaks = [], source = "Wikidata";
@@ -141,7 +146,7 @@ async function loadPeaks(here) {
         }
         // Markante Gipfel im Umkreis (mit Wikipedia-Artikel) – fehlt Wikidata, bleibt die Liste leer
         let notable = source === "Wikidata" ? await wikidata(here, RADIUS, true).catch(() => []) : [];
-        let data = { version: 2, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source };
+        let data = { version: 3, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source };
         fm.writeString(cachePath, JSON.stringify(data));
         return data;
     } catch (e) {
