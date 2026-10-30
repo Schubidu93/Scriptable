@@ -426,13 +426,24 @@ function addRow(widget, peak) {
     addLabel(dist, formatKm(peak.km), Font.mediumMonospacedSystemFont(SIZE.num), WHITE, 0.85);
 }
 
+// Tagsüber alle 10 Minuten (unterwegs ändern sich die Entfernungen), nachts (22–6 Uhr) stündlich, um
+// Standortabfragen und Akku zu sparen – spätestens um 6 Uhr wieder; iOS entscheidet selbst
+function nextRefresh() {
+    let now = new Date();
+    let hour = now.getHours();
+    if (hour >= 6 && hour < 22) return new Date(now.getTime() + 10 * 60000);
+    let morning = new Date(now);
+    if (hour >= 22) morning.setDate(morning.getDate() + 1);
+    morning.setHours(6, 0, 0, 0);
+    return new Date(Math.min(now.getTime() + 60 * 60000, morning.getTime()));
+}
+
 async function createWidget() {
     let widget = new ListWidget();
     widget.url = URLScheme.forRunningScript();
     background(widget);
     widget.setPadding(LARGE ? 12 : 10, 16, LARGE ? 6 : 8, 16);
-    // Unterwegs öfter neu (Entfernungen ändern sich); iOS entscheidet selbst
-    widget.refreshAfterDate = new Date(Date.now() + 10 * 60000);
+    widget.refreshAfterDate = nextRefresh();
 
     let header = widget.addStack();
     header.centerAlignContent();
