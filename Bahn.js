@@ -13,7 +13,7 @@ const STATIONS = {
 
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), "bahn-verbindungen.json");
-const stationPath = fm.joinPath(fm.cacheDirectory(), "bahn-bahnhoefe-eva.json");
+const stationPath = fm.joinPath(fm.cacheDirectory(), "bahn-bahnhoefe-v2.json");
 const locationPath = fm.joinPath(fm.cacheDirectory(), "bahn-ort.json");
 
 const WHITE = Color.white();
@@ -146,16 +146,19 @@ function parseTime(t) {
 
 const pad = n => String(n).padStart(2, "0");
 
-// Bahnhof (EVA-Nummer und Name, wie er im Laufweg steht) einmal suchen und speichern
+// Bahnhof einmal suchen und speichern – samt Teilbahnhöfen: In München fahren die Regionalzüge ins Allgäu
+// meist an den Gleisen 27–36, die bei der DB als eigener Bahnhof "München Hbf Gl.27-36" geführt werden
 async function station(key) {
     let saved = {};
     try { if (fm.fileExists(stationPath)) saved = JSON.parse(fm.readString(stationPath)); } catch (e) {}
-    if (saved[key]) return saved[key];
-    let xml = await request(`station/${encodeURIComponent(STATIONS[key].query)}`);
-    let list = [...xml.matchAll(/<station\s([^>]*?)\/?>/g)].map(m => attrs(m[1]));
-    let hit = list.find(x => x.name === STATIONS[key].query) || list[0];
-    if (!hit || !hit.eva) throw new Error(`${STATIONS[key].name} nicht gefunden`);
-    saved[key] = { eva: hit.eva, name: hit.name };
+    if (Array.isArray(saved[key]) && saved[key].length) return saved[key];
+    let query = STATIONS[key].query;
+    let xml = await request(`station/${encodeURIComponent(query)}`);
+    let list = [...xml.matchAll(/<station\s([^>]*?)\/?>/g)].map(m => attrs(m[1])).filter(x => x.eva);
+    let parts = list.filter(x => x.name === query || x.name.startsWith(query + " "));
+    if (!parts.length && list[0]) parts = [list[0]];
+    if (!parts.length) throw new Error(`${STATIONS[key].name} nicht gefunden`);
+    saved[key] = parts.map(x => ({ eva: x.eva, name: x.name }));
     fm.writeString(stationPath, JSON.stringify(saved));
     return saved[key];
 }
@@ -179,12 +182,23 @@ async function plans(eva, from, hours) {
     return Object.assign({}, ...lists);
 }
 
+// Pläne/Änderungen mehrerer Teilbahnhöfe zusammenführen
+async function plansAll(list, from, hours) {
+    return Object.assign({}, ...(await Promise.all(list.map(st => plans(st.eva, from, hours)))));
+}
+
+async function changesAll(list) {
+    let lists = await Promise.all(list.map(st => request(`fchg/${st.eva}`).then(parseStops).catch(() => ({}))));
+    return Object.assign({}, ...lists);
+}
+
 async function loadJourneys(fromKey, toKey) {
     let [from, to] = await Promise.all([station(fromKey), station(toKey)]);
+    let targets = new Set(to.map(st => st.name));
     let since = new Date(Date.now() - 60 * MINUTE);
-    // Abfahrten ab vor einer Stunde bis in 8 Stunden (die Direktzüge fahren etwa alle zwei Stunden)
-    let departures = Object.values(await plans(from.eva, since, 9))
-        .filter(s => s.dp && (s.dp.ppth || "").split("|").includes(to.name))
+    // Abfahrten ab vor einer Stunde bis in 11 Stunden (die Direktzüge fahren etwa alle zwei Stunden)
+    let departures = Object.values(await plansAll(from, since, 12))
+        .filter(s => s.dp && (s.dp.ppth || "").split("|").some(name => targets.has(name)))
         .map(s => ({ ...s, depTime: parseTime(s.dp.pt) }))
         .filter(s => s.depTime >= since)
         .sort((a, b) => a.depTime - b.depTime)
@@ -194,9 +208,9 @@ async function loadJourneys(fromKey, toKey) {
     let first = departures[0].depTime, last = departures[departures.length - 1].depTime;
     let arrHours = Math.ceil((last - first) / 3600000) + 4;
     let [arrivals, depChanges, arrChanges] = await Promise.all([
-        plans(to.eva, new Date(first.getTime() + 3600000), arrHours),
-        request(`fchg/${from.eva}`).then(parseStops).catch(() => ({})),
-        request(`fchg/${to.eva}`).then(parseStops).catch(() => ({})),
+        plansAll(to, new Date(first.getTime() + 3600000), arrHours),
+        changesAll(from),
+        changesAll(to),
     ]);
     let byTrip = {};
     Object.values(arrivals).forEach(s => { if (s.ar) byTrip[tripKey(s.id)] = s; });
@@ -294,10 +308,13 @@ function addCell(stack, width) {
 }
 
 // Zeit mit Verspätung: "09:42 +5" (pünktlich grün "+0", ohne Echtzeit nur die Zeit)
+// Breite für "12:34 +12" samt Mindestbreite des Abstandhalters (vorher 66 pt – die Uhrzeit wurde zu "12:…")
+const TIME_W = 78;
+
 function addTime(stack, planned, real, width, strike) {
     let cell = addCell(stack, width);
     let d = delay(planned, real);
-    let t = addLabel(cell, hhmm(planned), Font.semiboldMonospacedSystemFont(14), WHITE, strike ? 0.45 : 1);
+    let t = addLabel(cell, hhmm(planned), Font.semiboldMonospacedSystemFont(13), WHITE, strike ? 0.45 : 1);
     if (d !== null && !strike) {
         cell.addSpacer(3);
         addLabel(cell, d > 0 ? `+${d}` : "+0", Font.boldMonospacedSystemFont(11), delayColor(d));
@@ -313,12 +330,12 @@ function addJourney(widget, j) {
     let row = widget.addStack();
     row.centerAlignContent();
     // Abfahrt, Ankunft, Zug, Gleis bzw. Status
-    addTime(row, j.dep, j.depReal, 66, j.cancelled);
+    addTime(row, j.dep, j.depReal, TIME_W, j.cancelled);
     addSymbol(row, "arrow.right", 9, WHITE).imageOpacity = 0.5;
     row.addSpacer(6);
-    if (j.arr) addTime(row, j.arr, j.arrReal, 66, j.cancelled);
-    else addLabel(addCell(row, 66), "–", Font.semiboldMonospacedSystemFont(14), WHITE, 0.5);
-    let train = addCell(row, 74);
+    if (j.arr) addTime(row, j.arr, j.arrReal, TIME_W, j.cancelled);
+    else addLabel(addCell(row, TIME_W), "–", Font.semiboldMonospacedSystemFont(14), WHITE, 0.5);
+    let train = addCell(row, 64);
     addLabel(train, j.train, Font.mediumSystemFont(11), WHITE, 0.8).minimumScaleFactor = 0.8;
     train.addSpacer();
     row.addSpacer();
