@@ -153,9 +153,33 @@ function addSymbol(stack, name, size, color = WHITE) {
     return img;
 }
 
-// Pfeil in Richtung des Gipfels (Norden oben) – Systemsymbole in 8 Richtungen
-const ARROWS = ["arrow.up", "arrow.up.right", "arrow.right", "arrow.down.right", "arrow.down", "arrow.down.left", "arrow.left", "arrow.up.left"];
-const arrowSymbol = deg => ARROWS[Math.round(deg / 45) % 8];
+// Pfeil in Richtung des Gipfels (Norden oben), gradgenau gezeichnet: Schaft und Spitze, um den Kurs gedreht.
+// DrawContext hat den Ursprung oben links (y nach unten) – im Uhrzeigersinn drehen heißt hier positiver Winkel.
+function arrowImage(deg) {
+    let size = 48, c = size / 2;
+    let ctx = new DrawContext();
+    ctx.size = new Size(size, size);
+    ctx.opaque = false;
+    ctx.respectScreenScale = true;
+    let a = rad(deg);
+    let rot = (x, y) => new Point(c + x * Math.cos(a) - y * Math.sin(a), c + x * Math.sin(a) + y * Math.cos(a));
+    // Schaft von unten bis kurz vor die Spitze
+    let shaft = new Path();
+    shaft.move(rot(0, 19));
+    shaft.addLine(rot(0, -6));
+    ctx.addPath(shaft);
+    ctx.setStrokeColor(WHITE);
+    ctx.setLineWidth(5);
+    ctx.strokePath();
+    // Spitze (zeigt ungedreht nach oben = Norden)
+    let head = new Path();
+    head.addLines([rot(0, -21), rot(11, -4), rot(-11, -4)]);
+    head.closeSubpath();
+    ctx.addPath(head);
+    ctx.setFillColor(WHITE);
+    ctx.fillPath();
+    return ctx.getImage();
+}
 
 function formatKm(km) {
     return km < 10 ? `${km.toFixed(1).replace(".", ",")} km` : `${Math.round(km)} km`;
@@ -173,7 +197,7 @@ function addRow(widget, peak) {
     row.centerAlignContent();
     let arrow = row.addStack();
     arrow.size = new Size(14, 0);
-    addSymbol(arrow, arrowSymbol(peak.bearing), 12, WHITE);
+    arrow.addImage(arrowImage(peak.bearing)).imageSize = new Size(13, 13);
     row.addSpacer(4);
     let dir = row.addStack();
     dir.size = new Size(36, 0);
