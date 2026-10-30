@@ -351,7 +351,8 @@ function addRecord(stack, record) {
 }
 
 function addSectionTitle(stack, text) {
-    addLabel(stack, text.toUpperCase(), Font.semiboldSystemFont(10), WHITE, 0.6);
+    // Nicht verkleinern lassen – sonst schrumpfte iOS "AFC" über der Setzliste, "NORTH" aber nicht
+    addLabel(stack, text.toUpperCase(), Font.semiboldSystemFont(10), WHITE, 0.6).minimumScaleFactor = 1;
 }
 
 function addBadge(stack, result, size) {
