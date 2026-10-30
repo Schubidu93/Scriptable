@@ -2,12 +2,17 @@
 // Name, Höhe, Entfernung (Luftlinie) und Richtung als Himmelsrichtung (z. B. SSW) mit Pfeil; ein Haken, wenn
 // eine deiner Strava-/Garmin-Aktivitäten auf 50 m an den Gipfel heranführte (Strava-Zugang des Strava-Widgets).
 // Die Gipfel kommen von Wikidata (ersatzweise OpenStreetMap über die Overpass-API); neu gefragt wird erst, wenn du dich mehr als 1 km bewegt hast
-// (sonst nur Entfernung und Richtung neu berechnet). Mittleres Widget: 5 Gipfel, großes: 10.
+// (sonst nur Entfernung und Richtung neu berechnet). Mittleres Widget: 8 Gipfel, großes: 15.
 
 const ENDPOINTS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 const RADIUS = 40000; // Umkreis in Metern
 const FAMILY = config.widgetFamily || "medium";
-const COUNT = FAMILY === "large" || FAMILY === "extraLarge" ? 10 : 5;
+const LARGE = FAMILY === "large" || FAMILY === "extraLarge";
+// Mittel: 8 Gipfel kompakt (ohne Fußzeile), groß: 15
+const SIZE = LARGE
+    ? { count: 15, name: 13, num: 12, dir: 11, arrow: 13, gap: 3, header: 15, headerGap: 8, footer: true }
+    : { count: 8, name: 11.5, num: 10.5, dir: 9.5, arrow: 11, gap: 1, header: 13, headerGap: 3, footer: false };
+const COUNT = SIZE.count;
 
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), "gipfel.json");
@@ -321,7 +326,7 @@ function addRow(widget, peak) {
     row.centerAlignContent();
     let arrow = row.addStack();
     arrow.size = new Size(14, 0);
-    arrow.addImage(arrowImage(peak.bearing)).imageSize = new Size(13, 13);
+    arrow.addImage(arrowImage(peak.bearing)).imageSize = new Size(SIZE.arrow, SIZE.arrow);
     row.addSpacer(4);
     // Dezenter Haken, wenn eine Strava-/Garmin-Aktivität über den Gipfel führte (Platz immer frei, damit alles bündig bleibt)
     if (SHOW_CHECKS) {
@@ -331,36 +336,37 @@ function addRow(widget, peak) {
         check.addSpacer();
     }
     let dir = row.addStack();
-    dir.size = new Size(36, 0);
-    addLabel(dir, compass(peak.bearing), Font.semiboldSystemFont(11), WHITE, 0.75);
+    // Breit genug für "WNW"/"WSW" (breite Buchstaben), notfalls minimal verkleinert statt "W…"
+    dir.size = new Size(40, 0);
+    addLabel(dir, compass(peak.bearing), Font.semiboldSystemFont(SIZE.dir), WHITE, 0.75).minimumScaleFactor = 0.7;
     dir.addSpacer();
-    let name = addLabel(row, peak.name, Font.semiboldSystemFont(13));
+    let name = addLabel(row, peak.name, Font.semiboldSystemFont(SIZE.name));
     name.minimumScaleFactor = 0.8;
     row.addSpacer(6);
     row.addSpacer();
     let ele = row.addStack();
-    ele.size = new Size(58, 0);
+    ele.size = new Size(LARGE ? 58 : 52, 0);
     ele.addSpacer();
-    addLabel(ele, peak.ele ? `${peak.ele} m` : "–", Font.mediumMonospacedSystemFont(12), ACCENT, peak.ele ? 1 : 0.5);
+    addLabel(ele, peak.ele ? `${peak.ele} m` : "–", Font.mediumMonospacedSystemFont(SIZE.num), ACCENT, peak.ele ? 1 : 0.5);
     let dist = row.addStack();
-    dist.size = new Size(52, 0);
+    dist.size = new Size(LARGE ? 52 : 46, 0);
     dist.addSpacer();
-    addLabel(dist, formatKm(peak.km), Font.mediumMonospacedSystemFont(12), WHITE, 0.85);
+    addLabel(dist, formatKm(peak.km), Font.mediumMonospacedSystemFont(SIZE.num), WHITE, 0.85);
 }
 
 async function createWidget() {
     let widget = new ListWidget();
     widget.url = URLScheme.forRunningScript();
     background(widget);
-    widget.setPadding(12, 16, 6, 16);
+    widget.setPadding(LARGE ? 12 : 10, 16, LARGE ? 6 : 8, 16);
     // Unterwegs öfter neu (Entfernungen ändern sich); iOS entscheidet selbst
     widget.refreshAfterDate = new Date(Date.now() + 15 * 60000);
 
     let header = widget.addStack();
     header.centerAlignContent();
-    addSymbol(header, "mountain.2.fill", 15);
+    addSymbol(header, "mountain.2.fill", SIZE.header);
     header.addSpacer(6);
-    addLabel(header, "Gipfel in der Nähe", Font.semiboldSystemFont(15));
+    addLabel(header, "Gipfel in der Nähe", Font.semiboldSystemFont(SIZE.header));
     header.addSpacer();
 
     let here = await currentLocation();
@@ -370,8 +376,8 @@ async function createWidget() {
         widget.addSpacer();
         return widget;
     }
-    if (here.alt) addLabel(header, `du: ${Math.round(here.alt)} m`, Font.mediumSystemFont(11), WHITE, 0.6);
-    widget.addSpacer(large() ? 10 : 6);
+    if (here.alt) addLabel(header, `du: ${Math.round(here.alt)} m`, Font.mediumSystemFont(LARGE ? 11 : 10), WHITE, 0.6);
+    widget.addSpacer(SIZE.headerGap);
 
     let data;
     try {
@@ -390,23 +396,24 @@ async function createWidget() {
     }
     if (!peaks.length) addLabel(widget, "Keine Gipfel im Umkreis von 40 km", Font.mediumSystemFont(12), WHITE, 0.8);
     peaks.forEach((p, i) => {
-        if (i > 0) widget.addSpacer(large() ? 8 : 4);
+        if (i > 0) widget.addSpacer(SIZE.gap);
         addRow(widget, p);
     });
     widget.addSpacer();
 
+    let note = [here.old ? "letzter Standort" : "", data.stale ? "offline" : ""].filter(Boolean).join(" · ");
+    // Mittel: keine Fußzeile (Platz für 8 Gipfel), Hinweise wie "offline" klein am Ende der Liste
+    if (!SIZE.footer) {
+        if (note) addLabel(widget, note, Font.mediumSystemFont(8), WHITE, 0.5);
+        return widget;
+    }
     let footer = widget.addStack();
     footer.addSpacer();
     let df = new DateFormatter();
     df.dateFormat = "HH:mm";
-    let note = [here.old ? "letzter Standort" : "", data.stale ? "offline" : ""].filter(Boolean).join(" · ");
     addLabel(footer, `${note ? note + " · " : ""}${data.source || "OpenStreetMap"} · Luftlinie · aktualisiert ${df.string(new Date())}`,
         Font.mediumSystemFont(8), WHITE, 0.5);
     return widget;
-}
-
-function large() {
-    return COUNT > 5;
 }
 
 async function main() {
