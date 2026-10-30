@@ -1,12 +1,13 @@
-const E = "https://site.api.espn.com/apis/v2/sports/football/nfl/standings";
-const groups = (n, o = []) => { if (!n) return o; if (n.standings && n.standings.entries) o.push(n); (n.children || []).forEach(c => groups(c, o)); return o; };
-for (const lvl of ["", "?level=2", "?level=3"]) {
-  const j = await (await fetch(E + lvl)).json();
-  const g = groups(j);
-  console.log("LEVEL", lvl || "default", g.map(x => `${x.abbreviation || x.name}:${x.standings.entries.length}`).join(" "));
-  if (lvl === "?level=2" || lvl === "") {
-    const e = g[0].standings.entries[0];
-    console.log("STATS", e.stats.map(s => `${s.name || s.type}=${s.displayValue}`).join(" | "));
-    console.log("ORDER", g[0].standings.entries.map(x => `${x.team.abbreviation}(${(x.stats.find(s => s.name === "playoffSeed") || {}).value}|${(x.stats.find(s => s.name === "wins") || {}).value}-${(x.stats.find(s => s.name === "losses") || {}).value})`).join(" "));
-  }
-}
+const q = async sparql => (await (await fetch("https://query.wikidata.org/sparql?format=json&query=" + encodeURIComponent(sparql), { headers: { Accept: "application/sparql-results+json", "User-Agent": "Scriptable-Gipfel-Widget/1.0 (github.com/Schubidu93/Scriptable)" } })).json()).results.bindings;
+const a = await q(`SELECT ?item ?label ?typeLabel ?links ?ele ?coord WHERE {
+ ?item rdfs:label "Schwarzer Grat"@de. ?item wikibase:sitelinks ?links.
+ OPTIONAL { ?item wdt:P31 ?type. } OPTIONAL { ?item wdt:P2044 ?ele. } OPTIONAL { ?item wdt:P625 ?coord. }
+ SERVICE wikibase:label { bd:serviceParam wikibase:language "de,en". ?item rdfs:label ?label. ?type rdfs:label ?typeLabel. } }`);
+console.log("SG", JSON.stringify(a.map(b => [b.item.value, b.typeLabel?.value, b.links.value, b.ele?.value, b.coord?.value])));
+const lat = 47.7886, lon = 9.8809;
+const n = await q(`SELECT ?label ?links ?ele ?dist WHERE {
+ SERVICE wikibase:around { ?item wdt:P625 ?coord. bd:serviceParam wikibase:center "Point(${lon} ${lat})"^^geo:wktLiteral. bd:serviceParam wikibase:radius "40". bd:serviceParam wikibase:distance ?dist. }
+ VALUES ?type { wd:Q8502 wd:Q207326 wd:Q54050 wd:Q1595289 } ?item wdt:P31 ?type. ?item wikibase:sitelinks ?links. FILTER(?links > 0)
+ OPTIONAL { ?item wdt:P2044 ?ele. }
+ SERVICE wikibase:label { bd:serviceParam wikibase:language "de,en". ?item rdfs:label ?label. } } ORDER BY DESC(?links) DESC(?ele) LIMIT 40`);
+console.log("NOTABLE", n.map(b => `${b.label.value}(${b.links.value}|${b.ele?.value ?? "-"}|${Math.round(b.dist.value)}km)`).join(", "));
