@@ -551,7 +551,7 @@ function addResults(stack, data, images) {
 // Groß, unten rechts: Conference-Setzliste (1–4 Division-Sieger gold, 5–7 Wildcard, ab 8 blass)
 function addConference(stack, data, images) {
     let conf = data.conference;
-    addSectionTitle(stack, conf ? `${conf.name} · Setzliste` : "Setzliste");
+    addSectionTitle(stack, conf ? conf.name : "Setzliste");
     stack.addSpacer(3);
     if (!conf) {
         addLabel(stack, "–", Font.mediumSystemFont(12), WHITE, 0.7);
