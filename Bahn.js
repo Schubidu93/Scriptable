@@ -374,12 +374,10 @@ function addTime(stack, planned, real, width, strike) {
     return t;
 }
 
-function addJourney(widget, j) {
+function addJourney(row, j) {
     let now = Date.now();
     let departed = new Date(j.depReal || j.dep).getTime() < now;
     let arrived = j.arr ? new Date(j.arrReal || j.arr).getTime() < now : false;
-    let row = widget.addStack();
-    row.centerAlignContent();
     // Abfahrt, Ankunft, Zug, Gleis bzw. Status
     addTime(row, j.dep, j.depReal, TIME_W, j.cancelled);
     addSymbol(row, "arrow.right", 9, WHITE).imageOpacity = 0.5;
@@ -407,48 +405,53 @@ function background(widget) {
 
 const NONE = `Keine Direktverbindung in den nächsten ${HOURS_AHEAD} Stunden`;
 
+const ROW_H = 16;
+const ROW_GAP = 3;
+
+// Kopf einer Richtung und genau `slots` Zeilen (fehlende Fahrten als leere Zeilen gleicher Höhe)
+function addSection(widget, title, right, journeys, slots, emptyText) {
+    let header = widget.addStack();
+    header.centerAlignContent();
+    addSymbol(header, "tram.fill", 13);
+    header.addSpacer(6);
+    addLabel(header, title, Font.semiboldSystemFont(14));
+    header.addSpacer();
+    if (right) addLabel(header, right, Font.semiboldSystemFont(10), WHITE, 0.55);
+    widget.addSpacer(4);
+    for (let i = 0; i < slots; i++) {
+        if (i > 0) widget.addSpacer(ROW_GAP);
+        let slot = widget.addStack();
+        slot.size = new Size(0, ROW_H);
+        slot.centerAlignContent();
+        if (journeys[i]) addJourney(slot, journeys[i]);
+        else if (i === 0 && !journeys.length) {
+            let t = addLabel(slot, emptyText, Font.mediumSystemFont(11), WHITE, 0.75);
+            t.minimumScaleFactor = 0.7;
+            slot.addSpacer();
+        }
+    }
+}
+
 async function createWidget() {
     let data = await loadData();
     let widget = new ListWidget();
     widget.url = `${URLScheme.forRunningScript()}?aus=widget`;
     background(widget);
-    widget.setPadding(10, 16, 8, 16);
+    widget.setPadding(10, 16, 6, 16);
     let from = STATIONS[data.from], to = STATIONS[data.to];
     let short = st => st.short || st.name;
 
-    // Kopf: Hauptrichtung, rechts Stand (statt Fußzeile – Platz für 5 Fahrten)
-    let header = widget.addStack();
-    header.centerAlignContent();
-    addSymbol(header, "tram.fill", 13);
-    header.addSpacer(6);
-    addLabel(header, `${short(from)} → ${short(to)}`, Font.semiboldSystemFont(14));
-    header.addSpacer();
     let df = new DateFormatter();
     df.dateFormat = "HH:mm";
     UPDATED = data.updated || Date.now();
-    addLabel(header, `${data.stale ? "offline · " : ""}direkt · ${df.string(new Date(UPDATED))}`, Font.semiboldSystemFont(10), WHITE, 0.55);
-    widget.addSpacer(4);
-
-    if (!data.journeys.length) {
-        addLabel(widget, data.error ? `Keine Verbindungen (${data.error})` : NONE, Font.mediumSystemFont(12), WHITE, 0.8).lineLimit = data.error ? 3 : 1;
-    }
-    data.journeys.forEach((j, i) => {
-        if (i > 0) widget.addSpacer(3);
-        addJourney(widget, j);
-    });
-
-    // Gegenrichtung: höchstens zwei Fahrten
+    let stamp = `${data.stale ? "offline · " : ""}direkt · ${df.string(new Date(UPDATED))}`;
     let back = data.back || { journeys: [] };
-    widget.addSpacer(6);
-    addLabel(widget, `${short(to)} → ${short(from)}`.toUpperCase(), Font.semiboldSystemFont(9), WHITE, 0.55);
-    widget.addSpacer(2);
-    if (!back.journeys.length) {
-        addLabel(widget, back.error ? `nicht abrufbar (${back.error})` : NONE, Font.mediumSystemFont(11), WHITE, 0.7).lineLimit = 1;
-    }
-    back.journeys.forEach((j, i) => {
-        if (i > 0) widget.addSpacer(3);
-        addJourney(widget, j);
-    });
+
+    // Beide Richtungen gleich aufgebaut: Kopf (Zug-Symbol, Strecke) und feste Zeilenplätze – die Gegenrichtung
+    // beginnt so immer an derselben Stelle, auch wenn oben weniger als drei Fahrten stehen
+    addSection(widget, `${short(from)} → ${short(to)}`, stamp, data.journeys, 3, data.error ? `Keine Verbindungen (${data.error})` : NONE);
+    widget.addSpacer(8);
+    addSection(widget, `${short(to)} → ${short(from)}`, "", back.journeys, 2, back.error ? `nicht abrufbar (${back.error})` : NONE);
     widget.addSpacer();
 
     // Alle 5 Minuten neu (iOS entscheidet selbst, wann genau)
