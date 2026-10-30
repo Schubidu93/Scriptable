@@ -1,10 +1,11 @@
-// Strava – Jahresbilanz für Laufen und Radfahren: Kilometer, Anzahl, Höhenmeter und Vergleich zum Vorjahr.
+// Strava – Bilanz der letzten 12 Monate (rollierend, z. B. Nov. 2025 – Okt. 2026) für Laufen und Radfahren:
+// Kilometer, Anzahl, Höhenmeter und Vergleich mit demselben Zeitraum ein Jahr früher.
 // Die Daten kommen direkt von der Strava-API; Zugangsdaten liegen nur in der Scriptable-Keychain
 // auf dem iPhone (nie auf GitHub).
 //
 // Einrichten: Skript in der Scriptable-App starten → „Strava verbinden“ (Client ID und Secret von
 // strava.com/settings/api, Callback-Domain „localhost“).
-// Optionale Jahresziele in km – im Loader per Function("ZIELE", code)("lauf=1500 rad=5000")
+// Optionale Ziele in km für 12 Monate – im Loader per Function("ZIELE", code)("lauf=1500 rad=5000")
 // oder als Widget-Parameter "lauf=1500 rad=5000".
 // Kleines Widget: beide Sportarten kompakt. Mittleres: zwei Spalten. Großes: zusätzlich Kilometer je Monat.
 
@@ -171,7 +172,7 @@ async function setup() {
 // Alle Aktivitäten im Zeitraum (Seiten zu 200)
 async function loadActivities(token, from, to) {
     let all = [];
-    for (let page = 1; page <= 10; page++) {
+    for (let page = 1; page <= 15; page++) {
         let req = new Request(`${API}athlete/activities?after=${Math.floor(from / 1000)}&before=${Math.floor(to / 1000)}`
             + `&per_page=200&page=${page}`);
         req.headers = { Authorization: `Bearer ${token}` };
@@ -188,44 +189,61 @@ async function loadActivities(token, from, to) {
     return all;
 }
 
-// Summen je Sportart: gesamt, bis zu einem Stichtag (Tag im Jahr) und je Monat
-function summarize(activities, untilDay) {
+// Rollierende 12 Monate: vom Ersten des Monats vor 11 Monaten bis heute (z. B. 1. Nov. 2025 – 30. Okt. 2026).
+// Verglichen wird mit demselben Zeitraum ein Jahr früher (1. Nov. 2024 – 30. Okt. 2025).
+function windowStart(now) {
+    return new Date(now.getFullYear(), now.getMonth() - 11, 1);
+}
+
+// "2026-03-05T07:12:00Z" → Monatsindex im Fenster (0 = erster Monat), aus Datum ohne Zeitzone
+function monthIndex(iso, start) {
+    let [y, m] = iso.slice(0, 7).split("-").map(Number);
+    return (y - start.getFullYear()) * 12 + (m - 1 - start.getMonth());
+}
+
+// "YYYY-MM-DD" in Ortszeit für Vergleiche mit start_date_local
+function ymd(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+// Summen je Sportart: gesamt und je Monat des Fensters
+function summarize(activities, start) {
     let result = {};
     for (let sport of SPORTS) {
         let own = activities.filter(a => sport.types.includes(a.type));
-        let sum = list => ({
-            count: list.length,
-            km: list.reduce((s, a) => s + a.km, 0),
-            hm: list.reduce((s, a) => s + a.hm, 0),
-        });
         let months = Array(12).fill(0);
-        own.forEach(a => { months[Number(a.date.slice(5, 7)) - 1] += a.km; });
+        own.forEach(a => {
+            let i = monthIndex(a.date, start);
+            if (i >= 0 && i < 12) months[i] += a.km;
+        });
         result[sport.key] = {
-            ...sum(own),
-            toDate: untilDay != null ? sum(own.filter(a => dayOfYear(a.date) <= untilDay)) : null,
+            count: own.length,
+            km: own.reduce((s, a) => s + a.km, 0),
+            hm: own.reduce((s, a) => s + a.hm, 0),
             months,
         };
     }
     return result;
 }
 
-// "2026-03-05T07:12:00Z" → Tag im Jahr (1–366), aus Datum ohne Zeitzone
-function dayOfYear(iso) {
-    let [y, m, d] = iso.slice(0, 10).split("-").map(Number);
-    return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(y, 0, 1)) / 86400000) + 1;
+// Aktivitäten zwischen zwei Tagen (einschließlich), Strava-Abfrage mit einem Tag Zeitzonen-Puffer
+async function activitiesBetween(token, from, to) {
+    let list = await loadActivities(token, from.getTime() - 86400000, to.getTime() + 86400000);
+    let a = ymd(from), b = ymd(to);
+    return list.filter(x => x.date.slice(0, 10) >= a && x.date.slice(0, 10) <= b);
 }
 
-// Vorjahr ändert sich kaum – einmal am Tag neu laden
-async function lastYear(token, year, today) {
+// Vorjahreszeitraum ändert sich kaum – einmal am Tag neu laden
+async function previousWindow(token, start, now) {
+    let key = ymd(now);
     if (fm.fileExists(lastYearPath)) {
         let cached = JSON.parse(fm.readString(lastYearPath));
-        if (cached.year === year - 1 && cached.day === today) return cached.stats;
+        if (cached.key === key && cached.rolling) return cached.stats;
     }
-    let from = new Date(year - 1, 0, 1).getTime() - 86400000;
-    let to = new Date(year, 0, 1).getTime() + 86400000;
-    let activities = (await loadActivities(token, from, to)).filter(a => a.date.startsWith(String(year - 1)));
-    let stats = summarize(activities, today);
-    fm.writeString(lastYearPath, JSON.stringify({ year: year - 1, day: today, stats }));
+    let prevStart = new Date(start.getFullYear() - 1, start.getMonth(), 1);
+    let prevEnd = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+    let stats = summarize(await activitiesBetween(token, prevStart, prevEnd), prevStart);
+    fm.writeString(lastYearPath, JSON.stringify({ key, rolling: true, stats }));
     return stats;
 }
 
@@ -233,21 +251,21 @@ async function loadData() {
     try {
         let token = await accessToken();
         let now = new Date();
-        let year = now.getFullYear();
-        let today = dayOfYear(`${year}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`);
-        let from = new Date(year, 0, 1).getTime() - 86400000; // Zeitzonen-Puffer, wird unten gefiltert
-        let activities = (await loadActivities(token, from, Date.now())).filter(a => a.date.startsWith(String(year)));
-        let previous = await lastYear(token, year, today).catch(e => {
-            console.log(`Vorjahr: ${e}`);
+        let start = windowStart(now);
+        let activities = await activitiesBetween(token, start, now);
+        let previous = await previousWindow(token, start, now).catch(e => {
+            console.log(`Vorjahreszeitraum: ${e}`);
             return null;
         });
-        let data = { generated: now.toISOString(), year, day: today, current: summarize(activities, null), previous };
+        let data = { generated: now.toISOString(), start: start.toISOString(), current: summarize(activities, start), previous };
         fm.writeString(cachePath, JSON.stringify(data));
         return data;
     } catch (e) {
         console.log(`Strava: ${e}`);
         if (!fm.fileExists(cachePath)) throw e;
         let data = JSON.parse(fm.readString(cachePath));
+        // Älterer Zwischenspeicher (Kalenderjahr) passt nicht zur neuen Darstellung
+        if (!data.start) throw e;
         data.stale = true;
         UPDATED = new Date(data.generated).getTime();
         return data;
@@ -318,32 +336,36 @@ function progressBar(width, fill, mark, color) {
     return ctx.getImage();
 }
 
-// Anteil des Jahres, der schon vorbei ist
-function yearShare(data) {
-    return data.day / ((Date.UTC(data.year + 1, 0, 1) - Date.UTC(data.year, 0, 1)) / 86400000);
+// Zeitraum als Text: "Nov 25 – Okt 26"
+const MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+
+function periodText(data) {
+    let start = new Date(data.start);
+    let end = new Date(start.getFullYear(), start.getMonth() + 11, 1);
+    let label = d => `${MONTHS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
+    return `${label(start)} – ${label(end)}`;
 }
 
-// Vergleichszeile und Balkenwerte: mit Ziel gegen das Ziel, sonst gegen das Vorjahr
+// Vergleichszeile und Balkenwerte: mit Ziel (km in 12 Monaten) gegen das Ziel, sonst gegen den Vorjahreszeitraum
+// (Balken: Füllung = diese 12 Monate, Strich = Vorjahreszeitraum)
 function comparison(sport, data) {
     let stats = data.current[sport.key];
     let goal = GOALS[sport.key];
-    let share = yearShare(data);
     if (goal) {
-        let diff = stats.km - goal * share;
+        let diff = stats.km - goal;
         return {
-            fill: stats.km / goal, mark: share,
+            fill: stats.km / goal, mark: null,
             text: `Ziel ${thousands(goal)} km · ${diff >= 0 ? "+" : "−"}${thousands(Math.abs(diff))} km`,
             good: diff >= 0,
         };
     }
     let prev = data.previous && data.previous[sport.key];
-    if (!prev || !prev.km) return { fill: 0, mark: null, text: "Vorjahr: keine Daten", good: true };
-    let then = prev.toDate.km;
-    let diff = stats.km - then;
-    let percent = then ? ` · ${diff >= 0 ? "+" : "−"}${Math.round(Math.abs(diff) / then * 100)} %` : "";
+    if (!prev || !prev.km) return { fill: stats.km ? 1 : 0, mark: null, text: "Vorjahr: keine Daten", good: true };
+    let max = Math.max(stats.km, prev.km);
+    let diff = stats.km - prev.km;
     return {
-        fill: stats.km / prev.km, mark: then / prev.km,
-        text: `Vorjahr ${thousands(then)} km${percent}`,
+        fill: stats.km / max, mark: prev.km / max,
+        text: `Vorjahr ${thousands(prev.km)} km · ${diff >= 0 ? "+" : "−"}${Math.round(Math.abs(diff) / prev.km * 100)} %`,
         good: diff >= 0,
     };
 }
@@ -417,8 +439,8 @@ function monthChart(data, sport, width, height) {
     let chartHeight = height - labelHeight;
     let slot = width / 12;
     let barWidth = Math.min(10, slot * 0.55);
-    let thisMonth = new Date().getMonth();
-    "JFMAMJJASOND".split("").forEach((letter, i) => {
+    let first = new Date(data.start).getMonth();
+    Array.from({ length: 12 }, (_, i) => "JFMAMJJASOND"[(first + i) % 12]).forEach((letter, i) => {
         let x = i * slot + (slot - barWidth) / 2;
         let ph = (prev[i] / max) * chartHeight;
         if (ph > 0) {
@@ -437,7 +459,7 @@ function monthChart(data, sport, width, height) {
             ctx.fillPath();
         }
         ctx.setFont(Font.mediumSystemFont(8));
-        ctx.setTextColor(new Color("#FFFFFF", i === thisMonth ? 0.9 : 0.45));
+        ctx.setTextColor(new Color("#FFFFFF", i === 11 ? 0.9 : 0.45));
         ctx.setTextAlignedCenter();
         ctx.drawTextInRect(letter, new Rect(i * slot, chartHeight + 1, slot, labelHeight));
     });
@@ -449,9 +471,9 @@ function addHeader(widget, data) {
     header.centerAlignContent();
     addLabel(header, "STRAVA", Font.heavySystemFont(12), ORANGE);
     header.addSpacer(6);
-    addLabel(header, data ? `Jahr ${data.year}` : "", Font.semiboldSystemFont(12), WHITE, 0.85);
+    addLabel(header, data ? "12 Monate" : "", Font.semiboldSystemFont(12), WHITE, 0.85);
     header.addSpacer();
-    if (data) addLabel(header, `${Math.round(yearShare(data) * 100)} % des Jahres${data.stale ? " · offline" : ""}`,
+    if (data) addLabel(header, `${periodText(data)}${data.stale ? " · offline" : ""}`,
         Font.semiboldSystemFont(10), WHITE, 0.55);
 }
 
@@ -482,7 +504,7 @@ function buildMedium(widget, data, large) {
             title.addSpacer(4);
             addLabel(title, `${sport.title} je Monat`, Font.semiboldSystemFont(10), WHITE, 0.7);
             title.addSpacer();
-            addLabel(title, `${data.year - 1} blass`, Font.mediumSystemFont(9), WHITE, 0.45);
+            addLabel(title, "Vorjahr blass", Font.mediumSystemFont(9), WHITE, 0.45);
             widget.addSpacer(3);
             let chart = widget.addImage(monthChart(data, sport, 300, 58));
             chart.imageSize = new Size(300, 58);
