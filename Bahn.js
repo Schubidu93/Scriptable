@@ -101,7 +101,12 @@ async function request(path) {
     let status = req.response && req.response.statusCode;
     // 404 bei /plan: in dieser Stunde fährt nichts
     if (status === 404) return "";
-    if (status !== 200) throw new Error(`DB ${status || "?"}${status === 401 ? " (Zugang prüfen)" : ""}`);
+    if (status !== 200) {
+        // Begründung der DB mitgeben (z. B. "Subscription not found" bei fehlendem Timetables-Abo)
+        let reason = String(text || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 90);
+        let hint = status === 401 ? "Zugang prüfen" : status === 403 ? "Abo „Timetables“ prüfen" : "";
+        throw new Error(`DB ${status || "?"} bei ${path.split("/")[0]}${hint ? " – " + hint : ""}${reason ? ": " + reason : ""}`);
+    }
     return text;
 }
 
@@ -351,7 +356,7 @@ async function createWidget() {
 
     if (!data.journeys.length) {
         addLabel(widget, data.error ? `Keine Verbindungen (${data.error})` : "Keine Direktverbindung gefunden",
-            Font.mediumSystemFont(12), WHITE, 0.8).lineLimit = 2;
+            Font.mediumSystemFont(12), WHITE, 0.8).lineLimit = 4;
     }
     data.journeys.forEach((j, i) => {
         if (i > 0) widget.addSpacer(7);
