@@ -41,6 +41,7 @@ const SCRIPTS = [
     { name: "ECL Tabelle", file: "Fussball.js", params: { ANSICHT: "tabelle", LIGA: "ecl" }, glyph: "list-ol", color: "green" },
     { name: "Browns", file: "NFL_Team.js", glyph: "football-ball", color: "orange" },
     { name: "NFL Ergebnisse", file: "NFL_Scores.js", glyph: "football-ball", color: "deep-blue" },
+    { name: "NFL Tabelle", file: "NFL_Standings.js", glyph: "football-ball", color: "deep-blue" },
     { name: "Strava", file: "Strava.js", glyph: "running", color: "orange" },
 ];
 
