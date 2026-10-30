@@ -400,14 +400,8 @@ function addRow(widget, peak) {
     row.addSpacer(6);
     row.addSpacer();
     let ele = row.addStack();
-    ele.size = new Size(LARGE ? 88 : 78, 0);
-    ele.centerAlignContent();
+    ele.size = new Size(LARGE ? 58 : 52, 0);
     ele.addSpacer();
-    // Klein davor: Höhenunterschied zu dir ("+56", "−12")
-    if (peak.above !== null && peak.above !== undefined) {
-        addLabel(ele, `${peak.above >= 0 ? "+" : "−"}${Math.abs(peak.above)}`, Font.mediumMonospacedSystemFont(Math.max(8, SIZE.num - 3)), WHITE, 0.45);
-        ele.addSpacer(3);
-    }
     addLabel(ele, peak.ele ? `${peak.ele} m` : "–", Font.mediumMonospacedSystemFont(SIZE.num), ACCENT, peak.ele ? 1 : 0.5);
     let dist = row.addStack();
     dist.size = new Size(LARGE ? 52 : 46, 0);
