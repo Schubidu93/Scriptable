@@ -495,6 +495,12 @@ function addSection(widget, title, right, journeys, slots, emptyText) {
             let t = addLabel(slot, emptyText, Font.mediumSystemFont(11), WHITE, 0.75);
             t.minimumScaleFactor = 0.7;
             slot.addSpacer();
+        } else if (i === journeys.length) {
+            // Weniger Fahrten als Plätze (z. B. Ersatzverkehr): klein darauf hinweisen, damit die Lücke nicht wie ein Fehler aussieht
+            let n = journeys.length;
+            let t = addLabel(slot, `nur ${n} Direktverbindung${n > 1 ? "en" : ""} in den nächsten ${HOURS_AHEAD} Stunden`, Font.mediumSystemFont(10), WHITE, 0.5);
+            t.minimumScaleFactor = 0.7;
+            slot.addSpacer();
         }
     }
 }
