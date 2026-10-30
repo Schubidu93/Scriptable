@@ -1,6 +1,6 @@
 // Gipfel – die fünf nächsten Berggipfel vom aktuellen Standort aus (OpenStreetMap, natural=peak mit Namen):
-// Name, Höhe, Entfernung (Luftlinie) und Richtung als Himmelsrichtung (z. B. SSW) mit Pfeil; ein Haken, wenn
-// eine deiner Strava-/Garmin-Aktivitäten auf 50 m an den Gipfel heranführte, daneben klein der geringste Abstand (Strava-Zugang des Strava-Widgets;
+// Name, Höhe, Entfernung (Luftlinie) und Richtungspfeil; daneben ein Haken, wenn eine deiner Strava-/Garmin-
+// Aktivitäten auf 50 m an den Gipfel heranführte, sonst klein dein geringster Abstand (ohne Strava: Himmelsrichtung) (Strava-Zugang des Strava-Widgets;
 // abgeglichen wird in der App, z. B. nach Antippen – das Widget liest nur das Ergebnis).
 // Die Gipfel kommen von Wikidata (ersatzweise OpenStreetMap über die Overpass-API); neu gefragt wird erst, wenn du dich mehr als 1 km bewegt hast
 // (sonst nur Entfernung und Richtung neu berechnet). Mittleres Widget: 8 Gipfel, großes: 15.
@@ -359,25 +359,22 @@ function addRow(widget, peak) {
     arrow.size = new Size(14, 0);
     arrow.addImage(arrowImage(peak.bearing)).imageSize = new Size(SIZE.arrow, SIZE.arrow);
     row.addSpacer(4);
-    // Dezenter Haken, wenn eine Strava-/Garmin-Aktivität über den Gipfel führte (Platz immer frei, damit alles bündig bleibt)
-    if (SHOW_CHECKS) {
-        let check = row.addStack();
-        check.size = new Size(14, 0);
-        if (peak.visited) addSymbol(check, "checkmark", 10, new Color("#7CE38B")).imageOpacity = 0.85;
-        check.addSpacer();
+    // Spalte nach dem Pfeil: mit Strava der Haken (bis 50 m) bzw. klein dein geringster Abstand,
+    // ohne Strava die Himmelsrichtung
+    let info = row.addStack();
+    info.size = new Size(40, 0);
+    info.centerAlignContent();
+    if (!SHOW_CHECKS) {
+        // Breit genug für "WNW"/"WSW" (breite Buchstaben), notfalls minimal verkleinert statt "W…"
+        addLabel(info, compass(peak.bearing), Font.semiboldSystemFont(SIZE.dir), WHITE, 0.75).minimumScaleFactor = 0.7;
+    } else if (peak.visited) {
+        addSymbol(info, "checkmark", SIZE.dir + 1, new Color("#7CE38B")).imageOpacity = 0.9;
+    } else if (peak.approach !== undefined) {
+        addLabel(info, formatApproach(peak.approach), Font.mediumSystemFont(Math.max(8, SIZE.dir - 1)), WHITE, 0.5).minimumScaleFactor = 0.8;
     }
-    let dir = row.addStack();
-    // Breit genug für "WNW"/"WSW" (breite Buchstaben), notfalls minimal verkleinert statt "W…"
-    dir.size = new Size(40, 0);
-    addLabel(dir, compass(peak.bearing), Font.semiboldSystemFont(SIZE.dir), WHITE, 0.75).minimumScaleFactor = 0.7;
-    dir.addSpacer();
+    info.addSpacer();
     let name = addLabel(row, peak.name, Font.semiboldSystemFont(SIZE.name));
     name.minimumScaleFactor = 0.8;
-    // Ganz klein: wie nah du dem Gipfel bei deinen Routen schon gekommen bist (bis 2 km)
-    if (SHOW_CHECKS && peak.approach !== undefined) {
-        row.addSpacer(4);
-        addLabel(row, formatApproach(peak.approach), Font.mediumSystemFont(Math.max(8, SIZE.name - 4)), WHITE, 0.45);
-    }
     row.addSpacer(6);
     row.addSpacer();
     let ele = row.addStack();
