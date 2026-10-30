@@ -2,7 +2,7 @@
 // näheren Ort, darunter bis zu zwei in der Gegenrichtung.
 // Richtung nach Standort: näher an Kißlegg → Kißlegg–München, näher an München → München–Kißlegg.
 // Als Widget-Parameter erzwingt "nach münchen" bzw. "nach kißlegg" eine Richtung.
-// Gezeigt werden die frühesten drei Verbindungen, die höchstens eine Stunde vor jetzt abfahren
+// Gezeigt werden die frühesten drei Verbindungen, die höchstens zwei Stunden vor jetzt abfahren
 // (auch schon abgefahrene, solange sie unterwegs sind – mit Verspätung).
 // Quelle: offizielle Timetables-API der DB (DB API Marketplace, kostenlos). Einrichten: Skript in der App starten
 // und Client ID sowie API Key eingeben – sie liegen nur in der Keychain dieses iPhones. Mittleres Widget.
@@ -278,7 +278,8 @@ function shortStation(name) {
     return String(name).replace(/\s*\(.*?\)/g, "").replace(/^München-/, "").replace(/ Hbf$/, "").trim();
 }
 
-// Abfahrten ab vor einer Stunde bis HOURS_AHEAD Stunden voraus (so weit liefert die Abfrage Fahrten)
+// Abfahrten ab HOURS_BACK Stunden vor jetzt bis HOURS_AHEAD Stunden voraus (so weit liefert die Abfrage Fahrten)
+const HOURS_BACK = 2;
 const HOURS_AHEAD = 11;
 
 async function loadJourneys(fromKey, toKey, count = 3) {
@@ -286,9 +287,9 @@ async function loadJourneys(fromKey, toKey, count = 3) {
     // Ziel im Laufweg: jeder Halt, der so heißt wie das Ziel oder mit dessen Namen beginnt ("München Hbf Gl.27-36")
     let query = STATIONS[toKey].query;
     let isTarget = name => name === query || name.startsWith(query + " ") || to.some(st => st.name === name);
-    let since = new Date(Date.now() - 60 * MINUTE);
-    // Abfahrten ab vor einer Stunde bis in 11 Stunden (die Direktzüge fahren etwa alle zwei Stunden)
-    let departures = Object.values(await plansAll(from, since, HOURS_AHEAD + 1))
+    let since = new Date(Date.now() - HOURS_BACK * 60 * MINUTE);
+    // Abfahrten ab vor zwei Stunden bis in 11 Stunden (die Direktzüge fahren etwa alle zwei Stunden; einer ist ~2 h unterwegs)
+    let departures = Object.values(await plansAll(from, since, HOURS_AHEAD + HOURS_BACK))
         .filter(s => s.dp && (s.dp.ppth || "").split("|").some(isTarget))
         .map(s => ({ ...s, depTime: parseTime(s.dp.pt) }))
         .filter(s => s.depTime >= since)
