@@ -18,6 +18,8 @@ const COUNT = SIZE.count;
 const NOTABLE_COUNT = LARGE ? 8 : 3;
 // Markant: Wikipedia-Artikel und mindestens NOTABLE_ABOVE m höher als du, die nächsten zuerst
 const NOTABLE_ABOVE = 200;
+// … und Dominanz (Abstand zum nächsthöheren Punkt) von mindestens 2 km – keine Nebengipfel
+const MIN_ISOLATION = 2000;
 const MIN_ABOVE = 30;
 
 const fm = FileManager.local();
@@ -92,19 +94,20 @@ const PEAK_TYPES = ["Q8502", "Q207326", "Q54050", "Q1595289", "Q3618634", "Q1111
 // notable: nur Gipfel mit Artikel in der deutschen oder englischen Wikipedia, nach Entfernung – für "markant im Umkreis"
 // (nicht irgendein Sitelink: die cebuanische Wikipedia hat per Bot Millionen Artikel zu fast jeder Erhebung)
 async function wikidata(here, radius, notable = false) {
-    let query = `SELECT ?item ?label ?ele ?coord ?links ?de ?en WHERE {
+    let query = `SELECT ?item ?label ?ele ?coord ?links ?de ?en ?iso WHERE {
  SERVICE wikibase:around { ?item wdt:P625 ?coord. bd:serviceParam wikibase:center "Point(${here.lon.toFixed(5)} ${here.lat.toFixed(5)})"^^geo:wktLiteral. bd:serviceParam wikibase:radius "${radius / 1000}". bd:serviceParam wikibase:distance ?dist. }
  VALUES ?type { ${PEAK_TYPES} }
  ?item wdt:P31 ?type.
  ?item wikibase:sitelinks ?links.
  ${notable ? `OPTIONAL { ?de schema:about ?item; schema:isPartOf <https://de.wikipedia.org/>. }
  OPTIONAL { ?en schema:about ?item; schema:isPartOf <https://en.wikipedia.org/>. }
- FILTER(BOUND(?de) || BOUND(?en))` : ""}
+ FILTER(BOUND(?de) || BOUND(?en))
+ OPTIONAL { ?item p:P2659/psn:P2659/wikibase:quantityAmount ?iso. }` : ""}
  OPTIONAL { ?item wdt:P2044 ?ele. }
  SERVICE wikibase:label { bd:serviceParam wikibase:language "de,en". ?item rdfs:label ?label. }
 } ORDER BY ?dist LIMIT ${notable ? 150 : 120}`;
     let req = new Request(`https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`);
-    req.timeoutInterval = config.runsInWidget ? 12 : 30;
+    req.timeoutInterval = config.runsInWidget ? 12 : 45;
     req.headers = { "Accept": "application/sparql-results+json", "User-Agent": "Scriptable-Gipfel-Widget/1.0 (github.com/Schubidu93/Scriptable)" };
     let json = await req.loadJSON();
     let seen = new Set();
@@ -113,7 +116,9 @@ async function wikidata(here, radius, notable = false) {
         return m && !/^Q\d+$/.test(b.label.value) ? { name: b.label.value, ele: b.ele ? Math.round(Number(b.ele.value)) : null,
             lat: Number(m[2]), lon: Number(m[1]), links: b.links ? Number(b.links.value) : 0,
             // Wikipedia-Artikel: deutsch, sonst englisch
-            wiki: b.de ? b.de.value : b.en ? b.en.value : null } : null;
+            wiki: b.de ? b.de.value : b.en ? b.en.value : null,
+            // Dominanz (topografische Isolation, P2659) in Metern
+            isolation: b.iso ? Math.round(Number(b.iso.value)) : null } : null;
     }).filter(p => p && !isSpotHeight(p.name) && !seen.has(p.name) && seen.add(p.name));
 }
 
@@ -136,7 +141,7 @@ async function loadPeaks(here) {
     try { if (fm.fileExists(cachePath)) cached = JSON.parse(fm.readString(cachePath)); } catch (e) {}
     // Gleicher Ort (unter 1 km) und höchstens eine Woche alt: gespeicherte Gipfel verwenden
     // Markante Gipfel fehlen (Abfrage dauert ~10 s und scheitert im Widget gelegentlich): dann erneut versuchen
-    if (cached && cached.peaks && cached.version === 6 && distanceKm(here, cached.center) < 1 && Date.now() - cached.time < 7 * 86400000
+    if (cached && cached.peaks && cached.version === 7 && distanceKm(here, cached.center) < 1 && Date.now() - cached.time < 7 * 86400000
         && (cached.notable && cached.notable.length || cached.source !== "Wikidata")) return cached;
     try {
         // Zuerst Wikidata (antwortet in wenigen Sekunden), nur ersatzweise die oft überlasteten Overpass-Server
@@ -157,7 +162,7 @@ async function loadPeaks(here) {
         let notable = source === "Wikidata" ? await wikidata(here, RADIUS, true).catch(() => []) : [];
         // Fehlschlag: die bisherigen markanten Gipfel (gleicher Ort) behalten
         if (!notable.length && cached && cached.notable && distanceKm(here, cached.center) < 20) notable = cached.notable;
-        let data = { version: 6, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source };
+        let data = { version: 7, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source };
         fm.writeString(cachePath, JSON.stringify(data));
         return data;
     } catch (e) {
@@ -457,6 +462,8 @@ async function createWidget() {
     let key = p => peakKey(p);
     let notable = (data.notable || []).filter(usable).map(withGeo)
         .filter(p => p.above !== null ? p.above >= NOTABLE_ABOVE : (p.ele || 0) >= 1000)
+        // Nur eigenständige Berge: Dominanz mindestens MIN_ISOLATION (ohne Angabe nicht)
+        .filter(p => p.isolation !== null && p.isolation !== undefined && p.isolation >= MIN_ISOLATION)
         .sort((a, b) => a.km - b.km).slice(0, NOTABLE_COUNT);
     let shown = new Set(notable.map(key));
     // Nächste Gipfel, die wenigstens MIN_ABOVE m über dir liegen (reicht das nicht, auch niedrigere). Fehlende markante
@@ -486,7 +493,7 @@ async function createWidget() {
         if (i === nearest.length && notable.length) {
             widget.addSpacer(LARGE ? 4 : 1);
             if (LARGE) {
-                addLabel(widget, `MARKANT IM UMKREIS · WIKIPEDIA (DE/EN), ${NOTABLE_ABOVE}+ M HÖHER`, Font.semiboldSystemFont(9), WHITE, 0.5);
+                addLabel(widget, `MARKANT · WIKIPEDIA, ${NOTABLE_ABOVE}+ M HÖHER, DOMINANZ ${MIN_ISOLATION / 1000}+ KM`, Font.semiboldSystemFont(9), WHITE, 0.5);
                 widget.addSpacer(2);
             } else {
                 let rule = widget.addStack();
