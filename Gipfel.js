@@ -1,10 +1,10 @@
 // Gipfel – die fünf nächsten Berggipfel vom aktuellen Standort aus (OpenStreetMap, natural=peak mit Namen):
 // Name, Höhe, Entfernung (Luftlinie) und Richtung als Himmelsrichtung (z. B. SSW) mit Pfeil.
-// Die Gipfel kommen über die Overpass-API; neu gefragt wird erst, wenn du dich mehr als 1 km bewegt hast
+// Die Gipfel kommen von Wikidata (ersatzweise OpenStreetMap über die Overpass-API); neu gefragt wird erst, wenn du dich mehr als 1 km bewegt hast
 // (sonst nur Entfernung und Richtung neu berechnet). Mittleres Widget: 5 Gipfel, großes: 10.
 
 const ENDPOINTS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
-const RADII = [15000, 40000]; // erst 15 km, reicht das nicht für genug Gipfel, 40 km
+const RADIUS = 40000; // Umkreis in Metern
 const FAMILY = config.widgetFamily || "medium";
 const COUNT = FAMILY === "large" || FAMILY === "extraLarge" ? 10 : 5;
 
@@ -71,6 +71,26 @@ async function overpass(here, radius) {
     throw lastError || new Error("Overpass nicht erreichbar");
 }
 
+// Wikidata (Berge, Gipfel, Hügel mit Koordinate und Höhe, nach Entfernung) – schnell und zuverlässig erreichbar
+async function wikidata(here, radius) {
+    let query = `SELECT ?item ?label ?ele ?coord WHERE {
+ SERVICE wikibase:around { ?item wdt:P625 ?coord. bd:serviceParam wikibase:center "Point(${here.lon.toFixed(5)} ${here.lat.toFixed(5)})"^^geo:wktLiteral. bd:serviceParam wikibase:radius "${radius / 1000}". bd:serviceParam wikibase:distance ?dist. }
+ VALUES ?type { wd:Q8502 wd:Q207326 wd:Q54050 wd:Q1595289 }
+ ?item wdt:P31 ?type.
+ OPTIONAL { ?item wdt:P2044 ?ele. }
+ SERVICE wikibase:label { bd:serviceParam wikibase:language "de,en". ?item rdfs:label ?label. }
+} ORDER BY ?dist LIMIT 80`;
+    let req = new Request(`https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`);
+    req.timeoutInterval = config.runsInWidget ? 10 : 30;
+    req.headers = { "Accept": "application/sparql-results+json", "User-Agent": "Scriptable-Gipfel-Widget/1.0 (github.com/Schubidu93/Scriptable)" };
+    let json = await req.loadJSON();
+    let seen = new Set();
+    return json.results.bindings.map(b => {
+        let m = /Point\(([-\d.]+) ([-\d.]+)\)/.exec(b.coord.value);
+        return m && !/^Q\d+$/.test(b.label.value) ? { name: b.label.value, ele: b.ele ? Math.round(Number(b.ele.value)) : null, lat: Number(m[2]), lon: Number(m[1]) } : null;
+    }).filter(p => p && !seen.has(p.name) && seen.add(p.name));
+}
+
 // "1838", "1838 m", "1.838,5" → 1838
 function elevation(tag) {
     if (!tag) return null;
@@ -84,22 +104,25 @@ async function loadPeaks(here) {
     // Gleicher Ort (unter 1 km) und höchstens eine Woche alt: gespeicherte Gipfel verwenden
     if (cached && cached.peaks && distanceKm(here, cached.center) < 1 && Date.now() - cached.time < 7 * 86400000) return cached;
     try {
-        let peaks = [];
-        // Im Widget nur eine Abfrage (großer Umkreis), in der App erst klein, dann groß
-        for (let radius of config.runsInWidget ? RADII.slice(-1) : RADII) {
-            peaks = (await overpass(here, radius)).map(e => ({
+        // Zuerst Wikidata (antwortet in wenigen Sekunden), nur ersatzweise die oft überlasteten Overpass-Server
+        let peaks = [], source = "Wikidata";
+        try {
+            peaks = await wikidata(here, RADIUS);
+        } catch (e) {
+            console.log(`Wikidata: ${e} – OpenStreetMap`);
+            peaks = (await overpass(here, RADIUS)).map(e => ({
                 name: e.tags["name:de"] || e.tags.name,
                 ele: elevation(e.tags.ele),
                 lat: e.lat,
                 lon: e.lon,
             }));
-            if (peaks.length >= COUNT * 2) break;
+            source = "OpenStreetMap";
         }
-        let data = { center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks };
+        let data = { center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, source };
         fm.writeString(cachePath, JSON.stringify(data));
         return data;
     } catch (e) {
-        console.log(`Overpass: ${e}`);
+        console.log(`Gipfel: ${e}`);
         if (cached) return { ...cached, stale: true };
         throw e;
     }
@@ -231,7 +254,8 @@ async function createWidget() {
     let df = new DateFormatter();
     df.dateFormat = "HH:mm";
     let note = [here.old ? "letzter Standort" : "", data.stale ? "offline" : ""].filter(Boolean).join(" · ");
-    addLabel(footer, `${note ? note + " · " : ""}Luftlinie · aktualisiert ${df.string(new Date())}`, Font.mediumSystemFont(8), WHITE, 0.5);
+    addLabel(footer, `${note ? note + " · " : ""}${data.source || "OpenStreetMap"} · Luftlinie · aktualisiert ${df.string(new Date())}`,
+        Font.mediumSystemFont(8), WHITE, 0.5);
     return widget;
 }
 
