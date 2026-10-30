@@ -1,6 +1,6 @@
-// NFL – Tabelle. Mittleres Widget: Playoff-Bild beider Conferences (Setzliste 1–7, dahinter das erste Team
-// außerhalb); Division-Sieger (1–4) mit goldener Ziffer. Großes Widget: alle acht Divisions.
-// Lieblingsteam (Standard "CLE") gold hinterlegt; steht es nicht unter den ersten acht, erscheint es als letzte Zeile.
+// NFL – Tabelle. Mittleres Widget: alle 32 Teams nach Setzliste, je Conference zwei Spalten (1–8 | 9–16);
+// Division-Sieger (1–4) mit goldener Ziffer, ab Platz 8 blass. Großes Widget: alle acht Divisions.
+// Lieblingsteam (Standard "CLE") gold hinterlegt.
 // Team im Loader per Function("TEAM", code)("pit") oder als Widget-Parameter, z. B. "kc".
 // Quelle: ESPN (öffentliche Schnittstelle).
 
@@ -122,44 +122,51 @@ function background(widget) {
 function addTeamRow(stack, r, images, rank, opts) {
     let line = stack.addStack();
     line.centerAlignContent();
-    line.setPadding(0, 2, 0, 2);
+    line.setPadding(0, opts.pad ?? 2, 0, opts.pad ?? 2);
     if (r.abbr === FAVORITE) {
         line.backgroundColor = FAV_BACKGROUND;
-        line.cornerRadius = 4;
+        line.cornerRadius = 3;
     }
     let num = line.addStack();
-    num.size = new Size(16, 0);
+    num.size = new Size(opts.numW || 16, 0);
     num.addSpacer();
     addLabel(num, rank, Font.semiboldMonospacedSystemFont(opts.size - 1), opts.rankColor || WHITE, opts.rankColor ? 1 : 0.6);
-    line.addSpacer(5);
+    line.addSpacer(opts.gap ?? 5);
     if (images[r.logo]) line.addImage(images[r.logo]).imageSize = new Size(opts.logo, opts.logo);
     else line.addSpacer(opts.logo);
-    line.addSpacer(5);
+    line.addSpacer(opts.gap ?? 5);
+    if (opts.abbrW) {
+        // Feste Spalten statt flexiblem Abstand (der kostet mindestens 8 pt) – vier Spalten passen sonst nicht
+        let abbr = line.addStack();
+        abbr.size = new Size(opts.abbrW, 0);
+        addLabel(abbr, r.abbr, Font.semiboldSystemFont(opts.size), WHITE, opts.dim ? 0.55 : 1).minimumScaleFactor = 0.8;
+        let rec = line.addStack();
+        rec.size = new Size(opts.recW, 0);
+        addLabel(rec, r.record, Font.mediumMonospacedSystemFont(opts.size), WHITE, opts.dim ? 0.55 : 0.9).minimumScaleFactor = 0.75;
+        return;
+    }
     addLabel(line, r.abbr, Font.semiboldSystemFont(opts.size), WHITE, opts.dim ? 0.55 : 1);
     line.addSpacer();
     addLabel(line, r.record, Font.mediumMonospacedSystemFont(opts.size), WHITE, opts.dim ? 0.55 : 0.9);
 }
 
-// Mittel: Setzliste 1–7, Trennlinie, dann Platz 8 – bzw. das Lieblingsteam, wenn es weiter hinten steht
+// Mittel: alle 16 Teams einer Conference in zwei Spalten (Setzliste 1–8 | 9–16); Division-Sieger (1–4) gold,
+// Wildcards (5–7) weiß, ab Platz 8 (außerhalb der Playoffs) blass
+const COMPACT = { size: 9, logo: 9, numW: 12, gap: 2, abbrW: 21, recW: 24, pad: 1 };
+
 function addConference(stack, group, images) {
-    let col = stack.addStack();
-    col.layoutVertically();
-    addLabel(col, group.name, Font.semiboldSystemFont(9), WHITE, 0.6);
-    col.addSpacer(1);
-    // Kompakt, damit acht Zeilen ins mittlere Widget passen
-    let opts = { size: 10, logo: 11 };
-    group.rows.slice(0, 7).forEach((r, i) => {
-        addTeamRow(col, r, images, r.seed || i + 1, { ...opts, rankColor: i < 4 ? GOLD : null });
+    [group.rows.slice(0, 8), group.rows.slice(8, 16)].forEach((list, half) => {
+        if (half > 0) stack.addSpacer(4);
+        let col = stack.addStack();
+        col.layoutVertically();
+        addLabel(col, half === 0 ? group.name : " ", Font.semiboldSystemFont(9), WHITE, 0.6);
+        col.addSpacer(1);
+        list.forEach((r, i) => {
+            let rank = r.seed || half * 8 + i + 1;
+            if (i > 0) col.addSpacer(1);
+            addTeamRow(col, r, images, rank, { ...COMPACT, rankColor: rank <= 4 ? GOLD : null, dim: rank >= 8 });
+        });
     });
-    col.addSpacer(2);
-    let rule = col.addStack();
-    rule.size = new Size(0, 1);
-    rule.backgroundColor = new Color("#FFFFFF", 0.25);
-    rule.addSpacer();
-    col.addSpacer(2);
-    let favIndex = group.rows.findIndex(r => r.abbr === FAVORITE);
-    let extra = favIndex >= 8 ? favIndex : 7;
-    if (group.rows[extra]) addTeamRow(col, group.rows[extra], images, group.rows[extra].seed || extra + 1, { ...opts, dim: true });
 }
 
 // Groß: zwei Spalten (AFC | NFC), je vier Divisions mit vier Teams
@@ -175,7 +182,7 @@ async function createWidget() {
     let data = await loadData();
     let widget = new ListWidget();
     background(widget);
-    widget.setPadding(LARGE ? 12 : 10, 14, LARGE ? 6 : 8, 14);
+    widget.setPadding(LARGE ? 12 : 10, LARGE ? 14 : 12, LARGE ? 6 : 8, LARGE ? 14 : 12);
     widget.refreshAfterDate = new Date(Date.now() + 60 * 60000);
     widget.url = "https://www.espn.com/nfl/standings";
 
@@ -183,7 +190,7 @@ async function createWidget() {
     header.centerAlignContent();
     addLabel(header, "🏈 NFL", Font.semiboldSystemFont(LARGE ? 15 : 13));
     header.addSpacer(6);
-    addLabel(header, LARGE ? "Divisions" : "Playoff-Bild", Font.semiboldSystemFont(LARGE ? 12 : 11), WHITE, 0.7);
+    addLabel(header, LARGE ? "Divisions" : "Setzliste", Font.semiboldSystemFont(LARGE ? 12 : 11), WHITE, 0.7);
     header.addSpacer();
     let df = new DateFormatter();
     df.dateFormat = "HH:mm";
@@ -209,7 +216,7 @@ async function createWidget() {
         });
     } else {
         data.groups.slice(0, 2).forEach((g, i) => {
-            if (i > 0) body.addSpacer(16);
+            if (i > 0) body.addSpacer();
             addConference(body, g, images);
         });
     }
