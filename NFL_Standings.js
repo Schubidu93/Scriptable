@@ -152,11 +152,26 @@ function addTeamRow(stack, r, images, rank, opts) {
 
 // Mittel: alle 16 Teams einer Conference in zwei Spalten (Setzliste 1–8 | 9–16); Division-Sieger (1–4) gold,
 // Wildcards (5–7) weiß, ab Platz 8 (außerhalb der Playoffs) blass
-const COMPACT = { size: 9, logo: 9, numW: 12, gap: 2, abbrW: 21, recW: 24, pad: 1 };
+// Spaltenbreiten aus der Widget-Breite (je nach iPhone 329–364 pt): feste Teile (Platz, Logo, Abstände) und der Rest
+// für Kürzel und Bilanz – so bleibt in der Mitte nur ein schmaler Abstand und "10"–"16" bzw. "4-2-1" passen
+const MID_GAP = 10, HALF_GAP = 4, SIDE_PAD = 12;
+
+function mediumWidth() {
+    let w = Device.screenSize().width;
+    return w >= 428 ? 364 : w >= 390 ? 338 : 329;
+}
+
+function compactOptions() {
+    let col = (mediumWidth() - 2 * SIDE_PAD - MID_GAP - 2 * HALF_GAP) / 4;
+    let fixed = 1 + 14 + 2 + 9 + 2 + 1; // Rand, Platz, Abstand, Logo, Abstand, Rand
+    let rest = Math.floor(col - fixed);
+    let abbrW = Math.round(rest * 0.42);
+    return { size: 9, logo: 9, numW: 14, gap: 2, abbrW, recW: rest - abbrW, pad: 1 };
+}
 
 function addConference(stack, group, images) {
     [group.rows.slice(0, 8), group.rows.slice(8, 16)].forEach((list, half) => {
-        if (half > 0) stack.addSpacer(4);
+        if (half > 0) stack.addSpacer(HALF_GAP);
         let col = stack.addStack();
         col.layoutVertically();
         addLabel(col, half === 0 ? group.name : " ", Font.semiboldSystemFont(9), WHITE, 0.6);
@@ -164,7 +179,7 @@ function addConference(stack, group, images) {
         list.forEach((r, i) => {
             let rank = r.seed || half * 8 + i + 1;
             if (i > 0) col.addSpacer(1);
-            addTeamRow(col, r, images, rank, { ...COMPACT, rankColor: rank <= 4 ? GOLD : null, dim: rank >= 8 });
+            addTeamRow(col, r, images, rank, { ...compactOptions(), rankColor: rank <= 4 ? GOLD : null, dim: rank >= 8 });
         });
     });
 }
@@ -182,7 +197,7 @@ async function createWidget() {
     let data = await loadData();
     let widget = new ListWidget();
     background(widget);
-    widget.setPadding(LARGE ? 12 : 10, LARGE ? 14 : 12, LARGE ? 6 : 8, LARGE ? 14 : 12);
+    widget.setPadding(LARGE ? 12 : 10, LARGE ? 14 : SIDE_PAD, LARGE ? 6 : 8, LARGE ? 14 : SIDE_PAD);
     widget.refreshAfterDate = new Date(Date.now() + 60 * 60000);
     widget.url = "https://www.espn.com/nfl/standings";
 
@@ -216,7 +231,7 @@ async function createWidget() {
         });
     } else {
         data.groups.slice(0, 2).forEach((g, i) => {
-            if (i > 0) body.addSpacer();
+            if (i > 0) body.addSpacer(MID_GAP);
             addConference(body, g, images);
         });
     }
