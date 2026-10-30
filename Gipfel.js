@@ -1,6 +1,7 @@
 // Gipfel – die fünf nächsten Berggipfel vom aktuellen Standort aus (OpenStreetMap, natural=peak mit Namen):
 // Name, Höhe, Entfernung (Luftlinie) und Richtung als Himmelsrichtung (z. B. SSW) mit Pfeil; ein Haken, wenn
-// eine deiner Strava-/Garmin-Aktivitäten auf 50 m an den Gipfel heranführte (Strava-Zugang des Strava-Widgets).
+// eine deiner Strava-/Garmin-Aktivitäten auf 50 m an den Gipfel heranführte (Strava-Zugang des Strava-Widgets;
+// abgeglichen wird in der App, z. B. nach Antippen – das Widget liest nur das Ergebnis).
 // Die Gipfel kommen von Wikidata (ersatzweise OpenStreetMap über die Overpass-API); neu gefragt wird erst, wenn du dich mehr als 1 km bewegt hast
 // (sonst nur Entfernung und Richtung neu berechnet). Mittleres Widget: 8 Gipfel, großes: 15.
 
@@ -258,6 +259,21 @@ function visitedPeaks(peaks, store) {
     });
 }
 
+const visitedPath = fm.joinPath(fm.documentsDirectory(), "gipfel-besucht.json");
+const peakKey = p => `${p.lat.toFixed(4)},${p.lon.toFixed(4)}`;
+
+function saveVisited(peaks, store) {
+    let known = readVisited();
+    let flags = visitedPeaks(peaks, store);
+    peaks.forEach((p, i) => { if (flags[i]) known.add(peakKey(p)); });
+    fm.writeString(visitedPath, JSON.stringify([...known]));
+}
+
+function readVisited() {
+    try { if (fm.fileExists(visitedPath)) return new Set(JSON.parse(fm.readString(visitedPath))); } catch (e) {}
+    return new Set();
+}
+
 // ---------- Darstellung ----------
 
 function addLabel(stack, text, font, color = WHITE, opacity = 1) {
@@ -391,8 +407,11 @@ async function createWidget() {
         .sort((a, b) => a.km - b.km).slice(0, COUNT);
     if (stravaConnected()) {
         SHOW_CHECKS = true;
-        let visited = visitedPeaks(peaks, await syncTracks());
-        peaks.forEach((p, i) => { p.visited = visited[i]; });
+        // Der Abgleich mit allen Routen ist für den Homescreen zu schwer (iOS verwirft dann still das Bild):
+        // nur in der App rechnen – für alle gespeicherten Gipfel – und als kleine Liste merken
+        if (!config.runsInWidget) saveVisited(data.peaks, await syncTracks());
+        let visited = readVisited();
+        peaks.forEach(p => { p.visited = visited.has(peakKey(p)); });
     }
     if (!peaks.length) addLabel(widget, "Keine Gipfel im Umkreis von 40 km", Font.mediumSystemFont(12), WHITE, 0.8);
     peaks.forEach((p, i) => {
@@ -424,7 +443,14 @@ async function main() {
     Script.complete();
 }
 
+// Fehler sichtbar machen – sonst behält iOS still das letzte Bild
 main().catch(e => {
     console.error(e);
+    let widget = new ListWidget();
+    background(widget);
+    let t = widget.addText(`Gipfel: Fehler – ${e.message || e}`);
+    t.font = Font.mediumSystemFont(11);
+    t.textColor = WHITE;
+    if (config.runsInWidget) Script.setWidget(widget);
     Script.complete();
 });
