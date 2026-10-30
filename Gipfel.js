@@ -113,13 +113,15 @@ async function wikidata(here, radius, notable = false) {
     let seen = new Set();
     return json.results.bindings.map(b => {
         let m = /Point\(([-\d.]+) ([-\d.]+)\)/.exec(b.coord.value);
-        return m && !/^Q\d+$/.test(b.label.value) ? { name: b.label.value, ele: b.ele ? Math.round(Number(b.ele.value)) : null,
+        return m && !/^Q\d+$/.test(b.label.value) ? { id: b.item.value, name: b.label.value, ele: b.ele ? Math.round(Number(b.ele.value)) : null,
             lat: Number(m[2]), lon: Number(m[1]), links: b.links ? Number(b.links.value) : 0,
             // Wikipedia-Artikel: deutsch, sonst englisch
             wiki: b.de ? b.de.value : b.en ? b.en.value : null,
             // Dominanz (topografische Isolation, P2659) in Metern
             isolation: b.iso ? Math.round(Number(b.iso.value)) : null } : null;
-    }).filter(p => p && !isSpotHeight(p.name) && !seen.has(p.name) && seen.add(p.name));
+    // Doppelte (ein Gipfel mit mehreren Typen) über die Wikidata-ID entfernen – nicht über den Namen, sonst verdrängt
+    // z. B. ein naher, niedriger "Hochberg" den Hochberg in den Allgäuer Alpen
+    }).filter(p => p && !isSpotHeight(p.name) && !seen.has(p.id) && seen.add(p.id));
 }
 
 // Namenlose Höhenpunkte ("P.710", "Punkt 1234", "Pt. 812") sind keine Gipfel
@@ -141,7 +143,7 @@ async function loadPeaks(here) {
     try { if (fm.fileExists(cachePath)) cached = JSON.parse(fm.readString(cachePath)); } catch (e) {}
     // Gleicher Ort (unter 1 km) und höchstens eine Woche alt: gespeicherte Gipfel verwenden
     // Markante Gipfel fehlen (Abfrage dauert ~10 s und scheitert im Widget gelegentlich): dann erneut versuchen
-    if (cached && cached.peaks && cached.version === 7 && distanceKm(here, cached.center) < 1 && Date.now() - cached.time < 7 * 86400000
+    if (cached && cached.peaks && cached.version === 8 && distanceKm(here, cached.center) < 1 && Date.now() - cached.time < 7 * 86400000
         && (cached.notable && cached.notable.length || cached.source !== "Wikidata")) return cached;
     try {
         // Zuerst Wikidata (antwortet in wenigen Sekunden), nur ersatzweise die oft überlasteten Overpass-Server
@@ -162,7 +164,7 @@ async function loadPeaks(here) {
         let notable = source === "Wikidata" ? await wikidata(here, RADIUS, true).catch(() => []) : [];
         // Fehlschlag: die bisherigen markanten Gipfel (gleicher Ort) behalten
         if (!notable.length && cached && cached.notable && distanceKm(here, cached.center) < 20) notable = cached.notable;
-        let data = { version: 7, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source };
+        let data = { version: 8, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source };
         fm.writeString(cachePath, JSON.stringify(data));
         return data;
     } catch (e) {
