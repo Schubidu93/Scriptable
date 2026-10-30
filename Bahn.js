@@ -1,4 +1,5 @@
-// Bahn – die nächsten drei Direktverbindungen zwischen Kißlegg und München (ohne Umstieg), mit Verspätung.
+// Bahn – Direktverbindungen zwischen Kißlegg und München (ohne Umstieg), mit Verspätung: oben bis zu drei ab dem
+// näheren Ort, darunter bis zu zwei in der Gegenrichtung.
 // Richtung nach Standort: näher an Kißlegg → Kißlegg–München, näher an München → München–Kißlegg.
 // Als Widget-Parameter erzwingt "nach münchen" bzw. "nach kißlegg" eine Richtung.
 // Gezeigt werden die frühesten drei Verbindungen, die höchstens eine Stunde vor jetzt abfahren
@@ -200,7 +201,15 @@ async function plan(eva, date) {
     }
     let day = `${String(date.getFullYear()).slice(2)}${pad(date.getMonth() + 1)}${pad(date.getDate())}`;
     let key = `${eva}/${day}/${pad(date.getHours())}`;
-    if (!PLAN_CACHE[key]) PLAN_CACHE[key] = { time: Date.now(), stops: parseStops(await request(`plan/${key}`)) };
+    if (!PLAN_CACHE[key]) {
+        try {
+            PLAN_CACHE[key] = { time: Date.now(), stops: parseStops(await request(`plan/${key}`)) };
+        } catch (e) {
+            // Zu viele Anfragen (kostenlos: 60 je Minute) – diese Stunde beim nächsten Mal nachholen statt alles abzubrechen
+            if (/DB 429/.test(String(e.message || e))) return {};
+            throw e;
+        }
+    }
     return PLAN_CACHE[key].stops;
 }
 
@@ -219,19 +228,22 @@ async function changesAll(list) {
     return Object.assign({}, ...lists);
 }
 
-async function loadJourneys(fromKey, toKey) {
+// Abfahrten ab vor einer Stunde bis HOURS_AHEAD Stunden voraus (so weit liefert die Abfrage Fahrten)
+const HOURS_AHEAD = 11;
+
+async function loadJourneys(fromKey, toKey, count = 3) {
     let [from, to] = await Promise.all([station(fromKey), station(toKey)]);
     // Ziel im Laufweg: jeder Halt, der so heißt wie das Ziel oder mit dessen Namen beginnt ("München Hbf Gl.27-36")
     let query = STATIONS[toKey].query;
     let isTarget = name => name === query || name.startsWith(query + " ") || to.some(st => st.name === name);
     let since = new Date(Date.now() - 60 * MINUTE);
     // Abfahrten ab vor einer Stunde bis in 11 Stunden (die Direktzüge fahren etwa alle zwei Stunden)
-    let departures = Object.values(await plansAll(from, since, 12))
+    let departures = Object.values(await plansAll(from, since, HOURS_AHEAD + 1))
         .filter(s => s.dp && (s.dp.ppth || "").split("|").some(isTarget))
         .map(s => ({ ...s, depTime: parseTime(s.dp.pt) }))
         .filter(s => s.depTime >= since)
         .sort((a, b) => a.depTime - b.depTime)
-        .slice(0, 3);
+        .slice(0, count);
     if (!departures.length) return [];
     // Teilbahnhöfe des Ziels aus den Laufwegen ergänzen, damit dort die Ankunft gefunden wird
     let seenTargets = new Set(departures.flatMap(d => d.dp.ppth.split("|").filter(isTarget)));
@@ -271,11 +283,18 @@ function localStamp(date) {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
 }
 
+// Oben die Fahrten ab dem näheren Ort (bis zu 3), darunter die Gegenrichtung (bis zu 2)
 async function loadData() {
     let [fromKey, toKey] = await chooseDirection();
     try {
-        let journeys = await loadJourneys(fromKey, toKey);
-        let data = { from: fromKey, to: toKey, journeys, updated: Date.now() };
+        let journeys = await loadJourneys(fromKey, toKey, 3);
+        let back = { journeys: [] };
+        try {
+            back.journeys = await loadJourneys(toKey, fromKey, 2);
+        } catch (e) {
+            back.error = String(e.message || e);
+        }
+        let data = { from: fromKey, to: toKey, journeys, back, updated: Date.now() };
         fm.writeString(cachePath, JSON.stringify(data));
         return data;
     } catch (e) {
@@ -289,7 +308,7 @@ async function loadData() {
                 return data;
             }
         }
-        return { from: fromKey, to: toKey, journeys: [], error: String(e.message || e) };
+        return { from: fromKey, to: toKey, journeys: [], back: { journeys: [] }, error: String(e.message || e) };
     }
 }
 
@@ -386,39 +405,51 @@ function background(widget) {
     widget.backgroundGradient = gradient;
 }
 
+const NONE = `Keine Direktverbindung in den nächsten ${HOURS_AHEAD} Stunden`;
+
 async function createWidget() {
     let data = await loadData();
     let widget = new ListWidget();
     widget.url = `${URLScheme.forRunningScript()}?aus=widget`;
     background(widget);
-    widget.setPadding(12, 16, 6, 16);
+    widget.setPadding(10, 16, 8, 16);
+    let from = STATIONS[data.from], to = STATIONS[data.to];
+    let short = st => st.short || st.name;
 
+    // Kopf: Hauptrichtung, rechts Stand (statt Fußzeile – Platz für 5 Fahrten)
     let header = widget.addStack();
     header.centerAlignContent();
-    addSymbol(header, "tram.fill", 14);
+    addSymbol(header, "tram.fill", 13);
     header.addSpacer(6);
-    let from = STATIONS[data.from], to = STATIONS[data.to];
-    addLabel(header, `${from.short || from.name} → ${to.short || to.name}`, Font.semiboldSystemFont(15));
+    addLabel(header, `${short(from)} → ${short(to)}`, Font.semiboldSystemFont(14));
     header.addSpacer();
-    addLabel(header, "direkt", Font.semiboldSystemFont(11), WHITE, 0.6);
-    widget.addSpacer(8);
-
-    if (!data.journeys.length) {
-        addLabel(widget, data.error ? `Keine Verbindungen (${data.error})` : "Keine Direktverbindung gefunden",
-            Font.mediumSystemFont(12), WHITE, 0.8).lineLimit = 4;
-    }
-    data.journeys.forEach((j, i) => {
-        if (i > 0) widget.addSpacer(7);
-        addJourney(widget, j);
-    });
-    widget.addSpacer();
-
-    let footer = widget.addStack();
-    footer.addSpacer();
     let df = new DateFormatter();
     df.dateFormat = "HH:mm";
     UPDATED = data.updated || Date.now();
-    addLabel(footer, `${data.stale ? "offline · " : ""}aktualisiert ${df.string(new Date(UPDATED))}`, Font.mediumSystemFont(8), WHITE, 0.5);
+    addLabel(header, `${data.stale ? "offline · " : ""}direkt · ${df.string(new Date(UPDATED))}`, Font.semiboldSystemFont(10), WHITE, 0.55);
+    widget.addSpacer(4);
+
+    if (!data.journeys.length) {
+        addLabel(widget, data.error ? `Keine Verbindungen (${data.error})` : NONE, Font.mediumSystemFont(12), WHITE, 0.8).lineLimit = data.error ? 3 : 1;
+    }
+    data.journeys.forEach((j, i) => {
+        if (i > 0) widget.addSpacer(3);
+        addJourney(widget, j);
+    });
+
+    // Gegenrichtung: höchstens zwei Fahrten
+    let back = data.back || { journeys: [] };
+    widget.addSpacer(6);
+    addLabel(widget, `${short(to)} → ${short(from)}`.toUpperCase(), Font.semiboldSystemFont(9), WHITE, 0.55);
+    widget.addSpacer(2);
+    if (!back.journeys.length) {
+        addLabel(widget, back.error ? `nicht abrufbar (${back.error})` : NONE, Font.mediumSystemFont(11), WHITE, 0.7).lineLimit = 1;
+    }
+    back.journeys.forEach((j, i) => {
+        if (i > 0) widget.addSpacer(3);
+        addJourney(widget, j);
+    });
+    widget.addSpacer();
 
     // Alle 5 Minuten neu (iOS entscheidet selbst, wann genau)
     widget.refreshAfterDate = new Date(Date.now() + 5 * MINUTE);
