@@ -1,4 +1,4 @@
-// Gipfel – die fünf nächsten Berggipfel vom aktuellen Standort aus (OpenStreetMap, natural=peak mit Namen):
+// Gipfel – die nächsten Berggipfel vom aktuellen Standort aus (mindestens 30 m über dir) und die markantesten im Umkreis (OpenStreetMap, natural=peak mit Namen):
 // Name, Höhe, Entfernung (Luftlinie) und Richtungspfeil; daneben ein Haken, wenn eine deiner Strava-/Garmin-
 // Aktivitäten auf 50 m an den Gipfel heranführte, sonst klein dein geringster Abstand (ohne Strava: Himmelsrichtung) (Strava-Zugang des Strava-Widgets;
 // abgeglichen wird in der App, z. B. nach Antippen – das Widget liest nur das Ergebnis).
@@ -14,6 +14,9 @@ const SIZE = LARGE
     ? { count: 15, name: 13, num: 12, dir: 11, arrow: 13, gap: 3, header: 15, headerGap: 8, footer: true }
     : { count: 8, name: 11.5, num: 10.5, dir: 9.5, arrow: 11, gap: 1, header: 13, headerGap: 3, footer: false };
 const COUNT = SIZE.count;
+// Davon markante Gipfel im Umkreis (mit Wikipedia-Artikel); die übrigen sind die nächsten mit MIN_ABOVE m über dir
+const NOTABLE_COUNT = LARGE ? 5 : 3;
+const MIN_ABOVE = 30;
 
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), "gipfel.json");
@@ -79,14 +82,17 @@ async function overpass(here, radius) {
 }
 
 // Wikidata (Berge, Gipfel, Hügel mit Koordinate und Höhe, nach Entfernung) – schnell und zuverlässig erreichbar
-async function wikidata(here, radius) {
-    let query = `SELECT ?item ?label ?ele ?coord WHERE {
+// notable: nur Gipfel mit Wikipedia-Artikel (sitelinks), die bekanntesten zuerst – für "markant im Umkreis"
+async function wikidata(here, radius, notable = false) {
+    let query = `SELECT ?item ?label ?ele ?coord ?links WHERE {
  SERVICE wikibase:around { ?item wdt:P625 ?coord. bd:serviceParam wikibase:center "Point(${here.lon.toFixed(5)} ${here.lat.toFixed(5)})"^^geo:wktLiteral. bd:serviceParam wikibase:radius "${radius / 1000}". bd:serviceParam wikibase:distance ?dist. }
  VALUES ?type { wd:Q8502 wd:Q207326 wd:Q54050 wd:Q1595289 }
  ?item wdt:P31 ?type.
+ ?item wikibase:sitelinks ?links.
+ ${notable ? "FILTER(?links > 0)" : ""}
  OPTIONAL { ?item wdt:P2044 ?ele. }
  SERVICE wikibase:label { bd:serviceParam wikibase:language "de,en". ?item rdfs:label ?label. }
-} ORDER BY ?dist LIMIT 80`;
+} ORDER BY ${notable ? "DESC(?links) DESC(?ele)" : "?dist"} LIMIT ${notable ? 40 : 120}`;
     let req = new Request(`https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`);
     req.timeoutInterval = config.runsInWidget ? 10 : 30;
     req.headers = { "Accept": "application/sparql-results+json", "User-Agent": "Scriptable-Gipfel-Widget/1.0 (github.com/Schubidu93/Scriptable)" };
@@ -94,12 +100,17 @@ async function wikidata(here, radius) {
     let seen = new Set();
     return json.results.bindings.map(b => {
         let m = /Point\(([-\d.]+) ([-\d.]+)\)/.exec(b.coord.value);
-        return m && !/^Q\d+$/.test(b.label.value) ? { name: b.label.value, ele: b.ele ? Math.round(Number(b.ele.value)) : null, lat: Number(m[2]), lon: Number(m[1]) } : null;
+        return m && !/^Q\d+$/.test(b.label.value) ? { name: b.label.value, ele: b.ele ? Math.round(Number(b.ele.value)) : null,
+            lat: Number(m[2]), lon: Number(m[1]), links: b.links ? Number(b.links.value) : 0 } : null;
     }).filter(p => p && !isSpotHeight(p.name) && !seen.has(p.name) && seen.add(p.name));
 }
 
 // Namenlose Höhenpunkte ("P.710", "Punkt 1234", "Pt. 812") sind keine Gipfel
 const isSpotHeight = name => /^(p|pt|punkt|kote)\.?\s*\d+/i.test(String(name).trim());
+
+// Platzhalter statt Namen ("Berg", "Höhe") – keine echten Gipfelnamen
+const isGeneric = name => /^(berg|höhe|hoehe|hügel|huegel|gipfel|kuppe|anhöhe|bühl|buckel|kopf|spitze)$/i.test(String(name).trim());
+const usable = p => p.name && !isSpotHeight(p.name) && !isGeneric(p.name);
 
 // "1838", "1838 m", "1.838,5" → 1838
 function elevation(tag) {
@@ -112,7 +123,7 @@ async function loadPeaks(here) {
     let cached = null;
     try { if (fm.fileExists(cachePath)) cached = JSON.parse(fm.readString(cachePath)); } catch (e) {}
     // Gleicher Ort (unter 1 km) und höchstens eine Woche alt: gespeicherte Gipfel verwenden
-    if (cached && cached.peaks && distanceKm(here, cached.center) < 1 && Date.now() - cached.time < 7 * 86400000) return cached;
+    if (cached && cached.peaks && cached.version === 2 && distanceKm(here, cached.center) < 1 && Date.now() - cached.time < 7 * 86400000) return cached;
     try {
         // Zuerst Wikidata (antwortet in wenigen Sekunden), nur ersatzweise die oft überlasteten Overpass-Server
         let peaks = [], source = "Wikidata";
@@ -128,7 +139,9 @@ async function loadPeaks(here) {
             })).filter(p => !isSpotHeight(p.name));
             source = "OpenStreetMap";
         }
-        let data = { center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, source };
+        // Markante Gipfel im Umkreis (mit Wikipedia-Artikel) – fehlt Wikidata, bleibt die Liste leer
+        let notable = source === "Wikidata" ? await wikidata(here, RADIUS, true).catch(() => []) : [];
+        let data = { version: 2, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source };
         fm.writeString(cachePath, JSON.stringify(data));
         return data;
     } catch (e) {
@@ -354,6 +367,8 @@ let SHOW_CHECKS = false;
 
 function addRow(widget, peak) {
     let row = widget.addStack();
+    // Antippen der Zeile öffnet den Gipfel in Apple Karten
+    row.url = `http://maps.apple.com/?ll=${peak.lat},${peak.lon}&q=${encodeURIComponent(peak.name)}`;
     row.centerAlignContent();
     let arrow = row.addStack();
     arrow.size = new Size(14, 0);
@@ -378,8 +393,14 @@ function addRow(widget, peak) {
     row.addSpacer(6);
     row.addSpacer();
     let ele = row.addStack();
-    ele.size = new Size(LARGE ? 58 : 52, 0);
+    ele.size = new Size(LARGE ? 88 : 78, 0);
+    ele.centerAlignContent();
     ele.addSpacer();
+    // Klein davor: Höhenunterschied zu dir ("+56", "−12")
+    if (peak.above !== null && peak.above !== undefined) {
+        addLabel(ele, `${peak.above >= 0 ? "+" : "−"}${Math.abs(peak.above)}`, Font.mediumMonospacedSystemFont(Math.max(8, SIZE.num - 3)), WHITE, 0.45);
+        ele.addSpacer(3);
+    }
     addLabel(ele, peak.ele ? `${peak.ele} m` : "–", Font.mediumMonospacedSystemFont(SIZE.num), ACCENT, peak.ele ? 1 : 0.5);
     let dist = row.addStack();
     dist.size = new Size(LARGE ? 52 : 46, 0);
@@ -420,13 +441,25 @@ async function createWidget() {
         widget.addSpacer();
         return widget;
     }
-    let peaks = data.peaks.filter(p => !isSpotHeight(p.name)).map(p => ({ ...p, km: distanceKm(here, p), bearing: bearing(here, p) }))
-        .sort((a, b) => a.km - b.km).slice(0, COUNT);
+    let withGeo = p => ({ ...p, km: distanceKm(here, p), bearing: bearing(here, p), above: here.alt && p.ele ? Math.round(p.ele - here.alt) : null });
+    // Nächste Gipfel, die wenigstens MIN_ABOVE m über dir liegen (reicht das nicht, auch niedrigere)
+    let near = (data.peaks || []).filter(usable).map(withGeo).sort((a, b) => a.km - b.km);
+    let high = near.filter(p => p.above === null || p.above >= MIN_ABOVE);
+    let nearCount = COUNT - NOTABLE_COUNT;
+    let nearest = high.slice(0, nearCount);
+    if (nearest.length < nearCount) nearest = nearest.concat(near.filter(p => !nearest.includes(p)).slice(0, nearCount - nearest.length))
+        .sort((a, b) => a.km - b.km);
+    // Dazu die markantesten im Umkreis (bekannteste zuerst), die nicht schon oben stehen
+    let key = p => peakKey(p);
+    let shown = new Set(nearest.map(key));
+    let notable = (data.notable || []).filter(usable).filter(p => !shown.has(key(p))).slice(0, NOTABLE_COUNT).map(withGeo)
+        .sort((a, b) => a.km - b.km);
+    let peaks = nearest.concat(notable);
     if (stravaConnected()) {
         SHOW_CHECKS = true;
         // Der Abgleich mit allen Routen ist für den Homescreen zu schwer (iOS verwirft dann still das Bild):
         // nur in der App rechnen – für alle gespeicherten Gipfel – und als kleine Liste merken
-        if (!config.runsInWidget) saveApproach(data.peaks, await syncTracks());
+        if (!config.runsInWidget) saveApproach((data.peaks || []).concat(data.notable || []), await syncTracks());
         let approach = readApproach();
         peaks.forEach(p => {
             p.approach = approach[peakKey(p)];
@@ -436,6 +469,20 @@ async function createWidget() {
     if (!peaks.length) addLabel(widget, "Keine Gipfel im Umkreis von 40 km", Font.mediumSystemFont(12), WHITE, 0.8);
     peaks.forEach((p, i) => {
         if (i > 0) widget.addSpacer(SIZE.gap);
+        // Abschnitt "markant im Umkreis" (groß mit Überschrift, mittel nur mit Trennlinie)
+        if (i === nearest.length && notable.length) {
+            widget.addSpacer(LARGE ? 4 : 1);
+            if (LARGE) {
+                addLabel(widget, "MARKANT IM UMKREIS", Font.semiboldSystemFont(9), WHITE, 0.5);
+                widget.addSpacer(2);
+            } else {
+                let rule = widget.addStack();
+                rule.size = new Size(0, 1);
+                rule.backgroundColor = new Color("#FFFFFF", 0.2);
+                rule.addSpacer();
+                widget.addSpacer(2);
+            }
+        }
         addRow(widget, p);
     });
     widget.addSpacer();
