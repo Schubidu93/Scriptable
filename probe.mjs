@@ -1,15 +1,17 @@
-const q = async sparql => (await (await fetch("https://query.wikidata.org/sparql?format=json&query=" + encodeURIComponent(sparql), { headers: { Accept: "application/sparql-results+json", "User-Agent": "Scriptable-Gipfel-Widget/1.0 (github.com/Schubidu93/Scriptable)" } })).json()).results.bindings;
-const r = await q(`SELECT ?item ?typeLabel ?ele ?coord ?iso ?article WHERE {
- VALUES ?article { <https://de.wikipedia.org/wiki/Hochberg_(Allg%C3%A4uer_Alpen)> }
- ?article schema:about ?item.
- OPTIONAL { ?item wdt:P31 ?type. } OPTIONAL { ?item wdt:P2044 ?ele. } OPTIONAL { ?item wdt:P625 ?coord. }
- OPTIONAL { ?item p:P2659/psn:P2659/wikibase:quantityAmount ?iso. }
- SERVICE wikibase:label { bd:serviceParam wikibase:language "de,en". } }`);
-console.log(JSON.stringify(r.map(b => ({ item: b.item.value, type: b.typeLabel?.value, ele: b.ele?.value, coord: b.coord?.value, iso: b.iso?.value }))));
-// Entfernung ab Kißlegg
-for (const b of r.slice(0, 1)) {
-  const m = /Point\(([-\d.]+) ([-\d.]+)\)/.exec(b.coord?.value || "");
-  if (m) { const rad = x => x * Math.PI / 180, a = { lat: 47.7886, lon: 9.8809 }, c = { lat: +m[2], lon: +m[1] };
-    const h = Math.sin(rad(c.lat - a.lat) / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(c.lat)) * Math.sin(rad(c.lon - a.lon) / 2) ** 2;
-    console.log("km", (12742 * Math.asin(Math.sqrt(h))).toFixed(1)); }
-}
+import { readFileSync } from "node:fs";
+const src = readFileSync("Gipfel.js", "utf8");
+// Scriptable-Request nachbilden
+globalThis.config = { runsInWidget: false };
+globalThis.Request = class { constructor(u) { this.url = u; } async loadJSON() { const r = await fetch(this.url, { headers: this.headers }); return r.json(); } };
+const pick = (a, b) => src.slice(src.indexOf(a), src.indexOf(b));
+const code = [pick("const PEAK_TYPES", "async function wikidata"), pick("async function wikidata", "// \"1838\""), pick("const isSpotHeight", "// \"1838\"")].join("\n");
+const fn = new Function("config", "Request", code + "; return { wikidata, usable };");
+const { wikidata, usable } = fn(globalThis.config, globalThis.Request);
+const here = { lat: 47.7886, lon: 9.8809, alt: 653 };
+const t0 = Date.now();
+const list = await wikidata(here, 40000, true);
+const rad = x => x * Math.PI / 180;
+const km = p => { const h = Math.sin(rad(p.lat - here.lat) / 2) ** 2 + Math.cos(rad(here.lat)) * Math.cos(rad(p.lat)) * Math.sin(rad(p.lon - here.lon) / 2) ** 2; return 12742 * Math.asin(Math.sqrt(h)); };
+const notable = list.filter(usable).filter(p => p.ele && p.ele - here.alt >= 200).filter(p => p.isolation >= 2000).map(p => ({ ...p, km: km(p) })).sort((a, b) => a.km - b.km).slice(0, 8);
+console.log("ms", Date.now() - t0, "Hochberg-Einträge", list.filter(p => p.name === "Hochberg").map(p => `${p.ele}m iso ${p.isolation}`).join(" / "));
+console.log("TOP8", notable.map(p => `${p.name} ${p.ele}m ${p.km.toFixed(1)}km iso${p.isolation} ${p.wiki ? "wiki" : "-"}`).join(" | "));
