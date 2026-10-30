@@ -453,21 +453,19 @@ async function createWidget() {
         return widget;
     }
     let withGeo = p => ({ ...p, km: distanceKm(here, p), bearing: bearing(here, p), above: here.alt && p.ele ? Math.round(p.ele - here.alt) : null });
-    // Nächste Gipfel, die wenigstens MIN_ABOVE m über dir liegen (reicht das nicht, auch niedrigere)
-    let near = (data.peaks || []).filter(usable).map(withGeo).sort((a, b) => a.km - b.km);
+    // Markante Gipfel: mit Wikipedia-Artikel und mindestens NOTABLE_ABOVE m höher als du, die nächsten zuerst
+    let key = p => peakKey(p);
+    let notable = (data.notable || []).filter(usable).map(withGeo)
+        .filter(p => p.above !== null ? p.above >= NOTABLE_ABOVE : (p.ele || 0) >= 1000)
+        .sort((a, b) => a.km - b.km).slice(0, NOTABLE_COUNT);
+    let shown = new Set(notable.map(key));
+    // Nächste Gipfel, die wenigstens MIN_ABOVE m über dir liegen (reicht das nicht, auch niedrigere). Fehlende markante
+    // Plätze füllen sie auf; gibt es gar keine markanten, kostet der Hinweis darauf eine Zeile
+    let near = (data.peaks || []).filter(usable).filter(p => !shown.has(key(p))).map(withGeo).sort((a, b) => a.km - b.km);
     let high = near.filter(p => p.above === null || p.above >= MIN_ABOVE);
-    let nearCount = COUNT - NOTABLE_COUNT;
+    let nearCount = COUNT - notable.length - (notable.length ? 0 : 1);
     let nearest = high.slice(0, nearCount);
     if (nearest.length < nearCount) nearest = nearest.concat(near.filter(p => !nearest.includes(p)).slice(0, nearCount - nearest.length))
-        .sort((a, b) => a.km - b.km);
-    // Dazu markante Gipfel: mit Wikipedia-Artikel und mindestens NOTABLE_ABOVE m höher als du, die nächsten zuerst
-    // (reicht das nicht, füllen die nächsten mit Artikel auf); nicht doppelt zu oben
-    let key = p => peakKey(p);
-    let shown = new Set(nearest.map(key));
-    let candidates = (data.notable || []).filter(usable).filter(p => !shown.has(key(p))).map(withGeo).sort((a, b) => a.km - b.km);
-    let tall = candidates.filter(p => p.above !== null ? p.above >= NOTABLE_ABOVE : (p.ele || 0) >= 1000);
-    let notable = tall.slice(0, NOTABLE_COUNT);
-    if (notable.length < NOTABLE_COUNT) notable = notable.concat(candidates.filter(p => !notable.includes(p)).slice(0, NOTABLE_COUNT - notable.length))
         .sort((a, b) => a.km - b.km);
     let peaks = nearest.concat(notable);
     if (stravaConnected()) {
@@ -500,6 +498,10 @@ async function createWidget() {
         }
         addRow(widget, p);
     });
+    if (peaks.length && !notable.length) {
+        widget.addSpacer(LARGE ? 6 : 3);
+        addLabel(widget, "Keine markanten Berge in der Umgebung", Font.mediumSystemFont(LARGE ? 11 : 10), WHITE, 0.5);
+    }
     widget.addSpacer();
 
     let note = [here.old ? "letzter Standort" : "", data.stale ? "offline" : ""].filter(Boolean).join(" · ");
