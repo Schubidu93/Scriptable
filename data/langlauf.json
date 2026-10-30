@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-29T17:00:15.070Z",
+  "generated": "2026-10-30T02:03:15.551Z",
   "areas": [
     {
       "id": "vogt",
@@ -14,7 +14,8 @@
       "snow": null,
       "updated": "2026-03-22",
       "status": "closed",
-      "note": "wir haben den Winterbetrieb endgültig eingestellt."
+      "note": "wir haben den Winterbetrieb endgültig eingestellt.",
+      "stale": true
     },
     {
       "id": "waldburg",
