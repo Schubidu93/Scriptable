@@ -8,12 +8,13 @@
 
 const STATIONS = {
     kisslegg: { name: "Kißlegg", query: "Kißlegg", lat: 47.7886, lon: 9.8809 },
-    muenchen: { name: "München Hbf", short: "München", query: "München Hbf", lat: 48.1402, lon: 11.5600 },
+    // Die Allgäu-Züge fahren in München meist an den Gleisen 27–36 – bei der DB ein eigener Bahnhof
+    muenchen: { name: "München Hbf", short: "München", query: "München Hbf", parts: ["München Hbf Gl.27-36"], lat: 48.1402, lon: 11.5600 },
 };
 
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), "bahn-verbindungen.json");
-const stationPath = fm.joinPath(fm.cacheDirectory(), "bahn-bahnhoefe-v2.json");
+const stationPath = fm.joinPath(fm.cacheDirectory(), "bahn-bahnhoefe-v3.json");
 const locationPath = fm.joinPath(fm.cacheDirectory(), "bahn-ort.json");
 
 const WHITE = Color.white();
@@ -148,19 +149,45 @@ const pad = n => String(n).padStart(2, "0");
 
 // Bahnhof einmal suchen und speichern – samt Teilbahnhöfen: In München fahren die Regionalzüge ins Allgäu
 // meist an den Gleisen 27–36, die bei der DB als eigener Bahnhof "München Hbf Gl.27-36" geführt werden
+async function searchStations(pattern) {
+    let xml = await request(`station/${encodeURIComponent(pattern)}`).catch(() => "");
+    return [...String(xml).matchAll(/<station\s([^>]*?)\/?>/g)].map(m => attrs(m[1])).filter(x => x.eva && x.name);
+}
+
+function readStations() {
+    try { if (fm.fileExists(stationPath)) return JSON.parse(fm.readString(stationPath)); } catch (e) {}
+    return {};
+}
+
 async function station(key) {
-    let saved = {};
-    try { if (fm.fileExists(stationPath)) saved = JSON.parse(fm.readString(stationPath)); } catch (e) {}
+    let saved = readStations();
     if (Array.isArray(saved[key]) && saved[key].length) return saved[key];
     let query = STATIONS[key].query;
-    let xml = await request(`station/${encodeURIComponent(query)}`);
-    let list = [...xml.matchAll(/<station\s([^>]*?)\/?>/g)].map(m => attrs(m[1])).filter(x => x.eva);
-    let parts = list.filter(x => x.name === query || x.name.startsWith(query + " "));
-    if (!parts.length && list[0]) parts = [list[0]];
+    // Mit und ohne Platzhalter suchen ("München Hbf*" findet auch "München Hbf Gl.27-36")
+    let list = (await searchStations(query)).concat(await searchStations(`${query}*`));
+    for (let part of STATIONS[key].parts || []) list = list.concat((await searchStations(part)).filter(x => x.name === part));
+    let parts = [];
+    list.forEach(x => {
+        if ((x.name === query || x.name.startsWith(query + " ")) && !parts.some(p => p.eva === x.eva)) parts.push({ eva: x.eva, name: x.name });
+    });
+    if (!parts.length && list[0]) parts = [{ eva: list[0].eva, name: list[0].name }];
     if (!parts.length) throw new Error(`${STATIONS[key].name} nicht gefunden`);
-    saved[key] = parts.map(x => ({ eva: x.eva, name: x.name }));
+    saved[key] = parts;
     fm.writeString(stationPath, JSON.stringify(saved));
-    return saved[key];
+    return parts;
+}
+
+// Im Laufweg aufgetauchter, noch unbekannter Teilbahnhof (z. B. "München Hbf Gl.27-36"): nachschlagen und merken
+async function addStationPart(key, name) {
+    let saved = readStations();
+    let list = saved[key] || [];
+    if (list.some(p => p.name === name)) return list;
+    let hit = (await searchStations(name)).find(x => x.name === name);
+    if (!hit) return list;
+    list.push({ eva: hit.eva, name: hit.name });
+    saved[key] = list;
+    fm.writeString(stationPath, JSON.stringify(saved));
+    return list;
 }
 
 // Fahrplan einer Stunde – ändert sich kaum, daher bis zu 6 Stunden zwischengespeichert
@@ -194,16 +221,21 @@ async function changesAll(list) {
 
 async function loadJourneys(fromKey, toKey) {
     let [from, to] = await Promise.all([station(fromKey), station(toKey)]);
-    let targets = new Set(to.map(st => st.name));
+    // Ziel im Laufweg: jeder Halt, der so heißt wie das Ziel oder mit dessen Namen beginnt ("München Hbf Gl.27-36")
+    let query = STATIONS[toKey].query;
+    let isTarget = name => name === query || name.startsWith(query + " ") || to.some(st => st.name === name);
     let since = new Date(Date.now() - 60 * MINUTE);
     // Abfahrten ab vor einer Stunde bis in 11 Stunden (die Direktzüge fahren etwa alle zwei Stunden)
     let departures = Object.values(await plansAll(from, since, 12))
-        .filter(s => s.dp && (s.dp.ppth || "").split("|").some(name => targets.has(name)))
+        .filter(s => s.dp && (s.dp.ppth || "").split("|").some(isTarget))
         .map(s => ({ ...s, depTime: parseTime(s.dp.pt) }))
         .filter(s => s.depTime >= since)
         .sort((a, b) => a.depTime - b.depTime)
         .slice(0, 3);
     if (!departures.length) return [];
+    // Teilbahnhöfe des Ziels aus den Laufwegen ergänzen, damit dort die Ankunft gefunden wird
+    let seenTargets = new Set(departures.flatMap(d => d.dp.ppth.split("|").filter(isTarget)));
+    for (let name of seenTargets) if (!to.some(st => st.name === name)) to = await addStationPart(toKey, name);
     // Ankunft: Fahrplan des Ziels in den Stunden nach der jeweiligen Abfahrt, gleiche Fahrt-ID
     let first = departures[0].depTime, last = departures[departures.length - 1].depTime;
     let arrHours = Math.ceil((last - first) / 3600000) + 4;
