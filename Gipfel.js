@@ -88,8 +88,11 @@ async function wikidata(here, radius) {
     return json.results.bindings.map(b => {
         let m = /Point\(([-\d.]+) ([-\d.]+)\)/.exec(b.coord.value);
         return m && !/^Q\d+$/.test(b.label.value) ? { name: b.label.value, ele: b.ele ? Math.round(Number(b.ele.value)) : null, lat: Number(m[2]), lon: Number(m[1]) } : null;
-    }).filter(p => p && !seen.has(p.name) && seen.add(p.name));
+    }).filter(p => p && !isSpotHeight(p.name) && !seen.has(p.name) && seen.add(p.name));
 }
+
+// Namenlose Höhenpunkte ("P.710", "Punkt 1234", "Pt. 812") sind keine Gipfel
+const isSpotHeight = name => /^(p|pt|punkt|kote)\.?\s*\d+/i.test(String(name).trim());
 
 // "1838", "1838 m", "1.838,5" → 1838
 function elevation(tag) {
@@ -115,7 +118,7 @@ async function loadPeaks(here) {
                 ele: elevation(e.tags.ele),
                 lat: e.lat,
                 lon: e.lon,
-            }));
+            })).filter(p => !isSpotHeight(p.name));
             source = "OpenStreetMap";
         }
         let data = { center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, source };
@@ -150,27 +153,9 @@ function addSymbol(stack, name, size, color = WHITE) {
     return img;
 }
 
-// Pfeil in Richtung des Gipfels (Norden oben), als Bild gezeichnet
-function arrowImage(deg) {
-    let size = 44;
-    let ctx = new DrawContext();
-    ctx.size = new Size(size, size);
-    ctx.opaque = false;
-    ctx.respectScreenScale = true;
-    let c = size / 2;
-    let rot = (x, y) => {
-        let a = rad(deg);
-        return new Point(c + x * Math.cos(a) - y * Math.sin(a), c + x * Math.sin(a) + y * Math.cos(a));
-    };
-    // Spitze nach oben (y negativ), dann gedreht
-    let path = new Path();
-    path.addLines([rot(0, -18), rot(11, 14), rot(0, 7), rot(-11, 14)]);
-    path.closeSubpath();
-    ctx.addPath(path);
-    ctx.setFillColor(WHITE);
-    ctx.fillPath();
-    return ctx.getImage();
-}
+// Pfeil in Richtung des Gipfels (Norden oben) – Systemsymbole in 8 Richtungen
+const ARROWS = ["arrow.up", "arrow.up.right", "arrow.right", "arrow.down.right", "arrow.down", "arrow.down.left", "arrow.left", "arrow.up.left"];
+const arrowSymbol = deg => ARROWS[Math.round(deg / 45) % 8];
 
 function formatKm(km) {
     return km < 10 ? `${km.toFixed(1).replace(".", ",")} km` : `${Math.round(km)} km`;
@@ -186,11 +171,12 @@ function background(widget) {
 function addRow(widget, peak) {
     let row = widget.addStack();
     row.centerAlignContent();
-    let img = row.addImage(arrowImage(peak.bearing));
-    img.imageSize = new Size(13, 13);
+    let arrow = row.addStack();
+    arrow.size = new Size(14, 0);
+    addSymbol(arrow, arrowSymbol(peak.bearing), 12, WHITE);
     row.addSpacer(4);
     let dir = row.addStack();
-    dir.size = new Size(30, 0);
+    dir.size = new Size(36, 0);
     addLabel(dir, compass(peak.bearing), Font.semiboldSystemFont(11), WHITE, 0.75);
     dir.addSpacer();
     let name = addLabel(row, peak.name, Font.semiboldSystemFont(13));
@@ -240,7 +226,7 @@ async function createWidget() {
         widget.addSpacer();
         return widget;
     }
-    let peaks = data.peaks.map(p => ({ ...p, km: distanceKm(here, p), bearing: bearing(here, p) }))
+    let peaks = data.peaks.filter(p => !isSpotHeight(p.name)).map(p => ({ ...p, km: distanceKm(here, p), bearing: bearing(here, p) }))
         .sort((a, b) => a.km - b.km).slice(0, COUNT);
     if (!peaks.length) addLabel(widget, "Keine Gipfel im Umkreis von 40 km", Font.mediumSystemFont(12), WHITE, 0.8);
     peaks.forEach((p, i) => {
