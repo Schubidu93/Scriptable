@@ -127,10 +127,11 @@ function addTeamRow(stack, r, images, rank, opts) {
         line.backgroundColor = FAV_BACKGROUND;
         line.cornerRadius = 3;
     }
+    // Platz rechtsbündig über ein Ziffern-Leerzeichen (U+2007) statt flexiblem Abstand – der kostet in Scriptable
+    // mindestens 8 pt, dann blieb von "10"–"16" nur "1" übrig
     let num = line.addStack();
     num.size = new Size(opts.numW || 16, 0);
-    num.addSpacer();
-    addLabel(num, rank, Font.semiboldMonospacedSystemFont(opts.size - 1), opts.rankColor || WHITE, opts.rankColor ? 1 : 0.6);
+    addLabel(num, String(rank).padStart(2, "\u2007"), Font.semiboldMonospacedSystemFont(opts.size - 1), opts.rankColor || WHITE, opts.rankColor ? 1 : 0.6);
     line.addSpacer(opts.gap ?? 5);
     if (images[r.logo]) line.addImage(images[r.logo]).imageSize = new Size(opts.logo, opts.logo);
     else line.addSpacer(opts.logo);
@@ -140,6 +141,7 @@ function addTeamRow(stack, r, images, rank, opts) {
         let abbr = line.addStack();
         abbr.size = new Size(opts.abbrW, 0);
         addLabel(abbr, r.abbr, Font.semiboldSystemFont(opts.size), WHITE, opts.dim ? 0.55 : 1).minimumScaleFactor = 0.8;
+        line.addSpacer(3);
         let rec = line.addStack();
         rec.size = new Size(opts.recW, 0);
         addLabel(rec, r.record, Font.mediumMonospacedSystemFont(opts.size), WHITE, opts.dim ? 0.55 : 0.9).minimumScaleFactor = 0.75;
@@ -165,8 +167,8 @@ function compactOptions() {
     let col = (mediumWidth() - 2 * SIDE_PAD - MID_GAP - 2 * HALF_GAP) / 4;
     let fixed = 1 + 14 + 2 + 9 + 2 + 1; // Rand, Platz, Abstand, Logo, Abstand, Rand
     let rest = Math.floor(col - fixed);
-    let abbrW = Math.round(rest * 0.42);
-    return { size: 9, logo: 9, numW: 14, gap: 2, abbrW, recW: rest - abbrW, pad: 1 };
+    let abbrW = Math.round((rest - 3) * 0.42);
+    return { size: 9, logo: 9, numW: 14, gap: 2, abbrW, recW: rest - 3 - abbrW, pad: 1 };
 }
 
 function addConference(stack, group, images) {
