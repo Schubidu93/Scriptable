@@ -4,7 +4,7 @@ const src = readFileSync("Gipfel.js", "utf8");
 globalThis.config = { runsInWidget: false };
 globalThis.Request = class { constructor(u) { this.url = u; } async loadJSON() { const r = await fetch(this.url, { headers: this.headers }); return r.json(); } };
 const pick = (a, b) => src.slice(src.indexOf(a), src.indexOf(b));
-const code = [pick("const PEAK_TYPES", "async function wikidata"), pick("async function wikidata", "// \"1838\""), pick("const isSpotHeight", "// \"1838\"")].join("\n");
+const code = [pick("const PEAK_TYPES", "async function wikidata"), pick("async function wikidata", "// Namenlose Höhenpunkte"), pick("const isSpotHeight", "// \"1838\"")].join("\n");
 const fn = new Function("config", "Request", code + "; return { wikidata, usable };");
 const { wikidata, usable } = fn(globalThis.config, globalThis.Request);
 const here = { lat: 47.7886, lon: 9.8809, alt: 653 };
