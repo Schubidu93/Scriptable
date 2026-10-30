@@ -1,5 +1,6 @@
 // NFL – Lieblingsteam: letztes Ergebnis, nächstes Spiel (am Spieltag live), Division-Tabelle
 // Quelle: ESPN (öffentliche Schnittstelle). Mittleres Widget, im Stil der iOS-Widgets.
+// Großes Widget: zusätzlich alle Ergebnisse der Saison (neueste oben) und die Conference-Setzliste rund ums eigene Team.
 //
 // Team wählen: Standard "cle" (Cleveland Browns) – im Loader per
 // Function("TEAM", code)("pit") oder als Widget-Parameter, z. B. "kc".
@@ -18,6 +19,9 @@ const DEFAULT_COLORS = ["#2B3A55", "#14213D", "#FCA311"];
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), `nfl-team-${teamKey}.json`);
 const DIAG = [];
+const LARGE = config.widgetFamily === "large" || config.widgetFamily === "extraLarge";
+// Zeilen der Ergebnisliste und der Setzliste im großen Widget
+const LIST_ROWS = 8;
 
 // Zeitpunkt der angezeigten Daten (bei Offline-Anzeige der des Zwischenspeichers)
 let UPDATED = Date.now();
@@ -108,6 +112,27 @@ function gameInfo(event, teamId) {
     };
 }
 
+// Conference-Setzliste (level=2, playoffSeed): Ausschnitt von `count` Teams rund ums eigene Team
+function parseConference(json, teamId, count) {
+    let group = collectGroups(json).find(g => g.standings.entries.some(e => String(e.team.id) === String(teamId)));
+    if (!group) return null;
+    let rows = group.standings.entries
+        .map(e => ({
+            id: String(e.team.id),
+            abbr: e.team.abbreviation,
+            logo: logoUrl(e.team),
+            wins: stat(e, "wins"),
+            losses: stat(e, "losses"),
+            ties: stat(e, "ties"),
+            seed: stat(e, "playoffSeed"),
+        }))
+        .sort((a, b) => (a.seed || 99) - (b.seed || 99))
+        .map((r, i) => ({ ...r, rank: r.seed || i + 1 }));
+    let pos = rows.findIndex(r => r.id === String(teamId));
+    let start = Math.max(0, Math.min(pos - Math.floor((count - 1) / 2), rows.length - count));
+    return { name: group.abbreviation || group.name, rows: rows.slice(start, start + count) };
+}
+
 // Alle Gruppen mit Tabelleneinträgen einsammeln (Conference → Division)
 function collectGroups(node, out = []) {
     if (!node) return out;
@@ -196,6 +221,16 @@ async function loadData() {
         console.log(`Tabelle nicht geladen: ${e}`);
     }
 
+    // Nur fürs große Widget: Conference-Setzliste
+    let conference = null;
+    if (LARGE) {
+        try {
+            conference = parseConference(await loadJSON("v2/sports/football/nfl/standings?level=2"), team.id, LIST_ROWS);
+        } catch (e) {
+            console.log(`Setzliste nicht geladen: ${e}`);
+        }
+    }
+
     let record = team.record && team.record.items && team.record.items[0];
     return {
         id: String(team.id),
@@ -207,6 +242,8 @@ async function loadData() {
         summary: team.standingSummary || "",
         last,
         form,
+        games: finished.slice(-LIST_ROWS).reverse().map(e => gameInfo(e, team.id)),
+        conference,
         live,
         next,
         standings,
@@ -255,6 +292,7 @@ async function loadLogos(urls) {
 
 const WHITE = Color.white();
 const LIVE_RED = new Color("#FF6B5E");
+const GOLD = new Color("#FFD60A");
 const RESULT_COLORS = { W: new Color("#34C759"), L: new Color("#FF453A"), T: new Color("#8E8E93") };
 
 function addLabel(stack, text, font, color, opacity = 1) {
@@ -439,7 +477,8 @@ function addStandings(stack, data, images) {
     });
 }
 
-function buildMedium(widget, data, images) {
+// fill: Spalten nach unten auffüllen (mittel); im großen Widget kompakt halten, damit unten Platz bleibt
+function buildMedium(widget, data, images, fill = true) {
     let header = widget.addStack();
     header.centerAlignContent();
     addLogo(header, images, data.logo, 22);
@@ -463,7 +502,8 @@ function buildMedium(widget, data, images) {
     left.addSpacer(6);
     if (data.live) addLiveGame(left, data.live, images);
     else addNextGame(left, data.next, images);
-    left.addSpacer();
+    if (fill) left.addSpacer();
+    else body.topAlignContent();
 
     body.addSpacer(14);
     body.addSpacer();
@@ -472,7 +512,90 @@ function buildMedium(widget, data, images) {
     right.layoutVertically();
     right.size = new Size(110, 0);
     addStandings(right, data, images);
-    right.addSpacer();
+    if (fill) right.addSpacer();
+}
+
+// Groß, unten links: alle Ergebnisse der Saison, neueste oben
+function addResults(stack, data, images) {
+    addSectionTitle(stack, "Ergebnisse");
+    stack.addSpacer(3);
+    let games = data.games || [];
+    if (!games.length) {
+        addLabel(stack, "–", Font.mediumSystemFont(12), WHITE, 0.7);
+        return;
+    }
+    games.forEach((g, i) => {
+        if (i > 0) stack.addSpacer(2);
+        let row = stack.addStack();
+        row.centerAlignContent();
+        row.size = new Size(0, 16);
+        let day = row.addStack();
+        day.size = new Size(36, 0);
+        addLabel(day, formatDay(g.date), Font.mediumMonospacedSystemFont(10), WHITE, 0.6);
+        day.addSpacer();
+        addBadge(row, g.result, 15);
+        row.addSpacer(6);
+        let sc = row.addStack();
+        sc.size = new Size(40, 0);
+        addLabel(sc, `${g.ourScore}:${g.theirScore}`, Font.boldMonospacedSystemFont(12), WHITE);
+        sc.addSpacer();
+        addLabel(row, g.home ? "vs" : "@", Font.mediumSystemFont(10), WHITE, 0.6);
+        row.addSpacer(3);
+        addLogo(row, images, g.opponentLogo, 14);
+        row.addSpacer(3);
+        addLabel(row, g.opponent, Font.semiboldSystemFont(12), WHITE);
+        row.addSpacer();
+    });
+}
+
+// Groß, unten rechts: Conference-Setzliste (1–4 Division-Sieger gold, 5–7 Wildcard, ab 8 blass)
+function addConference(stack, data, images) {
+    let conf = data.conference;
+    addSectionTitle(stack, conf ? `${conf.name} · Setzliste` : "Setzliste");
+    stack.addSpacer(3);
+    if (!conf) {
+        addLabel(stack, "–", Font.mediumSystemFont(12), WHITE, 0.7);
+        return;
+    }
+    conf.rows.forEach((r, i) => {
+        if (i > 0) stack.addSpacer(2);
+        let mine = r.id === data.id;
+        let out = r.rank >= 8;
+        let row = stack.addStack();
+        row.centerAlignContent();
+        row.size = new Size(0, 16);
+        if (mine) {
+            row.backgroundColor = new Color("#ffffff", 0.15);
+            row.cornerRadius = 5;
+        }
+        row.setPadding(1, 3, 1, 3);
+        // Platz rechtsbündig über Ziffern-Leerzeichen statt flexiblem Abstand (der kostet mindestens 8 pt)
+        addLabel(row, String(r.rank).padStart(2, "\u2007"), Font.mediumMonospacedSystemFont(11), r.rank <= 4 ? GOLD : WHITE, r.rank <= 4 ? 1 : 0.6);
+        row.addSpacer(4);
+        addLogo(row, images, r.logo, 14);
+        row.addSpacer(3);
+        addLabel(row, r.abbr, mine ? Font.boldSystemFont(12) : Font.mediumSystemFont(12), mine ? accent() : WHITE, out && !mine ? 0.55 : 1);
+        row.addSpacer();
+        let record = r.ties ? `${r.wins}-${r.losses}-${r.ties}` : `${r.wins}-${r.losses}`;
+        addLabel(row, record, Font.mediumMonospacedSystemFont(11), WHITE, out ? 0.55 : 0.85);
+    });
+}
+
+// Groß: oben wie das mittlere Widget, darunter Ergebnisse | Setzliste
+function buildLarge(widget, data, images) {
+    buildMedium(widget, data, images, false);
+    widget.addSpacer(12);
+    let body = widget.addStack();
+    body.topAlignContent();
+    let left = body.addStack();
+    left.layoutVertically();
+    addResults(left, data, images);
+    body.addSpacer();
+    let right = body.addStack();
+    right.layoutVertically();
+    right.size = new Size(110, 0);
+    addConference(right, data, images);
+    widget.addSpacer();
 }
 
 function buildSmall(widget, data, images) {
@@ -535,10 +658,16 @@ async function createWidget() {
     if (data.next) urls.push(data.next.opponentLogo);
     if (data.live) urls.push(data.live.opponentLogo);
     if (data.standings) data.standings.rows.forEach(r => urls.push(r.logo));
+    if (LARGE) {
+        (data.games || []).forEach(g => urls.push(g.opponentLogo));
+        if (data.conference) data.conference.rows.forEach(r => urls.push(r.logo));
+    }
     let images = await loadLogos(urls);
 
     if (config.widgetFamily === "small") {
         buildSmall(widget, data, images);
+    } else if (LARGE) {
+        buildLarge(widget, data, images);
     } else {
         buildMedium(widget, data, images);
     }
