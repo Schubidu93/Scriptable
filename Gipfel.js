@@ -89,19 +89,20 @@ async function overpass(here, radius) {
 const PEAK_TYPES = ["Q8502", "Q207326", "Q54050", "Q1595289", "Q3618634", "Q111177881", "Q820144", "Q131860194", "Q12059057"]
     .map(q => `wd:${q}`).join(" ");
 
-// notable: nur Gipfel mit Wikipedia-Artikel (sitelinks), nach Entfernung – für "markant im Umkreis"
+// notable: nur Gipfel mit Artikel in der deutschen oder englischen Wikipedia, nach Entfernung – für "markant im Umkreis"
+// (nicht irgendein Sitelink: die cebuanische Wikipedia hat per Bot Millionen Artikel zu fast jeder Erhebung)
 async function wikidata(here, radius, notable = false) {
     let query = `SELECT ?item ?label ?ele ?coord ?links WHERE {
  SERVICE wikibase:around { ?item wdt:P625 ?coord. bd:serviceParam wikibase:center "Point(${here.lon.toFixed(5)} ${here.lat.toFixed(5)})"^^geo:wktLiteral. bd:serviceParam wikibase:radius "${radius / 1000}". bd:serviceParam wikibase:distance ?dist. }
  VALUES ?type { ${PEAK_TYPES} }
  ?item wdt:P31 ?type.
  ?item wikibase:sitelinks ?links.
- ${notable ? "FILTER(?links > 0)" : ""}
+ ${notable ? "FILTER EXISTS { ?article schema:about ?item; schema:isPartOf ?wiki. VALUES ?wiki { <https://de.wikipedia.org/> <https://en.wikipedia.org/> } }" : ""}
  OPTIONAL { ?item wdt:P2044 ?ele. }
  SERVICE wikibase:label { bd:serviceParam wikibase:language "de,en". ?item rdfs:label ?label. }
 } ORDER BY ?dist LIMIT ${notable ? 150 : 120}`;
     let req = new Request(`https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`);
-    req.timeoutInterval = config.runsInWidget ? 10 : 30;
+    req.timeoutInterval = config.runsInWidget ? 12 : 30;
     req.headers = { "Accept": "application/sparql-results+json", "User-Agent": "Scriptable-Gipfel-Widget/1.0 (github.com/Schubidu93/Scriptable)" };
     let json = await req.loadJSON();
     let seen = new Set();
@@ -130,7 +131,9 @@ async function loadPeaks(here) {
     let cached = null;
     try { if (fm.fileExists(cachePath)) cached = JSON.parse(fm.readString(cachePath)); } catch (e) {}
     // Gleicher Ort (unter 1 km) und höchstens eine Woche alt: gespeicherte Gipfel verwenden
-    if (cached && cached.peaks && cached.version === 4 && distanceKm(here, cached.center) < 1 && Date.now() - cached.time < 7 * 86400000) return cached;
+    // Markante Gipfel fehlen (Abfrage dauert ~10 s und scheitert im Widget gelegentlich): dann erneut versuchen
+    if (cached && cached.peaks && cached.version === 5 && distanceKm(here, cached.center) < 1 && Date.now() - cached.time < 7 * 86400000
+        && (cached.notable && cached.notable.length || cached.source !== "Wikidata")) return cached;
     try {
         // Zuerst Wikidata (antwortet in wenigen Sekunden), nur ersatzweise die oft überlasteten Overpass-Server
         let peaks = [], source = "Wikidata";
@@ -148,7 +151,9 @@ async function loadPeaks(here) {
         }
         // Markante Gipfel im Umkreis (mit Wikipedia-Artikel) – fehlt Wikidata, bleibt die Liste leer
         let notable = source === "Wikidata" ? await wikidata(here, RADIUS, true).catch(() => []) : [];
-        let data = { version: 4, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source };
+        // Fehlschlag: die bisherigen markanten Gipfel (gleicher Ort) behalten
+        if (!notable.length && cached && cached.notable && distanceKm(here, cached.center) < 20) notable = cached.notable;
+        let data = { version: 5, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source };
         fm.writeString(cachePath, JSON.stringify(data));
         return data;
     } catch (e) {
@@ -480,7 +485,7 @@ async function createWidget() {
         if (i === nearest.length && notable.length) {
             widget.addSpacer(LARGE ? 4 : 1);
             if (LARGE) {
-                addLabel(widget, `MARKANT IM UMKREIS · MIT WIKIPEDIA-ARTIKEL, ${NOTABLE_ABOVE}+ M HÖHER`, Font.semiboldSystemFont(9), WHITE, 0.5);
+                addLabel(widget, `MARKANT IM UMKREIS · WIKIPEDIA (DE/EN), ${NOTABLE_ABOVE}+ M HÖHER`, Font.semiboldSystemFont(9), WHITE, 0.5);
                 widget.addSpacer(2);
             } else {
                 let rule = widget.addStack();
