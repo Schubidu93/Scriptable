@@ -165,10 +165,11 @@ function mediumWidth() {
 
 function compactOptions() {
     let col = (mediumWidth() - 2 * SIDE_PAD - MID_GAP - 2 * HALF_GAP) / 4;
-    let fixed = 1 + 14 + 2 + 9 + 2 + 1; // Rand, Platz, Abstand, Logo, Abstand, Rand
-    let rest = Math.floor(col - fixed);
-    let abbrW = Math.round((rest - 3) * 0.42);
-    return { size: 9, logo: 9, numW: 14, gap: 2, abbrW, recW: rest - 3 - abbrW, pad: 1 };
+    let fixed = 11 + 2 + 9 + 2; // Platz (zwei Ziffern), Abstand, Logo, Abstand
+    let rest = Math.floor(col - fixed) - 3; // abzüglich Abstand Kürzel–Bilanz
+    // Kürzel brauchen Platz für breite Buchstaben ("WSH"), Bilanzen meist nur "5-2"
+    let abbrW = Math.round(rest * 0.5);
+    return { size: 9, logo: 9, numW: 11, gap: 2, abbrW, recW: rest - abbrW, pad: 0 };
 }
 
 function addConference(stack, group, images) {
