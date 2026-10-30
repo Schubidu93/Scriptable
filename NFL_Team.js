@@ -502,17 +502,17 @@ function buildError(widget) {
     widget.addSpacer();
 }
 
-// Live: alle 5 Minuten. Spieltag vor dem Anstoß: zum Anstoß. Sonst stündlich.
+// Live: alle 5 Minuten. Sonst zum nächsten Anstoß, spätestens nach 3 Stunden.
 function nextRefresh(data) {
     let minute = 60 * 1000;
     let now = Date.now();
     if (data && data.live && !data.stale) return new Date(now + 5 * minute);
     if (data && data.next) {
         let kickoff = new Date(data.next.date).getTime();
-        if (kickoff > now && kickoff - now < 60 * minute) return new Date(Math.max(kickoff, now + 5 * minute));
+        if (kickoff > now && kickoff - now < 180 * minute) return new Date(Math.max(kickoff + minute, now + 5 * minute));
         if (kickoff <= now && now - kickoff < 5 * 60 * minute) return new Date(now + 5 * minute);
     }
-    return new Date(now + 60 * minute);
+    return new Date(now + 180 * minute);
 }
 
 async function createWidget() {

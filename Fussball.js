@@ -1912,7 +1912,9 @@ function buildError(widget) {
     widget.addSpacer();
 }
 
-// Live: alle 5 Minuten. Spieltag vor dem Anpfiff: zum Anpfiff. Sonst stündlich.
+// Live: alle 2–5 Minuten. Sonst zum nächsten Anpfiff, spätestens nach 3 Stunden (spart das iOS-Budget für die Spiele).
+const IDLE = 3 * 60;
+
 function nextRefresh(data) {
     let minute = 60 * 1000;
     let now = Date.now();
@@ -1925,28 +1927,28 @@ function nextRefresh(data) {
         };
         let live = data.games.some(g => g.state === "in" || (g.state === "pre" && started(g)));
         if (live) return new Date(now + 2 * minute);
-        // Nächster Anstoß innerhalb der nächsten halben Stunde: eine Minute nach Anstoß aktualisieren
+        // Eine Minute nach dem nächsten Anstoß aktualisieren
         let kickoffs = data.games.filter(g => g.state === "pre").map(g => new Date(g.date).getTime()).filter(t => t > now);
-        let soon = Math.min(...kickoffs.map(t => t + minute), now + 30 * minute);
+        let soon = Math.min(...kickoffs.map(t => t + minute), now + IDLE * minute);
         return new Date(Math.max(soon, now + 2 * minute));
     }
     if (data && data.schedule) {
         // Tabelle: während der Spiele und bis eine Stunde nach Abpfiff alle 5 Minuten, vor dem Anstoß
-        // zum Anstoß, sonst halbstündlich
+        // zum Anstoß, sonst alle 3 Stunden
         let starts = data.schedule.map(g => new Date(g.date).getTime());
         let busy = data.schedule.some((g, i) => g.state === "in"
             || (g.state === "post" && now - starts[i] < 3 * 60 * minute));
         if (busy) return new Date(now + 5 * minute);
-        let soon = Math.min(...starts.filter(t => t > now), now + 30 * minute);
+        let soon = Math.min(...starts.filter(t => t > now), now + IDLE * minute);
         return new Date(Math.max(soon, now + 5 * minute));
     }
     if (data && data.live && !data.stale) return new Date(now + 5 * minute);
     if (data && data.next) {
         let kickoff = new Date(data.next.date).getTime();
-        if (kickoff > now && kickoff - now < 60 * minute) return new Date(Math.max(kickoff, now + 5 * minute));
+        if (kickoff > now && kickoff - now < IDLE * minute) return new Date(Math.max(kickoff + minute, now + 5 * minute));
         if (kickoff <= now && now - kickoff < 3 * 60 * minute) return new Date(now + 5 * minute);
     }
-    return new Date(now + 60 * minute);
+    return new Date(now + IDLE * minute);
 }
 
 // Größe: auf dem Homescreen die gewählte; in der App die Standardgröße (Ergebnisse groß, sonst mittel)

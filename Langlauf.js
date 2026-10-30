@@ -245,7 +245,7 @@ async function createWidget() {
     if (data) data.areas = data.areas.filter(a => (a.region || "allgaeu") === region);
     let widget = new ListWidget();
     widget.url = URLScheme.forRunningScript();
-    widget.refreshAfterDate = new Date(Date.now() + 30 * 60 * 1000);
+    widget.refreshAfterDate = new Date(Date.now() + 60 * 60 * 1000);
     background(widget);
     widget.setPadding(large ? 14 : 11, 16, large ? 12 : 8, 16);
 

@@ -201,7 +201,7 @@ async function createWidget() {
     let widget = new ListWidget();
     background(widget);
     widget.setPadding(LARGE ? 12 : 10, LARGE ? 14 : SIDE_PAD, LARGE ? 6 : 8, LARGE ? 14 : SIDE_PAD);
-    widget.refreshAfterDate = new Date(Date.now() + 60 * 60000);
+    widget.refreshAfterDate = new Date(Date.now() + 3 * 60 * 60000);
     widget.url = "https://www.espn.com/nfl/standings";
 
     let header = widget.addStack();

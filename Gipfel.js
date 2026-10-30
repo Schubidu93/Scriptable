@@ -432,7 +432,7 @@ async function createWidget() {
     background(widget);
     widget.setPadding(LARGE ? 12 : 10, 16, LARGE ? 6 : 8, 16);
     // Unterwegs öfter neu (Entfernungen ändern sich); iOS entscheidet selbst
-    widget.refreshAfterDate = new Date(Date.now() + 15 * 60000);
+    widget.refreshAfterDate = new Date(Date.now() + 10 * 60000);
 
     let header = widget.addStack();
     header.centerAlignContent();

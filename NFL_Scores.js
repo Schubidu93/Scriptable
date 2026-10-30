@@ -314,13 +314,13 @@ function buildError(widget) {
     widget.addSpacer();
 }
 
-// Bei laufenden Spielen alle 5 Minuten, sonst zum nächsten Anstoß bzw. nach 30 Minuten
+// Bei laufenden Spielen alle 5 Minuten, sonst zum nächsten Anstoß, spätestens nach 3 Stunden
 function nextRefresh(data) {
     let now = Date.now(), minute = 60000;
-    if (!data || !data.games) return new Date(now + 30 * minute);
+    if (!data || !data.games) return new Date(now + 60 * minute);
     if (data.games.some(g => g.state === "in") && !data.stale) return new Date(now + 5 * minute);
     let kickoffs = data.games.filter(g => g.state === "pre").map(g => new Date(g.date).getTime()).filter(t => t > now);
-    return new Date(Math.max(Math.min(...kickoffs, now + 30 * minute), now + 5 * minute));
+    return new Date(Math.max(Math.min(...kickoffs.map(t => t + minute), now + 180 * minute), now + 5 * minute));
 }
 
 async function createWidget() {
