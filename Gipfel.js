@@ -1,6 +1,6 @@
 // Gipfel – die fünf nächsten Berggipfel vom aktuellen Standort aus (OpenStreetMap, natural=peak mit Namen):
 // Name, Höhe, Entfernung (Luftlinie) und Richtung als Himmelsrichtung (z. B. SSW) mit Pfeil; ein Haken, wenn
-// eine deiner Strava-/Garmin-Aktivitäten auf 50 m an den Gipfel heranführte (Strava-Zugang des Strava-Widgets;
+// eine deiner Strava-/Garmin-Aktivitäten auf 50 m an den Gipfel heranführte, daneben klein der geringste Abstand (Strava-Zugang des Strava-Widgets;
 // abgeglichen wird in der App, z. B. nach Antippen – das Widget liest nur das Ergebnis).
 // Die Gipfel kommen von Wikidata (ersatzweise OpenStreetMap über die Overpass-API); neu gefragt wird erst, wenn du dich mehr als 1 km bewegt hast
 // (sonst nur Entfernung und Richtung neu berechnet). Mittleres Widget: 8 Gipfel, großes: 15.
@@ -230,48 +230,63 @@ async function syncTracks() {
 
 // Kleinster Abstand (m) eines Punkts zu einer Route – Strecken zwischen den Routenpunkten mitgerechnet,
 // weil die vereinfachte Route Punkte weglässt
-function nearTrack(peak, points) {
+function trackDistance(peak, points) {
     let kx = 111320 * Math.cos(rad(peak.lat)), ky = 110540;
     let xy = p => [(p[1] - peak.lon) * kx, (p[0] - peak.lat) * ky];
+    let best = Infinity;
     for (let i = 0; i < points.length; i++) {
         let [ax, ay] = xy(points[i]);
-        if (ax * ax + ay * ay <= TOLERANCE_M ** 2) return true;
+        best = Math.min(best, ax * ax + ay * ay);
         if (i === 0) continue;
         let [bx, by] = xy(points[i - 1]);
         let dx = ax - bx, dy = ay - by, len = dx * dx + dy * dy;
         if (!len) continue;
         let t = Math.max(0, Math.min(1, -(bx * dx + by * dy) / len));
         let px = bx + t * dx, py = by + t * dy;
-        if (px * px + py * py <= TOLERANCE_M ** 2) return true;
+        best = Math.min(best, px * px + py * py);
     }
-    return false;
+    return Math.sqrt(best);
 }
 
-// Nur Routen prüfen, deren Umriss (plus Toleranz) den Gipfel enthält
-function visitedPeaks(peaks, store) {
+// Geringster Abstand je Gipfel über alle Routen – geprüft werden nur Routen, deren Umriss den Gipfel mit
+// NEAR_M Puffer enthält; weiter entfernt gilt als "nie in der Nähe" (Infinity)
+const NEAR_M = 2000;
+
+function closestApproach(peaks, store) {
     let decoded = {};
-    let padLat = TOLERANCE_M / 110540;
+    let padLat = NEAR_M / 110540;
     return peaks.map(peak => {
-        let padLon = TOLERANCE_M / (111320 * Math.cos(rad(peak.lat)));
-        return store.tracks.some(t => peak.lat >= t.box[0] - padLat && peak.lat <= t.box[2] + padLat
-            && peak.lon >= t.box[1] - padLon && peak.lon <= t.box[3] + padLon
-            && nearTrack(peak, decoded[t.id] || (decoded[t.id] = decodePolyline(t.poly))));
+        let padLon = NEAR_M / (111320 * Math.cos(rad(peak.lat)));
+        let best = Infinity;
+        for (let t of store.tracks) {
+            if (peak.lat < t.box[0] - padLat || peak.lat > t.box[2] + padLat || peak.lon < t.box[1] - padLon || peak.lon > t.box[3] + padLon) continue;
+            best = Math.min(best, trackDistance(peak, decoded[t.id] || (decoded[t.id] = decodePolyline(t.poly))));
+            if (best === 0) break;
+        }
+        return best;
     });
 }
 
-const visitedPath = fm.joinPath(fm.documentsDirectory(), "gipfel-besucht.json");
+// Ergebnis als kleine Liste "lat,lon" → Meter (das Widget liest nur diese)
+const nearPath = fm.joinPath(fm.documentsDirectory(), "gipfel-abstand.json");
 const peakKey = p => `${p.lat.toFixed(4)},${p.lon.toFixed(4)}`;
 
-function saveVisited(peaks, store) {
-    let known = readVisited();
-    let flags = visitedPeaks(peaks, store);
-    peaks.forEach((p, i) => { if (flags[i]) known.add(peakKey(p)); });
-    fm.writeString(visitedPath, JSON.stringify([...known]));
+function saveApproach(peaks, store) {
+    let known = readApproach();
+    closestApproach(peaks, store).forEach((m, i) => {
+        if (m <= NEAR_M) known[peakKey(peaks[i])] = Math.round(m);
+    });
+    fm.writeString(nearPath, JSON.stringify(known));
 }
 
-function readVisited() {
-    try { if (fm.fileExists(visitedPath)) return new Set(JSON.parse(fm.readString(visitedPath))); } catch (e) {}
-    return new Set();
+function readApproach() {
+    try { if (fm.fileExists(nearPath)) return JSON.parse(fm.readString(nearPath)); } catch (e) {}
+    return {};
+}
+
+// "12 m", "480 m", "1,4 km"
+function formatApproach(m) {
+    return m < 1000 ? `${Math.round(m / 10) * 10 || Math.round(m)} m` : `${(m / 1000).toFixed(1).replace(".", ",")} km`;
 }
 
 // ---------- Darstellung ----------
@@ -358,6 +373,11 @@ function addRow(widget, peak) {
     dir.addSpacer();
     let name = addLabel(row, peak.name, Font.semiboldSystemFont(SIZE.name));
     name.minimumScaleFactor = 0.8;
+    // Ganz klein: wie nah du dem Gipfel bei deinen Routen schon gekommen bist (bis 2 km)
+    if (SHOW_CHECKS && peak.approach !== undefined) {
+        row.addSpacer(4);
+        addLabel(row, formatApproach(peak.approach), Font.mediumSystemFont(Math.max(8, SIZE.name - 4)), WHITE, 0.45);
+    }
     row.addSpacer(6);
     row.addSpacer();
     let ele = row.addStack();
@@ -409,9 +429,12 @@ async function createWidget() {
         SHOW_CHECKS = true;
         // Der Abgleich mit allen Routen ist für den Homescreen zu schwer (iOS verwirft dann still das Bild):
         // nur in der App rechnen – für alle gespeicherten Gipfel – und als kleine Liste merken
-        if (!config.runsInWidget) saveVisited(data.peaks, await syncTracks());
-        let visited = readVisited();
-        peaks.forEach(p => { p.visited = visited.has(peakKey(p)); });
+        if (!config.runsInWidget) saveApproach(data.peaks, await syncTracks());
+        let approach = readApproach();
+        peaks.forEach(p => {
+            p.approach = approach[peakKey(p)];
+            p.visited = p.approach !== undefined && p.approach <= TOLERANCE_M;
+        });
     }
     if (!peaks.length) addLabel(widget, "Keine Gipfel im Umkreis von 40 km", Font.mediumSystemFont(12), WHITE, 0.8);
     peaks.forEach((p, i) => {
