@@ -228,6 +228,56 @@ async function changesAll(list) {
     return Object.assign({}, ...lists);
 }
 
+// Bahnhof nach Namen (aus dem Laufweg), einmal gesucht und gespeichert
+async function stationByName(name) {
+    let saved = readStations();
+    let key = `name:${name}`;
+    if (saved[key] !== undefined) return saved[key];
+    let list = await searchStations(name);
+    let hit = list.find(x => x.name === name) || null;
+    saved[key] = hit ? { eva: hit.eva, name: hit.name } : null;
+    fm.writeString(stationPath, JSON.stringify(saved));
+    return saved[key];
+}
+
+// Wo ist der Zug? Die Halte zwischen Start und Ziel (Laufweg ab dem Start) einzeln nachsehen: Plan und Änderungen
+// des jeweiligen Bahnhofs, gleiche Fahrt-ID. Ergebnis: letzter Halt und ob der Zug dort noch steht.
+async function trainPosition(s, isTarget, originName, arrival) {
+    let names = (s.dp.ppth || "").split("|");
+    let end = names.findIndex(isTarget);
+    if (end <= 0) return { name: originName, moving: true };
+    names = names.slice(0, end);
+    let start = parseTime(s.dp.pt);
+    let hours = Math.max(1, Math.ceil((arrival - start.getTime()) / 3600000) + 1);
+    let key = tripKey(s.id);
+    let stops = await Promise.all(names.map(async name => {
+        let st = await stationByName(name).catch(() => null);
+        if (!st) return { name };
+        let [planned, changes] = await Promise.all([
+            plans(st.eva, start, hours),
+            request(`fchg/${st.eva}`).then(parseStops).catch(() => ({})),
+        ]);
+        let stop = Object.values(planned).find(x => tripKey(x.id) === key);
+        if (!stop) return { name };
+        let ch = changes[stop.id] || {};
+        let time = (plan, change) => parseTime((change && change.ct) || (plan && plan.pt));
+        return { name, ar: time(stop.ar, ch.ar), dp: time(stop.dp, ch.dp) };
+    }));
+    let now = Date.now();
+    let last = { name: originName, moving: true };
+    for (let stop of stops) {
+        if (stop.dp && stop.dp.getTime() <= now) last = { name: stop.name, moving: true };
+        else if (stop.ar && stop.ar.getTime() <= now) return { name: stop.name, moving: false };
+        else if (stop.ar || stop.dp) break;
+    }
+    return last;
+}
+
+// "Leutkirch (Allgäu)" → "Leutkirch", "München-Pasing" → "Pasing"
+function shortStation(name) {
+    return String(name).replace(/\s*\(.*?\)/g, "").replace(/^München-/, "").replace(/ Hbf$/, "").trim();
+}
+
 // Abfahrten ab vor einer Stunde bis HOURS_AHEAD Stunden voraus (so weit liefert die Abfrage Fahrten)
 const HOURS_AHEAD = 11;
 
@@ -274,6 +324,18 @@ async function loadJourneys(fromKey, toKey, count = 3) {
             cancelled: dc.cs === "c" || ac.cs === "c",
         };
     });
+    // Fahrende Züge: letzter Halt unterwegs (nur für Züge zwischen Abfahrt und Ankunft)
+    let now = Date.now();
+    await Promise.all(parsed.map(async (j, i) => {
+        let dep = new Date(j.depReal || j.dep).getTime();
+        let arr = j.arr ? new Date(j.arrReal || j.arr).getTime() : dep + 3 * 3600000;
+        if (j.cancelled || dep > now || arr <= now) return;
+        try {
+            j.position = await trainPosition(departures[i], isTarget, from[0].name, arr);
+        } catch (e) {
+            console.log(`Position: ${e}`);
+        }
+    }));
     PLAN_CACHE && fm.writeString(planPath, JSON.stringify(PLAN_CACHE));
     return parsed;
 }
@@ -391,9 +453,13 @@ function addJourney(row, j) {
     let status, color = WHITE, opacity = 0.6;
     if (j.cancelled) { status = "fällt aus"; color = RED; opacity = 1; }
     else if (arrived) status = "angekommen";
-    else if (departed) { status = "unterwegs"; opacity = 0.8; }
+    else if (departed) {
+        // Letzter Halt; mit "›", wenn der Zug schon weitergefahren ist
+        status = j.position ? `${shortStation(j.position.name)}${j.position.moving ? " ›" : ""}` : "unterwegs";
+        opacity = 0.85;
+    }
     else status = j.platform ? `Gl. ${j.platform}` : "";
-    addLabel(row, status, Font.semiboldSystemFont(11), color, opacity);
+    addLabel(row, status, Font.semiboldSystemFont(11), color, opacity).minimumScaleFactor = 0.75;
 }
 
 function background(widget) {
