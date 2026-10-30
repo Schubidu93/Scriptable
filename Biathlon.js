@@ -568,7 +568,7 @@ async function createWidget() {
     let widget = new ListWidget();
     // Antippen startet das Skript in Scriptable (frische Daten) statt eine Website zu öffnen
     widget.url = URLScheme.forRunningScript();
-    widget.refreshAfterDate = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    widget.refreshAfterDate = new Date(Date.now() + 3 * 60 * 60 * 1000);
     background(widget);
     widget.setPadding(14, 16, 6, 16);
 

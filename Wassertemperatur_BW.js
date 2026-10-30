@@ -179,7 +179,7 @@ async function createWidget() {
     let results = await loadTemperatures();
     let family = config.widgetFamily || "small";
     let widget = new ListWidget();
-    widget.refreshAfterDate = new Date(Date.now() + 30 * 60 * 1000);
+    widget.refreshAfterDate = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
     switch (family) {
         case "accessoryInline":

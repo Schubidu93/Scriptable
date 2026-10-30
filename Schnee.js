@@ -235,7 +235,7 @@ async function createWidget() {
     let family = config.widgetFamily || "small";
     let widget = new ListWidget();
     widget.url = CONFIG.url;
-    widget.refreshAfterDate = new Date(Date.now() + 30 * 60 * 1000);
+    widget.refreshAfterDate = new Date(Date.now() + 60 * 60 * 1000);
 
     switch (family) {
         case "accessoryInline":
