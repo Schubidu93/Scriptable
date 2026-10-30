@@ -1,5 +1,6 @@
 // Gipfel – die fünf nächsten Berggipfel vom aktuellen Standort aus (OpenStreetMap, natural=peak mit Namen):
-// Name, Höhe, Entfernung (Luftlinie) und Richtung als Himmelsrichtung (z. B. SSW) mit Pfeil.
+// Name, Höhe, Entfernung (Luftlinie) und Richtung als Himmelsrichtung (z. B. SSW) mit Pfeil; ein Haken, wenn
+// eine deiner Strava-/Garmin-Aktivitäten auf 50 m an den Gipfel heranführte (Strava-Zugang des Strava-Widgets).
 // Die Gipfel kommen von Wikidata (ersatzweise OpenStreetMap über die Overpass-API); neu gefragt wird erst, wenn du dich mehr als 1 km bewegt hast
 // (sonst nur Entfernung und Richtung neu berechnet). Mittleres Widget: 5 Gipfel, großes: 10.
 
@@ -131,6 +132,127 @@ async function loadPeaks(here) {
     }
 }
 
+// ---------- Schon oben gewesen? (Strava) ----------
+// Garmin bietet Privatleuten keine Schnittstelle; die Garmin-Aktivitäten landen aber in Strava. Genutzt wird der
+// Strava-Zugang des Strava-Widgets (Keychain). Gespeichert werden je Aktivität nur die vereinfachte Route
+// (summary_polyline) und ihr Umriss. Ein Gipfel gilt als bestiegen, wenn eine Route ihm auf 50 m nahe kommt.
+
+const TOLERANCE_M = 50;
+const tracksPath = fm.joinPath(fm.documentsDirectory(), "gipfel-strava-routen.json");
+const STRAVA_KEY = {
+    clientId: "strava_client_id", clientSecret: "strava_client_secret", refreshToken: "strava_refresh_token",
+    accessToken: "strava_access_token", expiresAt: "strava_expires_at",
+};
+
+const keychain = key => (Keychain.contains(key) ? Keychain.get(key) : null);
+const stravaConnected = () => Boolean(keychain(STRAVA_KEY.clientId) && keychain(STRAVA_KEY.clientSecret) && keychain(STRAVA_KEY.refreshToken));
+
+async function stravaToken() {
+    let token = keychain(STRAVA_KEY.accessToken);
+    if (token && Number(keychain(STRAVA_KEY.expiresAt) || 0) * 1000 > Date.now() + 5 * 60000) return token;
+    let req = new Request("https://www.strava.com/oauth/token");
+    req.method = "POST";
+    req.headers = { "Content-Type": "application/x-www-form-urlencoded" };
+    req.body = [["client_id", keychain(STRAVA_KEY.clientId)], ["client_secret", keychain(STRAVA_KEY.clientSecret)],
+        ["grant_type", "refresh_token"], ["refresh_token", keychain(STRAVA_KEY.refreshToken)]]
+        .map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+    let json = await req.loadJSON();
+    if (!json.access_token) throw new Error("Strava-Anmeldung fehlgeschlagen");
+    Keychain.set(STRAVA_KEY.accessToken, json.access_token);
+    Keychain.set(STRAVA_KEY.refreshToken, json.refresh_token);
+    Keychain.set(STRAVA_KEY.expiresAt, String(json.expires_at));
+    return json.access_token;
+}
+
+// Google-Polyline → [[lat, lon], …]
+function decodePolyline(str) {
+    let points = [], index = 0, lat = 0, lon = 0;
+    while (index < str.length) {
+        for (let k = 0; k < 2; k++) {
+            let result = 0, shift = 0, b;
+            do {
+                b = str.charCodeAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20 && index < str.length);
+            let delta = result & 1 ? ~(result >> 1) : result >> 1;
+            if (k === 0) lat += delta; else lon += delta;
+        }
+        points.push([lat / 1e5, lon / 1e5]);
+    }
+    return points;
+}
+
+function readTracks() {
+    try { if (fm.fileExists(tracksPath)) return JSON.parse(fm.readString(tracksPath)); } catch (e) {}
+    return { last: 0, checked: 0, tracks: [] };
+}
+
+// Neue Aktivitäten nachladen (Strava liefert mit "after" aufsteigend). Im Widget höchstens eine Seite und nur
+// stündlich, in der App alles (beim ersten Mal die ganze Historie)
+async function syncTracks() {
+    let store = readTracks();
+    if (!stravaConnected()) return store;
+    if (config.runsInWidget && Date.now() - store.checked < 3600000) return store;
+    try {
+        let token = await stravaToken();
+        let pages = config.runsInWidget ? 1 : 100;
+        for (let page = 0; page < pages; page++) {
+            let req = new Request(`https://www.strava.com/api/v3/athlete/activities?after=${store.last}&per_page=200`);
+            req.headers = { Authorization: `Bearer ${token}` };
+            req.timeoutInterval = config.runsInWidget ? 8 : 30;
+            let list = await req.loadJSON();
+            if (!Array.isArray(list)) throw new Error(`Strava: ${JSON.stringify(list).slice(0, 120)}`);
+            for (let a of list) {
+                let poly = a.map && a.map.summary_polyline;
+                store.last = Math.max(store.last, Math.floor(new Date(a.start_date).getTime() / 1000));
+                if (!poly) continue;
+                let pts = decodePolyline(poly);
+                let lats = pts.map(p => p[0]), lons = pts.map(p => p[1]);
+                store.tracks.push({ id: a.id, poly,
+                    box: [Math.min(...lats), Math.min(...lons), Math.max(...lats), Math.max(...lons)].map(v => Math.round(v * 1e4) / 1e4) });
+            }
+            if (list.length < 200) break;
+        }
+        store.checked = Date.now();
+        fm.writeString(tracksPath, JSON.stringify(store));
+    } catch (e) {
+        console.log(`Strava: ${e}`);
+    }
+    return store;
+}
+
+// Kleinster Abstand (m) eines Punkts zu einer Route – Strecken zwischen den Routenpunkten mitgerechnet,
+// weil die vereinfachte Route Punkte weglässt
+function nearTrack(peak, points) {
+    let kx = 111320 * Math.cos(rad(peak.lat)), ky = 110540;
+    let xy = p => [(p[1] - peak.lon) * kx, (p[0] - peak.lat) * ky];
+    for (let i = 0; i < points.length; i++) {
+        let [ax, ay] = xy(points[i]);
+        if (ax * ax + ay * ay <= TOLERANCE_M ** 2) return true;
+        if (i === 0) continue;
+        let [bx, by] = xy(points[i - 1]);
+        let dx = ax - bx, dy = ay - by, len = dx * dx + dy * dy;
+        if (!len) continue;
+        let t = Math.max(0, Math.min(1, -(bx * dx + by * dy) / len));
+        let px = bx + t * dx, py = by + t * dy;
+        if (px * px + py * py <= TOLERANCE_M ** 2) return true;
+    }
+    return false;
+}
+
+// Nur Routen prüfen, deren Umriss (plus Toleranz) den Gipfel enthält
+function visitedPeaks(peaks, store) {
+    let decoded = {};
+    let padLat = TOLERANCE_M / 110540;
+    return peaks.map(peak => {
+        let padLon = TOLERANCE_M / (111320 * Math.cos(rad(peak.lat)));
+        return store.tracks.some(t => peak.lat >= t.box[0] - padLat && peak.lat <= t.box[2] + padLat
+            && peak.lon >= t.box[1] - padLon && peak.lon <= t.box[3] + padLon
+            && nearTrack(peak, decoded[t.id] || (decoded[t.id] = decodePolyline(t.poly))));
+    });
+}
+
 // ---------- Darstellung ----------
 
 function addLabel(stack, text, font, color = WHITE, opacity = 1) {
@@ -192,6 +314,8 @@ function background(widget) {
     widget.backgroundGradient = gradient;
 }
 
+let SHOW_CHECKS = false;
+
 function addRow(widget, peak) {
     let row = widget.addStack();
     row.centerAlignContent();
@@ -199,6 +323,13 @@ function addRow(widget, peak) {
     arrow.size = new Size(14, 0);
     arrow.addImage(arrowImage(peak.bearing)).imageSize = new Size(13, 13);
     row.addSpacer(4);
+    // Dezenter Haken, wenn eine Strava-/Garmin-Aktivität über den Gipfel führte (Platz immer frei, damit alles bündig bleibt)
+    if (SHOW_CHECKS) {
+        let check = row.addStack();
+        check.size = new Size(14, 0);
+        if (peak.visited) addSymbol(check, "checkmark", 10, new Color("#7CE38B")).imageOpacity = 0.85;
+        check.addSpacer();
+    }
     let dir = row.addStack();
     dir.size = new Size(36, 0);
     addLabel(dir, compass(peak.bearing), Font.semiboldSystemFont(11), WHITE, 0.75);
@@ -252,6 +383,11 @@ async function createWidget() {
     }
     let peaks = data.peaks.filter(p => !isSpotHeight(p.name)).map(p => ({ ...p, km: distanceKm(here, p), bearing: bearing(here, p) }))
         .sort((a, b) => a.km - b.km).slice(0, COUNT);
+    if (stravaConnected()) {
+        SHOW_CHECKS = true;
+        let visited = visitedPeaks(peaks, await syncTracks());
+        peaks.forEach((p, i) => { p.visited = visited[i]; });
+    }
     if (!peaks.length) addLabel(widget, "Keine Gipfel im Umkreis von 40 km", Font.mediumSystemFont(12), WHITE, 0.8);
     peaks.forEach((p, i) => {
         if (i > 0) widget.addSpacer(large() ? 8 : 4);
