@@ -92,12 +92,14 @@ const PEAK_TYPES = ["Q8502", "Q207326", "Q54050", "Q1595289", "Q3618634", "Q1111
 // notable: nur Gipfel mit Artikel in der deutschen oder englischen Wikipedia, nach Entfernung – für "markant im Umkreis"
 // (nicht irgendein Sitelink: die cebuanische Wikipedia hat per Bot Millionen Artikel zu fast jeder Erhebung)
 async function wikidata(here, radius, notable = false) {
-    let query = `SELECT ?item ?label ?ele ?coord ?links WHERE {
+    let query = `SELECT ?item ?label ?ele ?coord ?links ?de ?en WHERE {
  SERVICE wikibase:around { ?item wdt:P625 ?coord. bd:serviceParam wikibase:center "Point(${here.lon.toFixed(5)} ${here.lat.toFixed(5)})"^^geo:wktLiteral. bd:serviceParam wikibase:radius "${radius / 1000}". bd:serviceParam wikibase:distance ?dist. }
  VALUES ?type { ${PEAK_TYPES} }
  ?item wdt:P31 ?type.
  ?item wikibase:sitelinks ?links.
- ${notable ? "FILTER EXISTS { ?article schema:about ?item; schema:isPartOf ?wiki. VALUES ?wiki { <https://de.wikipedia.org/> <https://en.wikipedia.org/> } }" : ""}
+ ${notable ? `OPTIONAL { ?de schema:about ?item; schema:isPartOf <https://de.wikipedia.org/>. }
+ OPTIONAL { ?en schema:about ?item; schema:isPartOf <https://en.wikipedia.org/>. }
+ FILTER(BOUND(?de) || BOUND(?en))` : ""}
  OPTIONAL { ?item wdt:P2044 ?ele. }
  SERVICE wikibase:label { bd:serviceParam wikibase:language "de,en". ?item rdfs:label ?label. }
 } ORDER BY ?dist LIMIT ${notable ? 150 : 120}`;
@@ -109,7 +111,9 @@ async function wikidata(here, radius, notable = false) {
     return json.results.bindings.map(b => {
         let m = /Point\(([-\d.]+) ([-\d.]+)\)/.exec(b.coord.value);
         return m && !/^Q\d+$/.test(b.label.value) ? { name: b.label.value, ele: b.ele ? Math.round(Number(b.ele.value)) : null,
-            lat: Number(m[2]), lon: Number(m[1]), links: b.links ? Number(b.links.value) : 0 } : null;
+            lat: Number(m[2]), lon: Number(m[1]), links: b.links ? Number(b.links.value) : 0,
+            // Wikipedia-Artikel: deutsch, sonst englisch
+            wiki: b.de ? b.de.value : b.en ? b.en.value : null } : null;
     }).filter(p => p && !isSpotHeight(p.name) && !seen.has(p.name) && seen.add(p.name));
 }
 
@@ -132,7 +136,7 @@ async function loadPeaks(here) {
     try { if (fm.fileExists(cachePath)) cached = JSON.parse(fm.readString(cachePath)); } catch (e) {}
     // Gleicher Ort (unter 1 km) und höchstens eine Woche alt: gespeicherte Gipfel verwenden
     // Markante Gipfel fehlen (Abfrage dauert ~10 s und scheitert im Widget gelegentlich): dann erneut versuchen
-    if (cached && cached.peaks && cached.version === 5 && distanceKm(here, cached.center) < 1 && Date.now() - cached.time < 7 * 86400000
+    if (cached && cached.peaks && cached.version === 6 && distanceKm(here, cached.center) < 1 && Date.now() - cached.time < 7 * 86400000
         && (cached.notable && cached.notable.length || cached.source !== "Wikidata")) return cached;
     try {
         // Zuerst Wikidata (antwortet in wenigen Sekunden), nur ersatzweise die oft überlasteten Overpass-Server
@@ -153,7 +157,7 @@ async function loadPeaks(here) {
         let notable = source === "Wikidata" ? await wikidata(here, RADIUS, true).catch(() => []) : [];
         // Fehlschlag: die bisherigen markanten Gipfel (gleicher Ort) behalten
         if (!notable.length && cached && cached.notable && distanceKm(here, cached.center) < 20) notable = cached.notable;
-        let data = { version: 5, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source };
+        let data = { version: 6, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source };
         fm.writeString(cachePath, JSON.stringify(data));
         return data;
     } catch (e) {
@@ -379,9 +383,8 @@ let SHOW_CHECKS = false;
 
 function addRow(widget, peak) {
     let row = widget.addStack();
-    // Antippen der Zeile öffnet den Komoot-Routenplaner am Gipfel (Universal Link – mit installierter App in Komoot,
-    // sonst im Browser)
-    row.url = `https://www.komoot.com/plan/@${peak.lat.toFixed(5)},${peak.lon.toFixed(5)},15z`;
+    // Antippen: markante Gipfel öffnen ihren Wikipedia-Artikel (deutsch, sonst englisch), die übrigen Apple Karten
+    row.url = peak.wiki || `http://maps.apple.com/?ll=${peak.lat},${peak.lon}&q=${encodeURIComponent(peak.name)}`;
     row.centerAlignContent();
     let arrow = row.addStack();
     arrow.size = new Size(14, 0);
