@@ -367,8 +367,9 @@ let SHOW_CHECKS = false;
 
 function addRow(widget, peak) {
     let row = widget.addStack();
-    // Antippen der Zeile öffnet den Gipfel in Apple Karten
-    row.url = `http://maps.apple.com/?ll=${peak.lat},${peak.lon}&q=${encodeURIComponent(peak.name)}`;
+    // Antippen der Zeile öffnet den Komoot-Routenplaner am Gipfel (Universal Link – mit installierter App in Komoot,
+    // sonst im Browser)
+    row.url = `https://www.komoot.com/plan/@${peak.lat.toFixed(5)},${peak.lon.toFixed(5)},15z`;
     row.centerAlignContent();
     let arrow = row.addStack();
     arrow.size = new Size(14, 0);
