@@ -1,6 +1,6 @@
 // Gipfel – die nächsten Berggipfel vom aktuellen Standort aus (mindestens 30 m über dir) und die markantesten im Umkreis (OpenStreetMap, natural=peak mit Namen):
 // Name, Höhe, Entfernung (Luftlinie) und Richtungspfeil; daneben ein Haken, wenn eine deiner Strava-/Garmin-
-// Aktivitäten auf 50 m an den Gipfel heranführte, sonst klein dein geringster Abstand (ohne Strava: Himmelsrichtung) (Strava-Zugang des Strava-Widgets;
+// Aktivitäten auf 75 m an den Gipfel heranführte, sonst klein dein geringster Abstand (ohne Strava: Himmelsrichtung) (Strava-Zugang des Strava-Widgets;
 // abgeglichen wird in der App, z. B. nach Antippen – das Widget liest nur das Ergebnis).
 // Die Gipfel kommen von Wikidata (ersatzweise OpenStreetMap über die Overpass-API); neu gefragt wird erst, wenn du dich mehr als 1 km bewegt hast
 // (sonst nur Entfernung und Richtung neu berechnet). Mittleres Widget: 8 Gipfel, großes: 15.
@@ -20,6 +20,8 @@ const NOTABLE_COUNT = LARGE ? 8 : 3;
 const NOTABLE_ABOVE = 200;
 // … und Dominanz (Abstand zum nächsthöheren Punkt) von mindestens 2 km – keine Nebengipfel
 const MIN_ISOLATION = 2000;
+// Ohne Dominanz-Angabe in Wikidata zählt ein Gipfel, wenn er mindestens so viel höher ist als du
+const NO_ISOLATION_ABOVE = 300;
 const MIN_ABOVE = 30;
 
 const fm = FileManager.local();
@@ -177,9 +179,10 @@ async function loadPeaks(here) {
 // ---------- Schon oben gewesen? (Strava) ----------
 // Garmin bietet Privatleuten keine Schnittstelle; die Garmin-Aktivitäten landen aber in Strava. Genutzt wird der
 // Strava-Zugang des Strava-Widgets (Keychain). Gespeichert werden je Aktivität nur die vereinfachte Route
-// (summary_polyline) und ihr Umriss. Ein Gipfel gilt als bestiegen, wenn eine Route ihm auf 50 m nahe kommt.
+// (summary_polyline) und ihr Umriss. Ein Gipfel gilt als bestiegen, wenn eine Route ihm auf 75 m nahe kommt
+// (Gipfelkoordinaten und vereinfachte Routen liegen oft 20–60 m daneben).
 
-const TOLERANCE_M = 50;
+const TOLERANCE_M = 75;
 const tracksPath = fm.joinPath(fm.documentsDirectory(), "gipfel-strava-routen.json");
 const STRAVA_KEY = {
     clientId: "strava_client_id", clientSecret: "strava_client_secret", refreshToken: "strava_refresh_token",
@@ -397,7 +400,7 @@ function addRow(widget, peak) {
     arrow.size = new Size(14, 0);
     arrow.addImage(arrowImage(peak.bearing)).imageSize = new Size(SIZE.arrow, SIZE.arrow);
     row.addSpacer(4);
-    // Spalte nach dem Pfeil: mit Strava der Haken (bis 50 m) bzw. klein dein geringster Abstand,
+    // Spalte nach dem Pfeil: mit Strava der Haken (bis TOLERANCE_M) bzw. klein dein geringster Abstand,
     // ohne Strava die Himmelsrichtung
     let info = row.addStack();
     info.size = new Size(40, 0);
@@ -475,8 +478,11 @@ async function createWidget() {
     let key = p => peakKey(p);
     let notable = (data.notable || []).filter(usable).map(withGeo)
         .filter(p => p.above !== null ? p.above >= NOTABLE_ABOVE : (p.ele || 0) >= 1000)
-        // Nur eigenständige Berge: Dominanz mindestens MIN_ISOLATION (ohne Angabe nicht)
-        .filter(p => p.isolation !== null && p.isolation !== undefined && p.isolation >= MIN_ISOLATION)
+        // Nur eigenständige Berge: Dominanz mindestens MIN_ISOLATION; fehlt die Angabe in Wikidata, ersatzweise
+        // mindestens NO_ISOLATION_ABOVE m höher als du (ohne eigene Höhe: mindestens 1100 m)
+        .filter(p => p.isolation !== null && p.isolation !== undefined
+            ? p.isolation >= MIN_ISOLATION
+            : p.above !== null ? p.above >= NO_ISOLATION_ABOVE : (p.ele || 0) >= 1100)
         .sort((a, b) => a.km - b.km).slice(0, NOTABLE_COUNT);
     let shown = new Set(notable.map(key));
     // Nächste Gipfel, die wenigstens MIN_ABOVE m über dir liegen (reicht das nicht, auch niedrigere). Fehlende markante
