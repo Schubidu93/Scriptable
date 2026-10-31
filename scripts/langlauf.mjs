@@ -129,7 +129,7 @@ async function asvWaldburg() {
         network: null, groomed: null, classic: null, skating: null, snow: null,
         updated: date,
         status: !date ? "unknown" : closed ? "closed" : open ? "open" : "unknown",
-        note: first ? (first.length > 70 ? first.slice(0, 68).replace(/\s+\S*$/, "") + " …" : first) : "kein aktueller Bericht",
+        note: first ? (first.length > 108 ? first.slice(0, 104).replace(/\s+\S*$/, "") + " …" : first) : "kein aktueller Bericht",
     };
 }
 
@@ -157,7 +157,7 @@ async function scVogt() {
         snow: null,
         updated: date ? isoDate(date[1]) : null,
         status: closed ? "closed" : open ? "open" : "unknown",
-        note: first.length > 70 ? first.slice(0, 68).replace(/\s+\S*$/, "") + " …" : first,
+        note: first.length > 108 ? first.slice(0, 104).replace(/\s+\S*$/, "") + " …" : first,
     };
 }
 
@@ -387,7 +387,7 @@ async function lenggries() {
         snow: snow ? Number(snow[1]) : null,
         updated,
         status: closed ? "closed" : open ? "open" : "unknown",
-        note: body.length > 70 ? body.slice(0, 68).replace(/\s+\S*$/, "") + " …" : body,
+        note: body.length > 108 ? body.slice(0, 104).replace(/\s+\S*$/, "") + " …" : body,
     };
 }
 
@@ -407,7 +407,7 @@ async function baierbrunn() {
         network: null, groomed: null, classic: null, skating: null, snow: null,
         updated: date,
         status: closed ? "closed" : open ? "open" : "unknown",
-        note: last.length > 70 ? last.slice(0, 68).replace(/\s+\S*$/, "") + " …" : last,
+        note: last.length > 108 ? last.slice(0, 104).replace(/\s+\S*$/, "") + " …" : last,
     };
 }
 
