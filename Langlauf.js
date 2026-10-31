@@ -217,22 +217,43 @@ function addAreaRow(widget, area, large) {
         // Keine Kilometer (z. B. Vogt: Text-Bericht) – Kurzhinweis über beide Spalten
         let word = area.groomed ? `${km(area.groomed)} km gespurt` : open ? "gespurt"
             : area.status === "closed" ? "geschlossen" : "keine Info";
-        let span = addCell(row, word, COL.classic + COL.skating, Font.mediumSystemFont(11), WHITE, open ? 0.9 : 0.55);
-        span.lineLimit = 1;
+        addCenteredCell(row, word, COL.classic + COL.skating, Font.mediumSystemFont(11), WHITE, open ? 0.9 : 0.55);
     } else {
         addCenteredCell(row, `${km(area.classic)} km`, COL.classic, num, WHITE, area.classic ? 1 : 0.5);
         addCenteredCell(row, `${km(area.skating)} km`, COL.skating, num, WHITE, area.skating ? 1 : 0.5);
     }
     if (large) addCenteredCell(row, area.snow === null || area.snow === undefined ? "–" : `${area.snow} cm`, COL.snow, num, WHITE, area.snow ? 1 : 0.5);
     row.addSpacer();
-    addLabel(row, formatStand(area.updated), Font.mediumSystemFont(11), WHITE, area.stale ? 0.45 : 0.75);
-    if (large && area.note) {
+    // "heute 12:07" ist die breiteste Angabe – lieber leicht schrumpfen als "…"
+    addLabel(row, formatStand(area.updated), Font.mediumSystemFont(11), WHITE, area.stale ? 0.45 : 0.75).minimumScaleFactor = 0.8;
+    (area.noteLines || []).forEach(text => {
         widget.addSpacer(1);
         let line = widget.addStack();
         line.addSpacer(14);
-        let t = addLabel(line, area.note, Font.regularSystemFont(10), WHITE, 0.6);
-        t.lineLimit = 1;
+        addLabel(line, text, Font.regularSystemFont(10), WHITE, 0.6).minimumScaleFactor = 0.85;
+        line.addSpacer();
+    });
+}
+
+// Hinweis kürzen statt abschneiden: nur der erste Satz, ohne Smileys, von Hand auf höchstens zwei Zeilen
+// umbrochen (iOS quetscht mehrzeilige Texte sonst zusammen oder setzt "…")
+const NOTE_CHARS = 54;
+
+function noteLines(note) {
+    let text = String(note || "").replace(/\s*[:;]-?[)(DP]/g, "").replace(/\s+/g, " ").replace(/\s+([.!?])/g, "$1").trim();
+    let first = text.match(/^.*?[.!?](?=\s|$)/);
+    if (first && !/\d\.$/.test(first[0])) text = first[0];
+    if (!text) return [];
+    let lines = [""];
+    for (let word of text.split(" ")) {
+        let cur = lines[lines.length - 1];
+        if (!cur) lines[lines.length - 1] = word;
+        else if (cur.length + 1 + word.length <= NOTE_CHARS) lines[lines.length - 1] = `${cur} ${word}`;
+        else lines.push(word);
     }
+    // Mehr als zwei Zeilen kommen kaum vor (der Abruf kürzt auf ~105 Zeichen)
+    if (lines.length > 2) lines = [lines[0], `${lines[1]} …`];
+    return lines;
 }
 
 const FAMILY = config.widgetFamily || "medium";
@@ -266,8 +287,18 @@ async function createWidget() {
     }
     addColumnTitles(widget, large);
     let areas = pickAreas(data.areas, large ? SLOTS.large : SLOTS.medium);
+    // Hinweise nur im großen Widget und nur so viele Zeilen, wie Platz ist (die nächsten Gebiete zuerst);
+    // bei vielen Hinweiszeilen rücken die Gebiete enger zusammen
+    let budget = 9, used = 0;
+    areas = areas.map(area => {
+        let lines = large ? noteLines(area.note) : [];
+        if (used + lines.length > budget) lines = [];
+        used += lines.length;
+        return { ...area, noteLines: lines };
+    });
+    let gap = large ? (used > 4 ? 4 : 7) : 2;
     areas.forEach((area, i) => {
-        if (i > 0) widget.addSpacer(large ? 7 : 2);
+        if (i > 0) widget.addSpacer(gap);
         addAreaRow(widget, area, large);
     });
     widget.addSpacer();
