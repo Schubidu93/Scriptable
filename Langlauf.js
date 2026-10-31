@@ -107,6 +107,14 @@ function addCell(stack, text, width, font, color = WHITE, opacity = 1) {
     return t;
 }
 
+// Feste Breite, Text zentriert – ohne flexiblen Abstand, damit die ganze Breite für den Text bleibt
+function addCenteredCell(stack, text, width, font, color = WHITE, opacity = 1) {
+    let cell = stack.addStack();
+    cell.size = new Size(width, 0);
+    cell.centerAlignContent();
+    return addLabel(cell, text, font, color, opacity);
+}
+
 const DAY = 86400000;
 
 function dayStart(date) {
@@ -171,17 +179,18 @@ function addHeader(widget, data, large, region) {
     widget.addSpacer(large ? 8 : 4);
 }
 
-// Breiten passend für das mittlere/große Widget (338 pt); jede Zelle mit ~8 pt Reserve gegen „…“
-const COL = { name: 98, classic: 50, skating: 52, snow: 38 };
+// Breiten passend für das mittlere/große Widget (338 pt). Die Zahlenspalten sind zentriert ohne flexiblen Abstand
+// (der kostet mindestens 8 pt – daran wurde "SCHNEE" zu "SCH…"); der gewonnene Platz geht an die Namen
+const COL = { name: 104, classic: 46, skating: 48, snow: 44 };
 
 function addColumnTitles(widget, large) {
     let row = widget.addStack();
     let font = Font.semiboldSystemFont(9);
     row.addSpacer(14);
     addCell(row, "GEBIET", large ? COL.name - 6 : COL.name, font, WHITE, 0.55);
-    addCell(row, "KLASS.", COL.classic, font, WHITE, 0.55);
-    addCell(row, "SKATING", COL.skating, font, WHITE, 0.55);
-    if (large) addCell(row, "SCHNEE", COL.snow, font, WHITE, 0.55);
+    addCenteredCell(row, "KLASS.", COL.classic, font, WHITE, 0.55);
+    addCenteredCell(row, "SKATING", COL.skating, font, WHITE, 0.55);
+    if (large) addCenteredCell(row, "SCHNEE", COL.snow, font, WHITE, 0.55);
     row.addSpacer();
     addLabel(row, "STAND", font, WHITE, 0.55);
     widget.addSpacer(2);
@@ -197,7 +206,7 @@ function addAreaRow(widget, area, large) {
     let nameBox = row.addStack();
     nameBox.size = new Size(large ? COL.name - 6 : COL.name, 0);
     nameBox.centerAlignContent();
-    addLabel(nameBox, area.name, Font.semiboldSystemFont(12), WHITE, open ? 1 : 0.8).minimumScaleFactor = 0.85;
+    addLabel(nameBox, area.name, Font.semiboldSystemFont(12), WHITE, open ? 1 : 0.8).minimumScaleFactor = large ? 0.75 : 0.85;
     if (large && area.km) {
         nameBox.addSpacer(4);
         addLabel(nameBox, `${Math.round(area.km)} km`, Font.mediumSystemFont(9), WHITE, 0.5);
@@ -211,10 +220,10 @@ function addAreaRow(widget, area, large) {
         let span = addCell(row, word, COL.classic + COL.skating, Font.mediumSystemFont(11), WHITE, open ? 0.9 : 0.55);
         span.lineLimit = 1;
     } else {
-        addCell(row, `${km(area.classic)} km`, COL.classic, num, WHITE, area.classic ? 1 : 0.5);
-        addCell(row, `${km(area.skating)} km`, COL.skating, num, WHITE, area.skating ? 1 : 0.5);
+        addCenteredCell(row, `${km(area.classic)} km`, COL.classic, num, WHITE, area.classic ? 1 : 0.5);
+        addCenteredCell(row, `${km(area.skating)} km`, COL.skating, num, WHITE, area.skating ? 1 : 0.5);
     }
-    if (large) addCell(row, area.snow === null || area.snow === undefined ? "–" : `${area.snow} cm`, COL.snow, num, WHITE, area.snow ? 1 : 0.5);
+    if (large) addCenteredCell(row, area.snow === null || area.snow === undefined ? "–" : `${area.snow} cm`, COL.snow, num, WHITE, area.snow ? 1 : 0.5);
     row.addSpacer();
     addLabel(row, formatStand(area.updated), Font.mediumSystemFont(11), WHITE, area.stale ? 0.45 : 0.75);
     if (large && area.note) {
