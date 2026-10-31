@@ -219,10 +219,16 @@ function addColumnTitles(widget, large) {
 function addAreaRow(widget, area, large) {
     let row = widget.addStack();
     row.centerAlignContent();
+    // Ampelpunkt als gezeichneter Kreis (8 pt) mit festem Abstand – ein flexibler Abstand kostet mindestens 8 pt
+    // und hat das "●" halbiert
     let dot = row.addStack();
     dot.size = new Size(COL.dot, 0);
-    addLabel(dot, "●", Font.boldSystemFont(10), statusColor(area));
-    dot.addSpacer();
+    dot.centerAlignContent();
+    let circle = dot.addStack();
+    circle.size = new Size(8, 8);
+    circle.cornerRadius = 4;
+    circle.backgroundColor = statusColor(area);
+    dot.addSpacer(COL.dot - 8);
     let open = area.status === "open";
     // Namen in voller Größe; nur im Notfall (sehr lange Namen auf kleinen iPhones) minimal schrumpfen
     let nameBox = row.addStack();
