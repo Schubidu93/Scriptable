@@ -123,13 +123,13 @@ function dayStart(date) {
     return d;
 }
 
-// "heute 12:07", "gestern", "22.03."
+// "12:07" (heute), "gestern", "22.03."
 function formatStand(iso) {
     if (!iso) return "–";
     let date = new Date(iso);
     let days = Math.round((dayStart(new Date()) - dayStart(date)) / DAY);
     let time = /T\d/.test(iso) ? ` ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}` : "";
-    if (days === 0) return `heute${time}`;
+    if (days === 0) return time ? time.trim() : "heute";
     if (days === 1) return "gestern";
     let pad = n => String(n).padStart(2, "0");
     // Älter als ein knappes Jahr (z. B. Bad Waldsee 03.12.2023): mit Jahr, damit es nicht aktuell wirkt
@@ -179,39 +179,58 @@ function addHeader(widget, data, large, region) {
     widget.addSpacer(large ? 8 : 4);
 }
 
-// Breiten passend für das mittlere/große Widget (338 pt). Die Zahlenspalten sind zentriert ohne flexiblen Abstand
-// (der kostet mindestens 8 pt – daran wurde "SCHNEE" zu "SCH…"); der gewonnene Platz geht an die Namen
-const COL = { name: 104, classic: 46, skating: 48, snow: 44 };
+// Feste Spaltenbreiten; die Zahlenspalten sind zentriert ohne flexiblen Abstand (der kostet mindestens 8 pt – daran
+// wurde "SCHNEE" zu "SCH…"). Die Namensspalte bekommt den Rest der Widget-Breite (je nach iPhone 329–364 pt)
+// Groß zusätzlich Entfernung und Schnee als eigene Spalten
+const COL = { dot: 14, dist: 32, classic: 42, skating: 44, snow: 40, stand: 50 };
+
+function widgetWidth() {
+    let w = Device.screenSize().width;
+    return w >= 428 ? 364 : w >= 390 ? 338 : 329;
+}
+
+function nameWidth(large) {
+    return widgetWidth() - 32 - COL.dot - COL.classic - COL.skating - (large ? COL.dist + COL.snow : 0) - COL.stand;
+}
+
+// Stand rechtsbündig in fester Spalte
+function addStand(row, text, font, opacity) {
+    let cell = row.addStack();
+    cell.size = new Size(COL.stand, 0);
+    cell.addSpacer();
+    let t = addLabel(cell, text, font, WHITE, opacity);
+    t.minimumScaleFactor = 0.8;
+    return t;
+}
 
 function addColumnTitles(widget, large) {
     let row = widget.addStack();
     let font = Font.semiboldSystemFont(9);
-    row.addSpacer(14);
-    addCell(row, "GEBIET", large ? COL.name - 6 : COL.name, font, WHITE, 0.55);
+    row.addSpacer(COL.dot);
+    addCell(row, "GEBIET", nameWidth(large), font, WHITE, 0.55);
+    if (large) addCenteredCell(row, "ENTF.", COL.dist, font, WHITE, 0.55);
     addCenteredCell(row, "KLASS.", COL.classic, font, WHITE, 0.55);
     addCenteredCell(row, "SKATING", COL.skating, font, WHITE, 0.55);
     if (large) addCenteredCell(row, "SCHNEE", COL.snow, font, WHITE, 0.55);
-    row.addSpacer();
-    addLabel(row, "STAND", font, WHITE, 0.55);
+    addStand(row, "STAND", font, 0.55);
     widget.addSpacer(2);
 }
 
 function addAreaRow(widget, area, large) {
     let row = widget.addStack();
     row.centerAlignContent();
-    addLabel(row, "●", Font.boldSystemFont(10), statusColor(area));
-    row.addSpacer(5);
+    let dot = row.addStack();
+    dot.size = new Size(COL.dot, 0);
+    addLabel(dot, "●", Font.boldSystemFont(10), statusColor(area));
+    dot.addSpacer();
     let open = area.status === "open";
-    // Lange Namen („Missen-Wilhams“) dürfen minimal schrumpfen statt abgeschnitten zu werden
+    // Namen in voller Größe; nur im Notfall (sehr lange Namen auf kleinen iPhones) minimal schrumpfen
     let nameBox = row.addStack();
-    nameBox.size = new Size(large ? COL.name - 6 : COL.name, 0);
+    nameBox.size = new Size(nameWidth(large), 0);
     nameBox.centerAlignContent();
-    addLabel(nameBox, area.name, Font.semiboldSystemFont(12), WHITE, open ? 1 : 0.8).minimumScaleFactor = large ? 0.75 : 0.85;
-    if (large && area.km) {
-        nameBox.addSpacer(4);
-        addLabel(nameBox, `${Math.round(area.km)} km`, Font.mediumSystemFont(9), WHITE, 0.5);
-    }
+    addLabel(nameBox, area.name, Font.semiboldSystemFont(12), WHITE, open ? 1 : 0.8).minimumScaleFactor = 0.85;
     nameBox.addSpacer();
+    if (large) addCenteredCell(row, area.km ? `${Math.round(area.km)} km` : "", COL.dist, Font.mediumSystemFont(9), WHITE, 0.5);
     let num = Font.mediumSystemFont(11.5);
     if (area.classic === null || area.classic === undefined) {
         // Keine Kilometer (z. B. Vogt: Text-Bericht) – Kurzhinweis über beide Spalten
@@ -223,13 +242,12 @@ function addAreaRow(widget, area, large) {
         addCenteredCell(row, `${km(area.skating)} km`, COL.skating, num, WHITE, area.skating ? 1 : 0.5);
     }
     if (large) addCenteredCell(row, area.snow === null || area.snow === undefined ? "–" : `${area.snow} cm`, COL.snow, num, WHITE, area.snow ? 1 : 0.5);
-    row.addSpacer();
-    // "heute 12:07" ist die breiteste Angabe – lieber leicht schrumpfen als "…"
-    addLabel(row, formatStand(area.updated), Font.mediumSystemFont(11), WHITE, area.stale ? 0.45 : 0.75).minimumScaleFactor = 0.8;
+    // "03.12.23" ist die breiteste Angabe – darf leicht schrumpfen statt "…"
+    addStand(row, formatStand(area.updated), Font.mediumSystemFont(11), area.stale ? 0.45 : 0.75);
     (area.noteLines || []).forEach(text => {
         widget.addSpacer(1);
         let line = widget.addStack();
-        line.addSpacer(14);
+        line.addSpacer(COL.dot);
         addLabel(line, text, Font.regularSystemFont(10), WHITE, 0.6).minimumScaleFactor = 0.85;
         line.addSpacer();
     });
