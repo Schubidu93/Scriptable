@@ -193,6 +193,12 @@ async function addStationPart(key, name) {
 
 // Fahrplan einer Stunde – ändert sich kaum, daher bis zu 6 Stunden zwischengespeichert
 let PLAN_CACHE = null;
+// Hat die DB eine Stunde wegen zu vieler Anfragen abgelehnt? Dann ist "keine Direktverbindung" nicht sicher
+let RATE_LIMITED = false;
+
+function savePlanCache() {
+    if (PLAN_CACHE) fm.writeString(planPath, JSON.stringify(PLAN_CACHE));
+}
 
 async function plan(eva, date) {
     if (!PLAN_CACHE) {
@@ -206,7 +212,10 @@ async function plan(eva, date) {
             PLAN_CACHE[key] = { time: Date.now(), stops: parseStops(await request(`plan/${key}`)) };
         } catch (e) {
             // Zu viele Anfragen (kostenlos: 60 je Minute) – diese Stunde beim nächsten Mal nachholen statt alles abzubrechen
-            if (/DB 429/.test(String(e.message || e))) return {};
+            if (/DB 429/.test(String(e.message || e))) {
+                RATE_LIMITED = true;
+                return {};
+            }
             throw e;
         }
     }
@@ -337,7 +346,6 @@ async function loadJourneys(fromKey, toKey, count = 3) {
             console.log(`Position: ${e}`);
         }
     }));
-    PLAN_CACHE && fm.writeString(planPath, JSON.stringify(PLAN_CACHE));
     return parsed;
 }
 
@@ -351,16 +359,23 @@ async function loadData() {
     let [fromKey, toKey] = await chooseDirection();
     try {
         let journeys = await loadJourneys(fromKey, toKey, 3);
+        // Schon geladene Stunden immer merken – sonst fragt jeder Lauf wieder alles ab und läuft erneut ins Limit
+        savePlanCache();
+        // Leer nur wegen des DB-Limits: lieber den letzten Stand zeigen als "keine Direktverbindung"
+        if (!journeys.length && RATE_LIMITED) throw new Error("DB-Abfragelimit, gleich neuer Versuch");
         let back = { journeys: [] };
         try {
             back.journeys = await loadJourneys(toKey, fromKey, 2);
+            if (!back.journeys.length && RATE_LIMITED) back.error = "DB-Abfragelimit";
         } catch (e) {
             back.error = String(e.message || e);
         }
+        savePlanCache();
         let data = { from: fromKey, to: toKey, journeys, back, updated: Date.now() };
         fm.writeString(cachePath, JSON.stringify(data));
         return data;
     } catch (e) {
+        savePlanCache();
         console.log(`Abruf fehlgeschlagen: ${e}`);
         if (fm.fileExists(cachePath)) {
             let data = JSON.parse(fm.readString(cachePath));
@@ -528,7 +543,8 @@ async function createWidget() {
     widget.addSpacer();
 
     // Alle 5 Minuten neu (iOS entscheidet selbst, wann genau)
-    widget.refreshAfterDate = new Date(Date.now() + 5 * MINUTE);
+    // Nach dem DB-Limit schon in 2 Minuten neu versuchen
+    widget.refreshAfterDate = new Date(Date.now() + (RATE_LIMITED ? 2 : 5) * MINUTE);
     return widget;
 }
 
