@@ -7,6 +7,7 @@
 
 const ENDPOINTS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 const RADIUS = 40000; // Umkreis in Metern
+const NOTABLE_RADIUS = 50000; // Umkreis für markante Gipfel (etwas weiter, z. B. von München bis an die Voralpen)
 const FAMILY = config.widgetFamily || "medium";
 const LARGE = FAMILY === "large" || FAMILY === "extraLarge";
 // Mittel: 8 Gipfel kompakt (ohne Fußzeile; 5 nahe + 3 markante), groß: 16 (8 + 8)
@@ -96,6 +97,9 @@ const PEAK_TYPES = ["Q8502", "Q207326", "Q54050", "Q1595289", "Q3618634", "Q1111
 // notable: nur Gipfel mit Artikel in der deutschen oder englischen Wikipedia, nach Entfernung – für "markant im Umkreis"
 // (nicht irgendein Sitelink: die cebuanische Wikipedia hat per Bot Millionen Artikel zu fast jeder Erhebung)
 async function wikidata(here, radius, notable = false) {
+    // Markante: nur mit Höhe und mindestens NOTABLE_ABOVE m über dir schon in der Abfrage – sonst füllen in flachen
+    // Gegenden (München) nahe kleine Hügel mit Artikel die 150 Treffer, bevor die Berge am Rand drankommen
+    let minEle = Math.round((here.alt || 800) + NOTABLE_ABOVE);
     let query = `SELECT ?item ?label ?ele ?coord ?links ?de ?en ?iso WHERE {
  SERVICE wikibase:around { ?item wdt:P625 ?coord. bd:serviceParam wikibase:center "Point(${here.lon.toFixed(5)} ${here.lat.toFixed(5)})"^^geo:wktLiteral. bd:serviceParam wikibase:radius "${radius / 1000}". bd:serviceParam wikibase:distance ?dist. }
  VALUES ?type { ${PEAK_TYPES} }
@@ -104,8 +108,8 @@ async function wikidata(here, radius, notable = false) {
  ${notable ? `OPTIONAL { ?de schema:about ?item; schema:isPartOf <https://de.wikipedia.org/>. }
  OPTIONAL { ?en schema:about ?item; schema:isPartOf <https://en.wikipedia.org/>. }
  FILTER(BOUND(?de) || BOUND(?en))
- OPTIONAL { ?item p:P2659/psn:P2659/wikibase:quantityAmount ?iso. }` : ""}
- OPTIONAL { ?item wdt:P2044 ?ele. }
+ OPTIONAL { ?item p:P2659/psn:P2659/wikibase:quantityAmount ?iso. }
+ ?item wdt:P2044 ?ele. FILTER(?ele >= ${minEle})` : "OPTIONAL { ?item wdt:P2044 ?ele. }"}
  SERVICE wikibase:label { bd:serviceParam wikibase:language "de,en". ?item rdfs:label ?label. }
 } ORDER BY ?dist LIMIT ${notable ? 150 : 120}`;
     let req = new Request(`https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`);
@@ -140,12 +144,33 @@ function elevation(tag) {
     return m ? Math.round(Number(m[0].replace(",", "."))) : null;
 }
 
+// Fehlende Höhen (kleine Hügel haben in Wikidata oft keine) aus einem Geländemodell ergänzen: Open-Meteo,
+// kostenlos, bis zu 100 Punkte je Abfrage. Ungefähr (Raster ~90 m), daher im Widget etwas blasser
+async function fillElevations(peaks) {
+    let missing = peaks.filter(p => p.ele === null || p.ele === undefined).slice(0, 100);
+    if (!missing.length) return;
+    try {
+        let lat = missing.map(p => p.lat.toFixed(5)).join(","), lon = missing.map(p => p.lon.toFixed(5)).join(",");
+        let req = new Request(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`);
+        req.timeoutInterval = 10;
+        let json = await req.loadJSON();
+        (json.elevation || []).forEach((ele, i) => {
+            if (typeof ele === "number" && isFinite(ele)) {
+                missing[i].ele = Math.round(ele);
+                missing[i].eleApprox = true;
+            }
+        });
+    } catch (e) {
+        console.log(`Höhen: ${e}`);
+    }
+}
+
 async function loadPeaks(here) {
     let cached = null;
     try { if (fm.fileExists(cachePath)) cached = JSON.parse(fm.readString(cachePath)); } catch (e) {}
     // Gleicher Ort (unter 1 km) und höchstens eine Woche alt: gespeicherte Gipfel verwenden
     // Markante Gipfel fehlen (Abfrage dauert ~10 s und scheitert im Widget gelegentlich): dann erneut versuchen
-    if (cached && cached.peaks && cached.version === 8 && distanceKm(here, cached.center) < 1 && Date.now() - cached.time < 7 * 86400000
+    if (cached && cached.peaks && cached.version === 9 && distanceKm(here, cached.center) < 1 && Date.now() - cached.time < 7 * 86400000
         && (cached.notable && cached.notable.length || cached.source !== "Wikidata")) return cached;
     try {
         // Zuerst Wikidata (antwortet in wenigen Sekunden), nur ersatzweise die oft überlasteten Overpass-Server
@@ -163,10 +188,11 @@ async function loadPeaks(here) {
             source = "OpenStreetMap";
         }
         // Markante Gipfel im Umkreis (mit Wikipedia-Artikel) – fehlt Wikidata, bleibt die Liste leer
-        let notable = source === "Wikidata" ? await wikidata(here, RADIUS, true).catch(() => []) : [];
+        let notable = source === "Wikidata" ? await wikidata(here, NOTABLE_RADIUS, true).catch(() => []) : [];
+        await fillElevations(peaks);
         // Fehlschlag: die bisherigen markanten Gipfel (gleicher Ort) behalten
         if (!notable.length && cached && cached.notable && distanceKm(here, cached.center) < 20) notable = cached.notable;
-        let data = { version: 8, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source };
+        let data = { version: 9, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source };
         fm.writeString(cachePath, JSON.stringify(data));
         return data;
     } catch (e) {
@@ -422,7 +448,7 @@ function addRow(widget, peak) {
     let ele = row.addStack();
     ele.size = new Size(LARGE ? 58 : 52, 0);
     ele.addSpacer();
-    addLabel(ele, peak.ele ? `${peak.ele} m` : "–", Font.mediumMonospacedSystemFont(SIZE.num), ACCENT, peak.ele ? 1 : 0.5);
+    addLabel(ele, peak.ele ? `${peak.ele} m` : "–", Font.mediumMonospacedSystemFont(SIZE.num), ACCENT, peak.ele ? (peak.eleApprox ? 0.7 : 1) : 0.5);
     let dist = row.addStack();
     dist.size = new Size(LARGE ? 52 : 46, 0);
     dist.addSpacer();
