@@ -2,7 +2,7 @@
 // Name, Höhe, Entfernung (Luftlinie) und Richtungspfeil; daneben ein Haken, wenn eine deiner Strava-/Garmin-
 // Aktivitäten auf 75 m an den Gipfel heranführte, sonst klein dein geringster Abstand (ohne Strava: Himmelsrichtung) (Strava-Zugang des Strava-Widgets;
 // abgeglichen wird in der App, z. B. nach Antippen – das Widget liest nur das Ergebnis).
-// Die Gipfel kommen von Wikidata (ersatzweise OpenStreetMap über die Overpass-API); neu gefragt wird erst, wenn du dich mehr als 1 km bewegt hast
+// Die Gipfel kommen von Wikidata und OpenStreetMap (Overpass-API), zusammengeführt; neu gefragt wird erst, wenn du dich mehr als 1 km bewegt hast
 // (sonst nur Entfernung und Richtung neu berechnet). Mittleres Widget: 8 Gipfel, großes: 15.
 
 const ENDPOINTS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
@@ -165,41 +165,69 @@ async function fillElevations(peaks) {
     }
 }
 
+// Zwei Quellen zusammenführen: Wikidata (schnell, mit Wikipedia und Dominanz) und OpenStreetMap (natural=peak –
+// hat auch kleine Hügel wie Trümmerberge, die in Wikidata fehlen). Ein OSM-Gipfel gilt als derselbe, wenn ein
+// Wikidata-Gipfel höchstens 250 m entfernt ist oder gleich heißt und höchstens 1,5 km entfernt ist; dann ergänzt
+// er nur die Höhe. So fliegt kein Gipfel raus, nur weil er in einer der Quellen fehlt.
+const sameName = (a, b) => String(a).toLowerCase().replace(/[\s-]/g, "") === String(b).toLowerCase().replace(/[\s-]/g, "");
+
+function mergePeaks(wd, osm) {
+    let merged = wd.slice();
+    for (let o of osm) {
+        let twin = wd.find(p => distanceKm(p, o) <= 0.25 || (sameName(p.name, o.name) && distanceKm(p, o) <= 1.5));
+        if (twin) {
+            if ((twin.ele === null || twin.ele === undefined) && o.ele !== null) twin.ele = o.ele;
+        } else {
+            merged.push(o);
+        }
+    }
+    return merged;
+}
+
+async function loadOsm(here) {
+    return (await overpass(here, RADIUS)).map(e => ({
+        id: `osm:${e.id}`,
+        name: e.tags["name:de"] || e.tags.name,
+        ele: elevation(e.tags.ele),
+        lat: e.lat,
+        lon: e.lon,
+    })).filter(p => !isSpotHeight(p.name));
+}
+
 async function loadPeaks(here) {
     let cached = null;
     try { if (fm.fileExists(cachePath)) cached = JSON.parse(fm.readString(cachePath)); } catch (e) {}
-    // Gleicher Ort (unter 1 km) und höchstens eine Woche alt: gespeicherte Gipfel verwenden
-    // Markante Gipfel fehlen (Abfrage dauert ~10 s und scheitert im Widget gelegentlich): dann erneut versuchen
-    if (cached && cached.peaks && cached.version === 9 && distanceKm(here, cached.center) < 1 && Date.now() - cached.time < 7 * 86400000
-        && (cached.notable && cached.notable.length || cached.source !== "Wikidata")) return cached;
-    try {
-        // Zuerst Wikidata (antwortet in wenigen Sekunden), nur ersatzweise die oft überlasteten Overpass-Server
-        let peaks = [], source = "Wikidata";
-        try {
-            peaks = await wikidata(here, RADIUS);
-        } catch (e) {
-            console.log(`Wikidata: ${e} – OpenStreetMap`);
-            peaks = (await overpass(here, RADIUS)).map(e => ({
-                name: e.tags["name:de"] || e.tags.name,
-                ele: elevation(e.tags.ele),
-                lat: e.lat,
-                lon: e.lon,
-            })).filter(p => !isSpotHeight(p.name));
-            source = "OpenStreetMap";
-        }
-        // Markante Gipfel im Umkreis (mit Wikipedia-Artikel) – fehlt Wikidata, bleibt die Liste leer
-        let notable = source === "Wikidata" ? await wikidata(here, NOTABLE_RADIUS, true).catch(() => []) : [];
-        await fillElevations(peaks);
-        // Fehlschlag: die bisherigen markanten Gipfel (gleicher Ort) behalten
-        if (!notable.length && cached && cached.notable && distanceKm(here, cached.center) < 20) notable = cached.notable;
-        let data = { version: 9, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source };
-        fm.writeString(cachePath, JSON.stringify(data));
-        return data;
-    } catch (e) {
-        console.log(`Gipfel: ${e}`);
+    // Gleicher Ort (unter 1 km) und höchstens eine Woche alt: gespeicherte Gipfel verwenden. Fehlte beim letzten Mal
+    // eine Quelle (Overpass ist oft überlastet, die Markanten-Abfrage scheitert im Widget gelegentlich), nach
+    // 30 Minuten erneut versuchen
+    let age = cached ? Date.now() - cached.time : Infinity;
+    let complete = cached && cached.wdOk && cached.osmOk && cached.notableOk;
+    if (cached && cached.peaks && cached.version === 10 && distanceKm(here, cached.center) < 1 && age < 7 * 86400000
+        && (complete || age < 30 * 60000)) return cached;
+    let [wd, osm, notable] = await Promise.all([
+        wikidata(here, RADIUS).catch(e => { console.log(`Wikidata: ${e}`); return null; }),
+        loadOsm(here).catch(e => { console.log(`OpenStreetMap: ${e}`); return null; }),
+        wikidata(here, NOTABLE_RADIUS, true).catch(e => { console.log(`Wikidata markant: ${e}`); return null; }),
+    ]);
+    // Frisch geladen? (sonst beim nächsten Lauf nach 30 Minuten erneut versuchen)
+    let fresh = { wdOk: !!wd, osmOk: !!osm, notableOk: !!notable };
+    let sameArea = cached && cached.version === 10 && distanceKm(here, cached.center) < 1;
+    // Fehlt eine Quelle, ihren letzten Stand (gleicher Ort) weiterverwenden
+    if (!wd && sameArea && cached.wd) wd = cached.wd;
+    if (!osm && sameArea && cached.osm) osm = cached.osm;
+    if (!wd && !osm) {
         if (cached) return { ...cached, stale: true };
-        throw e;
+        throw new Error("Wikidata und OpenStreetMap nicht erreichbar");
     }
+    // Fehlschlag: die bisherigen markanten Gipfel (gleicher Ort) behalten
+    if (!notable) notable = cached && cached.notable && distanceKm(here, cached.center) < 20 ? cached.notable : [];
+    let peaks = mergePeaks((wd || []).map(p => ({ ...p })), osm || []);
+    await fillElevations(peaks);
+    let source = wd && osm ? "Wikidata · OSM" : wd ? "Wikidata" : "OpenStreetMap";
+    let data = { version: 10, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source,
+        wd, osm, ...fresh };
+    fm.writeString(cachePath, JSON.stringify(data));
+    return data;
 }
 
 // ---------- Schon oben gewesen? (Strava) ----------
@@ -499,7 +527,7 @@ async function createWidget() {
         widget.addSpacer();
         return widget;
     }
-    let withGeo = p => ({ ...p, km: distanceKm(here, p), bearing: bearing(here, p), above: here.alt && p.ele ? Math.round(p.ele - here.alt) : null });
+    let withGeo = p => ({ ...p, km: distanceKm(here, p), bearing: bearing(here, p), above: here.alt && p.ele && !p.eleApprox ? Math.round(p.ele - here.alt) : null });
     // Markante Gipfel: mit Wikipedia-Artikel und mindestens NOTABLE_ABOVE m höher als du, die nächsten zuerst
     let key = p => peakKey(p);
     let notable = (data.notable || []).filter(usable).map(withGeo)
