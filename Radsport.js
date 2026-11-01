@@ -217,6 +217,7 @@ function shortRider(html) {
         let first = cleanText(full.replace(last, ""));
         last = last === last.toUpperCase()
             ? last.toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase())
+                .replace(/\bMc(\p{L})/gu, (m, a) => "Mc" + a.toUpperCase())
             : last;
         return first ? `${first.charAt(0)}. ${last}` : last;
     }
@@ -681,15 +682,21 @@ async function loadData() {
     let year = today.getFullYear();
 
     let races = await loadCalendar(year);
+    // Ohne Kalender (PCS-Prüfung, Seitenumbau) wären die Listen leer bzw. nur die WM – dann lieber den
+    // letzten vollständigen Stand zeigen
+    if (!races.length) throw new Error(`Kalender ${year} nicht abrufbar`);
     let finished = races.filter(r => r.finished);
     let upcoming = races.filter(r => !r.finished && r.end >= today);
+    let nextYearMissing = false;
 
     // Saisonwechsel: Vorjahr bzw. nächstes Jahr ergänzen
     if (finished.length < CONFIG.past) {
         finished = (await loadCalendar(year - 1).catch(() => [])).filter(r => r.finished).concat(finished);
     }
     if (upcoming.length < CONFIG.upcoming) {
-        upcoming = upcoming.concat(await loadCalendar(year + 1).catch(() => []));
+        let next = await loadCalendar(year + 1).catch(() => []);
+        nextYearMissing = !next.length;
+        upcoming = upcoming.concat(next);
     }
 
     let saved = loadSavedResults();
@@ -868,6 +875,7 @@ async function loadData() {
     return {
         past: entries.slice(0, CONFIG.past),
         upcoming: upcoming.filter(r => !running.includes(r)).slice(0, CONFIG.upcoming),
+        nextYear: nextYearMissing ? year + 1 : null,
         stale: false,
     };
 }
@@ -1165,10 +1173,20 @@ function buildLarge(widget, data) {
 
     widget.addSpacer();
     addSectionTitle(widget, "Nächste Rennen");
+    addOffseason(widget, data);
     data.upcoming.forEach(race => {
         widget.addSpacer(5);
         addUpcomingRace(widget, race, today);
     });
+}
+
+// Saisonende: der Kalender fürs nächste Jahr fehlt (noch) – statt einer leeren Liste darauf hinweisen
+function addOffseason(stack, data) {
+    if (data.upcoming.length) return;
+    stack.addSpacer(4);
+    addLabel(stack, "Saisonpause", Font.semiboldSystemFont(12), WHITE);
+    let note = data.nextYear ? `Kalender ${data.nextYear} noch nicht online` : "keine Termine gefunden";
+    addLabel(stack, note, Font.regularSystemFont(11), WHITE, 0.6).minimumScaleFactor = 0.8;
 }
 
 // Mittel: links die Sieger der letzten Rennen, rechts die nächsten Rennen
@@ -1208,6 +1226,7 @@ function buildMedium(widget, data) {
     right.layoutVertically();
     right.size = new Size(130, 0);
     addSectionTitle(right, "Als Nächstes");
+    addOffseason(right, data);
     data.upcoming.forEach(race => {
         right.addSpacer(4);
         let block = right.addStack();
