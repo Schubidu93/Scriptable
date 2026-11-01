@@ -1,8 +1,8 @@
 {
-  "generated": "2026-11-01T11:20:40.544Z",
+  "generated": "2026-11-01T13:00:31.123Z",
   "region": "Deutschland",
-  "days": 14,
-  "from": "2026-10-18",
+  "days": 7,
+  "from": "2026-10-25",
   "to": "2026-11-01",
   "women": [
     {
@@ -18,17 +18,6 @@
     },
     {
       "rank": 2,
-      "mark": "2:27:24",
-      "wind": "",
-      "name": "Kiara NAHEN",
-      "nat": "GER",
-      "venue": "Amsterdam (NED)",
-      "date": "18 OCT 2026",
-      "score": 1142,
-      "event": "Marathon"
-    },
-    {
-      "rank": 3,
       "mark": "1:09:57",
       "wind": "",
       "name": "Lisa MERKEL",
@@ -39,26 +28,37 @@
       "event": "Halbmarathon"
     },
     {
-      "rank": 4,
-      "mark": "1:46:50",
+      "rank": 3,
+      "mark": "1:12:20",
       "wind": "",
-      "name": "Nika Helene ILLING",
+      "name": "Hannah STEGENWALLNER",
       "nat": "GER",
-      "venue": "Weinauparkstadion, Zittau (GER)",
-      "date": "24 OCT 2026",
-      "score": 960,
-      "event": "Halbmarathon Gehen"
+      "venue": "Valencia (ESP)",
+      "date": "25 OCT 2026",
+      "score": 1082,
+      "event": "Halbmarathon"
+    },
+    {
+      "rank": 4,
+      "mark": "1:13:06",
+      "wind": "",
+      "name": "Mia JURENKA",
+      "nat": "GER",
+      "venue": "Hamburg (GER)",
+      "date": "25 OCT 2026",
+      "score": 1067,
+      "event": "Halbmarathon"
     },
     {
       "rank": 5,
-      "mark": "1:47:35",
+      "mark": "1:14:07",
       "wind": "",
-      "name": "Mia BANDOLY",
+      "name": "Leah HANLE",
       "nat": "GER",
-      "venue": "Weinauparkstadion, Zittau (GER)",
-      "date": "24 OCT 2026",
-      "score": 949,
-      "event": "Halbmarathon Gehen"
+      "venue": "Valencia (ESP)",
+      "date": "25 OCT 2026",
+      "score": 1047,
+      "event": "Halbmarathon"
     }
   ],
   "men": [
@@ -97,17 +97,6 @@
     },
     {
       "rank": 4,
-      "mark": "1:27:45",
-      "wind": "",
-      "name": "Leo KÖPP",
-      "nat": "GER",
-      "venue": "Weinauparkstadion, Zittau (GER)",
-      "date": "24 OCT 2026",
-      "score": 1140,
-      "event": "Halbmarathon Gehen"
-    },
-    {
-      "rank": 5,
       "mark": "1:01:30",
       "wind": "",
       "name": "Jan Lukas BECKER",
@@ -115,6 +104,17 @@
       "venue": "Valencia (ESP)",
       "date": "25 OCT 2026",
       "score": 1127,
+      "event": "Halbmarathon"
+    },
+    {
+      "rank": 5,
+      "mark": "1:02:30",
+      "wind": "",
+      "name": "Jona BODIRSKY",
+      "nat": "GER",
+      "venue": "Valencia (ESP)",
+      "date": "25 OCT 2026",
+      "score": 1088,
       "event": "Halbmarathon"
     }
   ]
