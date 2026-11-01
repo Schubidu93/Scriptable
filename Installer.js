@@ -25,7 +25,7 @@ const SCRIPTS = [
     { name: "Langlauf", file: "Langlauf.js", glyph: "skiing-nordic", color: "blue" },
     { name: "Bahn", file: "Bahn.js", glyph: "train", color: "red" },
     { name: "Gipfel", file: "Gipfel.js", glyph: "mountain", color: "green" },
-    { name: "parkrun", file: "Parkrun.js", glyph: "running", color: "purple" },
+    { name: "Parkrun nah", file: "Parkrun_nah.js", glyph: "running", color: "purple" },
     { name: "ClubElo", file: "ClubElo.js", glyph: "chart-line", color: "deep-gray" },
     { name: "Bayern Bundesliga", file: "Fussball.js", params: { LIGA: "bundesliga" }, glyph: "futbol", color: "red" },
     { name: "Bayern CL", file: "Fussball.js", params: { LIGA: "cl" }, glyph: "futbol", color: "deep-blue" },

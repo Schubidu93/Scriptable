@@ -1,4 +1,4 @@
-// parkrun – die 5 nächstgelegenen parkruns (5 km, samstags) vom aktuellen Standort: Entfernung (Luftlinie),
+// Parkrun nah – die 5 nächstgelegenen parkruns (5 km, samstags) vom aktuellen Standort: Entfernung (Luftlinie),
 // deine Bestzeit dort und wie oft du dort gestartet bist; oben deine Läufe insgesamt und deine Bestzeit.
 // Deine parkrun-ID wird beim ersten Start in der App abgefragt und nur in der Keychain dieses iPhones gespeichert
 // (nicht im Skript, nicht auf GitHub). Ändern: Skript in Scriptable starten → "parkrun-ID ändern".
@@ -6,10 +6,10 @@
 // Mittleres Widget. Antippen einer Zeile öffnet die Seite des parkruns.
 
 const fm = FileManager.local();
-const eventsPath = fm.joinPath(fm.documentsDirectory(), "parkrun-events.json");
-const statsPath = fm.joinPath(fm.documentsDirectory(), "parkrun-ergebnisse.json");
-const locationPath = fm.joinPath(fm.cacheDirectory(), "parkrun-standort.json");
-const ID_KEY = "parkrun_id";
+const eventsPath = fm.joinPath(fm.documentsDirectory(), "parkrun-nah-events.json");
+const statsPath = fm.joinPath(fm.documentsDirectory(), "parkrun-nah-ergebnisse.json");
+const locationPath = fm.joinPath(fm.cacheDirectory(), "parkrun-nah-standort.json");
+const ID_KEY = "parkrun_nah_id";
 const COUNT = 5;
 const HOUR = 3600000;
 
