@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-31T09:37:53.767Z",
+  "generated": "2026-11-01T21:18:07.514Z",
   "areas": [
     {
       "id": "vogt",
@@ -81,14 +81,14 @@
       "km": 22.5,
       "name": "Isny",
       "url": "https://www.isny.de/freizeit-urlaub/wintersport/schneehoehen-loipenbericht.html",
-      "network": 45.4,
+      "network": 97.7,
       "groomed": 0,
       "classic": 0,
       "skating": 0,
-      "snow": null,
-      "updated": "2026-10-22",
+      "snow": 0,
+      "updated": "2026-04-02T12:41",
       "status": "closed",
-      "note": "Der erste Schnee ist schon in Sichtweite. Die Vorbereitungen für die Wintersaison beginnen."
+      "source": "Loipen-Allgäu"
     },
     {
       "id": "argenbuehl",
