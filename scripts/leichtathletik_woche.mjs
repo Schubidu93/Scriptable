@@ -1,5 +1,5 @@
 // Beste Leichtathletik-Leistungen der letzten Tage, nach World-Athletics-Punkten ("Results Score").
-// Läuft täglich per GitHub Actions, durchsucht die All-Time-Toplisten aller Disziplinen
+// Läuft per GitHub Actions, durchsucht die Saison-Toplisten aller Disziplinen (tiefer als die All-Time-Listen)
 // und schreibt die Top 5 für Frauen und Männer – weltweit und nur deutsche Athleten:
 //   data/leichtathletik_woche.json, data/leichtathletik_woche_ger.json
 // Das Widget Leichtathletik.js liest nur diese Dateien.
@@ -36,9 +36,18 @@ async function collect(region, today) {
     let all = { women: [], men: [] };
     let stats = { ok: 0, empty: 0, failed: [] };
 
-    // Einmal den größten Zeitraum laden, danach lokal auf die kürzeren Zeiträume filtern
+    // Einmal den größten Zeitraum laden, danach lokal auf die kürzeren Zeiträume filtern. Saison-Toplisten je Jahr:
+    // reicht der Zeitraum ins Vorjahr (Januar), beide Jahre abfragen
+    let years = [...new Set([maxFrom.getUTCFullYear(), today.getUTCFullYear()])];
+    let jobs = EVENTS.women.map(ev => ["women", ev]).concat(EVENTS.men.map(ev => ["men", ev]))
+        .flatMap(job => years.map(year => [...job, year]));
+    let loaded = await mapLimited(jobs, CONCURRENCY, ([gender, ev, year]) => {
+        let from = year === maxFrom.getUTCFullYear() ? maxFrom : new Date(Date.UTC(year, 0, 1));
+        let to = year === today.getUTCFullYear() ? today : new Date(Date.UTC(year, 11, 31));
+        return loadToplist(gender, ev, { query: region.query, from, to, season: year }).then(r => ({ ...r, gender }));
+    });
     for (let gender of ["women", "men"]) {
-        let results = await mapLimited(EVENTS[gender], CONCURRENCY, ev => loadToplist(gender, ev, { query: region.query, from: maxFrom, to: today }));
+        let results = loaded.filter(r => r.gender === gender);
         for (let r of results) {
             if (r.status !== 200) stats.failed.push(`${gender} ${r.label}: ${r.status}`);
             else if (r.rows.length) stats.ok++;

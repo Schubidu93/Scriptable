@@ -2,6 +2,8 @@
 // Genutzt von leichtathletik_woche.mjs und leichtathletik_rekorde.mjs.
 
 export const BASE = "https://worldathletics.org/records/all-time-toplists/";
+// Saison-Toplisten: reichen tiefer als die All-Time-Listen (die enden bei einem hohen Leistungsniveau)
+export const SEASON_BASE = "https://worldathletics.org/records/toplists/";
 export const CONCURRENCY = 4;
 export const DEBUG = process.env.DEBUG === "1";
 
@@ -121,9 +123,11 @@ export async function fetchPage(url) {
 //   query:     z. B. "regionType=world" oder "regionType=countries&region=ger"
 //   from/to:   Zeitraum (ohne Angabe: alle Zeiten)
 //   bestOnly:  nur die beste Leistung je Athlet
-export async function loadToplist(gender, [group, slug, label, env = "all"], { query, from, to, bestOnly = false }) {
+//   season:    Jahr – Saison-Topliste statt All-Time-Liste
+export async function loadToplist(gender, [group, slug, label, env = "all"], { query, from, to, bestOnly = false, season }) {
     let range = from && to ? `&firstDay=${isoDate(from)}&lastDay=${isoDate(to)}` : "";
-    let url = `${BASE}${group}/${slug}/${env}/${gender}/senior?${query}&page=1&bestResultsOnly=${bestOnly}`
+    let path = season ? `${SEASON_BASE}${group}/${slug}/${env}/${gender}/senior/${season}` : `${BASE}${group}/${slug}/${env}/${gender}/senior`;
+    let url = `${path}?${query}&page=1&bestResultsOnly=${bestOnly}`
         + `${range}&maxResultsByCountry=all&ageCategory=senior`;
     try {
         let { status, html } = await fetchPage(url);
