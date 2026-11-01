@@ -162,10 +162,28 @@ function background(widget) {
     widget.backgroundGradient = gradient;
 }
 
+// Großes Widget: Spaltenbreiten aus der Widget-Breite (je nach iPhone 329–364 pt). Vorher waren zwei Spalten à 152 pt
+// breiter als der Platz – iOS hat dann Ergebnisse ("10–…") und Kürzel ("W…") gekürzt
+const LARGE_PAD = 12, COL_GAP = 6, LARGE_LOGO = 14, MID_W = 44;
+
+function widgetWidth() {
+    let w = Device.screenSize().width;
+    return w >= 428 ? 364 : w >= 390 ? 338 : 329;
+}
+
+function largeColumnWidth() {
+    return Math.floor((widgetWidth() - 2 * LARGE_PAD - COL_GAP) / 2);
+}
+
+// Breite je Kürzel-Spalte: Rest der Spalte nach Logos, Abständen, Innenabstand und Mitte
+function largeTeamWidth() {
+    return Math.floor((largeColumnWidth() - 4 - 2 * LARGE_LOGO - 2 * 2 - MID_W) / 2);
+}
+
 // Eine Zeile je Spiel – Logo Gast · Ergebnis bzw. Anstoß · Heim Logo (kompakt: kleiner, mit Wochentag)
 function addGameRow(stack, game, images, compact = false) {
     let fontSize = compact ? 10.5 : 13;
-    let logoSize = compact ? 12 : 15;
+    let logoSize = compact ? 12 : LARGE_LOGO;
     let row = stack.addStack();
     row.centerAlignContent();
     // Spiel des Lieblingsteams gold hinterlegt (wie im Fußball-Widget); Innenabstand ist der Mitte abgezogen
@@ -179,12 +197,15 @@ function addGameRow(stack, game, images, compact = false) {
     let team = (side, alignRight) => {
         let box = row.addStack();
         // Spalten breit genug, dass in der Mitte nur ein schmaler Abstand bleibt (wie bei den Fußball-Ergebnissen)
-        box.size = new Size(compact ? 35 : 36, 0);
-        if (alignRight) box.addSpacer();
+        box.size = new Size(compact ? 35 : largeTeamWidth(), 0);
+        // Groß: zentriert ohne flexiblen Abstand – der kostet mindestens 8 pt und hat "WSH" zu "W…" gemacht
+        box.centerAlignContent();
+        if (alignRight && compact) box.addSpacer();
         let loser = game.state === "post" && !side.winner && !tie;
         let font = !played || tie ? Font.semiboldSystemFont(fontSize) : side.winner ? Font.boldSystemFont(fontSize) : Font.mediumSystemFont(fontSize);
-        addLabel(box, side.abbr, font, side.abbr === FAVORITE ? ACCENT : WHITE, loser ? 0.55 : 1).minimumScaleFactor = 1;
-        if (!alignRight) box.addSpacer();
+        // Breite Kürzel ("WSH", "JAX") auf kleinen iPhones minimal schrumpfen statt "W…"
+        addLabel(box, side.abbr, font, side.abbr === FAVORITE ? ACCENT : WHITE, loser ? 0.55 : 1).minimumScaleFactor = compact ? 1 : 0.85;
+        if (!alignRight && compact) box.addSpacer();
     };
     let logo = side => {
         if (images[side.logo]) {
@@ -196,12 +217,12 @@ function addGameRow(stack, game, images, compact = false) {
     };
 
     logo(game.away);
-    row.addSpacer(3);
+    row.addSpacer(compact ? 3 : 2);
     team(game.away, false);
     // Feste Breite, Inhalt zentriert – ohne Abstandhalter, die selbst Platz kosten
     let mid = row.addStack();
     // Kompakt mit Wochentag ("Mo 02:15") breiter, dafür die Kürzel-Spalten schmaler – die Zeile bleibt gleich breit
-    mid.size = new Size(compact ? 44 : 40, 0);
+    mid.size = new Size(compact ? 44 : MID_W, 0);
     mid.centerAlignContent();
     let text;
     if (game.state === "pre") {
@@ -216,7 +237,7 @@ function addGameRow(stack, game, images, compact = false) {
     text.centerAlignText();
     text.minimumScaleFactor = 1;
     team(game.home, true);
-    row.addSpacer(3);
+    row.addSpacer(compact ? 3 : 2);
     logo(game.home);
 }
 
@@ -254,9 +275,11 @@ function buildWeek(widget, data, images) {
 
     let row = widget.addStack();
     columns.forEach((list, c) => {
-        if (c > 0) row.addSpacer();
+        // Fester Abstand statt flexiblem (der kostet mindestens 8 pt)
+        if (c > 0) row.addSpacer(COL_GAP);
         let col = row.addStack();
         col.layoutVertically();
+        col.size = new Size(largeColumnWidth(), 0);
         let lastDay = null;
         list.forEach((game, i) => {
             if (dayKey(game.date) !== lastDay) {
@@ -331,7 +354,7 @@ async function createWidget() {
     widget.url = URLScheme.forRunningScript();
     widget.refreshAfterDate = nextRefresh(data);
     background(widget);
-    widget.setPadding(large ? 12 : 10, 16, 4, 16);
+    widget.setPadding(large ? 12 : 10, large ? LARGE_PAD : 16, 4, large ? LARGE_PAD : 16);
 
     if (!data) {
         buildError(widget);
