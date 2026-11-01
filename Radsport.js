@@ -1056,6 +1056,23 @@ function addSymbol(stack, name, size, color) {
     return img;
 }
 
+// Lange Rennnamen fürs Widget kürzen (Sponsoren, Zusätze): "Mapei Cadel Evans Great Ocean Road Race" →
+// "Cadel Evans Race", "Santos Tour Down Under" → "Tour Down Under", "Bretagne Classic - Ouest-France" → "Bretagne Classic"
+const RACE_SHORT = [
+    [/^(Santos|Mapei|Lotto|Saxo|Ochsner)\s+/i, ""],
+    [/\s+[-–]\s+.*$/, ""],
+    [/Great Ocean Road Race/i, "Race"],
+    [/^Grand Prix Cycliste de /i, "GP "],
+    [/^Clásica Ciclista /i, ""],
+    [/^Volta Ciclista a /i, "Volta "],
+    [/\s+In Flanders Fields$/i, ""],
+    [/^Paris-Roubaix\s+.*$/i, "Paris-Roubaix"],
+];
+
+function shortRace(name) {
+    return RACE_SHORT.reduce((n, [re, to]) => n.replace(re, to), String(name)).trim();
+}
+
 function addLabel(stack, text, font, color, opacity = 1) {
     let t = stack.addText(text);
     t.font = font;
@@ -1101,7 +1118,7 @@ function addPastRace(stack, race, podiumSize) {
 
     let title = block.addStack();
     title.centerAlignContent();
-    addLabel(title, withFlag(race.flag, race.name), Font.semiboldSystemFont(13), WHITE);
+    addLabel(title, withFlag(race.flag, shortRace(race.name)), Font.semiboldSystemFont(13), WHITE);
     if (race.label) {
         title.addSpacer(5);
         addLabel(title, race.label, Font.semiboldSystemFont(11), WHITE, 0.65);
@@ -1142,7 +1159,7 @@ function addUpcomingRace(stack, race, today) {
     let running = race.start <= today;
     addSymbol(row, running ? "dot.radiowaves.left.and.right" : "calendar", 11, WHITE);
     row.addSpacer(5);
-    addLabel(row, withFlag(race.flag, race.name), Font.mediumSystemFont(12), WHITE);
+    addLabel(row, withFlag(race.flag, shortRace(race.name)), Font.mediumSystemFont(12), WHITE);
     row.addSpacer(6);
     row.addSpacer();
     addLabel(row, running ? "läuft" : formatRange(race), Font.mediumSystemFont(10), WHITE, running ? 1 : 0.6);
@@ -1210,7 +1227,7 @@ function buildMedium(widget, data) {
         left.addSpacer(4);
         let block = left.addStack();
         block.layoutVertically();
-        addLabel(block, withFlag(race.flag, race.label ? `${race.name} · ${race.label}` : race.name), Font.semiboldSystemFont(12), WHITE);
+        addLabel(block, withFlag(race.flag, race.label ? `${shortRace(race.name)} · ${race.label}` : shortRace(race.name)), Font.semiboldSystemFont(12), WHITE);
         let winner = block.addStack();
         winner.centerAlignContent();
         addSymbol(winner, "trophy.fill", 10, MEDALS[0]);
@@ -1231,7 +1248,7 @@ function buildMedium(widget, data) {
         right.addSpacer(4);
         let block = right.addStack();
         block.layoutVertically();
-        addLabel(block, withFlag(race.flag, race.name), Font.semiboldSystemFont(12), WHITE);
+        addLabel(block, withFlag(race.flag, shortRace(race.name)), Font.semiboldSystemFont(12), WHITE);
         let running = race.start <= today;
         addLabel(block, running ? "läuft" : formatRange(race), Font.regularSystemFont(11), WHITE, 0.6);
     });
