@@ -1,6 +1,6 @@
 // Straßenlauf – die 3 besten Ergebnisse der letzten 90 Tage (Frauen & Männer),
 // wahlweise nur Deutschland (Standard) oder weltweit
-// Quelle: World Athletics All-Time-Toplist. Mittleres Widget, im Stil der iOS-Widgets.
+// Quelle: World Athletics Saison-Toplisten (ggf. Vorjahr dazu). Mittleres Widget, im Stil der iOS-Widgets.
 //
 // Strecke wählen: "marathon" (Standard), "halbmarathon" oder "10km" –
 // entweder im Loader per Function("DISTANZ", code)("10km")
@@ -80,13 +80,53 @@ function isoDate(date) {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-function listUrl(list) {
+function windowStart() {
+    let from = new Date(Date.now() - CONFIG.days * 24 * 60 * 60 * 1000);
+    from.setHours(0, 0, 0, 0);
+    return from;
+}
+
+// Saison-Toplisten (reichen tiefer als die All-Time-Listen, die erst bei Spitzenleistungen beginnen). Reicht der
+// Zeitraum ins Vorjahr (Januar bis März), beide Jahre abfragen; gefiltert wird danach nach Datum.
+function listUrls(list) {
     let today = new Date();
-    let from = new Date(today.getTime() - CONFIG.days * 24 * 60 * 60 * 1000);
-    return `https://worldathletics.org/records/all-time-toplists/road-running/${DISTANCE.path}/all/`
-        + `${list.gender}/senior?${REGION_INFO.query}&page=1&bestResultsOnly=false`
-        + `&firstDay=${isoDate(from)}&lastDay=${isoDate(today)}&maxResultsByCountry=all`
-        + `&eventId=${list.eventId}&ageCategory=senior`;
+    let from = windowStart();
+    let years = [...new Set([from.getFullYear(), today.getFullYear()])];
+    return years.map(year => `https://worldathletics.org/records/toplists/road-running/${DISTANCE.path}/all/`
+        + `${list.gender}/senior/${year}?${REGION_INFO.query}&page=1&bestResultsOnly=false`
+        + `&firstDay=${isoDate(year === from.getFullYear() ? from : new Date(year, 0, 1))}`
+        + `&lastDay=${isoDate(year === today.getFullYear() ? today : new Date(year, 11, 31))}&maxResultsByCountry=all`
+        + `&ageCategory=senior`);
+}
+
+const MONTHS = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
+
+// "25 OCT 2026" → Date
+function parseDate(text) {
+    let m = /(\d{1,2})\s+([A-Z]{3})\s+(\d{4})/i.exec(text || "");
+    return m && MONTHS[m[2].toUpperCase()] != null ? new Date(Number(m[3]), MONTHS[m[2].toUpperCase()], Number(m[1])) : null;
+}
+
+// "2:05:46" → Sekunden (zum Sortieren über beide Jahre)
+function markSeconds(mark) {
+    let parts = String(mark).replace(/[^\d:.]/g, "").split(":").map(Number);
+    return parts.some(isNaN) ? Infinity : parts.reduce((sum, n) => sum * 60 + n, 0);
+}
+
+// Die besten Zeiten im Zeitraum: nach Datum filtern, nach Zeit sortieren, doppelte Zeilen einmal
+function bestInWindow(rows) {
+    let from = windowStart();
+    let seen = new Set();
+    return rows
+        .filter(r => { let d = parseDate(r.date); return d && d >= from; })
+        .sort((a, b) => markSeconds(a.mark) - markSeconds(b.mark))
+        .filter(r => {
+            let key = `${r.name}|${r.date}|${r.mark}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        })
+        .slice(0, CONFIG.count);
 }
 
 function cleanCell(html) {
@@ -120,8 +160,7 @@ function parseResults(html) {
             venue: cells[idx.venue],
             date: cells[idx.date],
             nat: findNat(raw, cells, idx),
-        }))
-        .slice(0, CONFIG.count);
+        }));
 }
 
 // Länderkürzel (IOC, z. B. "KEN") aus Text, Bild-Attributen oder Flaggen-Dateinamen
@@ -173,9 +212,12 @@ async function loadResults() {
     let cache = fm.fileExists(cachePath) ? JSON.parse(fm.readString(cachePath)) : {};
     let results = await Promise.all(CONFIG.lists.map(async list => {
         try {
-            let req = new Request(listUrl(list));
-            req.headers = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)" };
-            let entries = parseResults(await req.loadString());
+            let pages = await Promise.all(listUrls(list).map(url => {
+                let req = new Request(url);
+                req.headers = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)" };
+                return req.loadString();
+            }));
+            let entries = bestInWindow(pages.flatMap(parseResults));
             cache[list.gender] = entries;
             return { ...list, entries, stale: false };
         } catch (e) {
