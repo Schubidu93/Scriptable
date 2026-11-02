@@ -1,11 +1,13 @@
-// Gipfel – die nächsten Berggipfel vom aktuellen Standort aus (mindestens 30 m über dir) und die markantesten im Umkreis (OpenStreetMap, natural=peak mit Namen):
+// Gipfel – die nächsten Berggipfel vom aktuellen Standort aus (mindestens 10 m über dir) und die markantesten im Umkreis (OpenStreetMap, natural=peak mit Namen):
 // Name, Höhe, Entfernung (Luftlinie) und Richtungspfeil; daneben ein Haken, wenn eine deiner Strava-/Garmin-
 // Aktivitäten auf 75 m an den Gipfel heranführte, sonst klein dein geringster Abstand (ohne Strava: Himmelsrichtung) (Strava-Zugang des Strava-Widgets;
 // abgeglichen wird in der App, z. B. nach Antippen – das Widget liest nur das Ergebnis).
 // Die Gipfel kommen von Wikidata und OpenStreetMap (Overpass-API), zusammengeführt; neu gefragt wird erst, wenn du dich mehr als 1 km bewegt hast
 // (sonst nur Entfernung und Richtung neu berechnet). Mittleres Widget: 8 Gipfel, großes: 15.
 
-const ENDPOINTS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+// Mehrere Overpass-Server: der Hauptserver ist oft überlastet
+const ENDPOINTS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter"];
 const RADIUS = 40000; // Umkreis in Metern
 const NOTABLE_RADIUS = 50000; // Umkreis für markante Gipfel (etwas weiter, z. B. von München bis an die Voralpen)
 const FAMILY = config.widgetFamily || "medium";
@@ -23,7 +25,8 @@ const NOTABLE_ABOVE = 200;
 const MIN_ISOLATION = 2000;
 // Ohne Dominanz-Angabe in Wikidata zählt ein Gipfel, wenn er mindestens so viel höher ist als du
 const NO_ISOLATION_ABOVE = 300;
-const MIN_ABOVE = 30;
+// Im Flachland (München) sind die Hügel klein – der Luitpoldhügel liegt nur ~25 m über der Umgebung
+const MIN_ABOVE = 10;
 
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), "gipfel.json");
@@ -70,12 +73,13 @@ const compass = deg => COMPASS[Math.round(deg / 22.5) % 16];
 async function overpass(here, radius) {
     let query = `[out:json][timeout:20];node["natural"="peak"]["name"](around:${radius},${here.lat.toFixed(5)},${here.lon.toFixed(5)});out body;`;
     let lastError;
-    for (let endpoint of config.runsInWidget ? ENDPOINTS.slice(0, 1) : ENDPOINTS) {
+    // Im Widget zwei Server mit je 8 s (iOS bricht nach rund 30 s ab), in der App alle
+    for (let endpoint of config.runsInWidget ? ENDPOINTS.slice(0, 2) : ENDPOINTS) {
         try {
             let req = new Request(endpoint);
             req.method = "POST";
             // Auf dem Homescreen knapp (iOS bricht Widgets nach rund 30 s ab), in der App großzügig
-            req.timeoutInterval = config.runsInWidget ? 10 : 30;
+            req.timeoutInterval = config.runsInWidget ? 8 : 30;
             req.headers = { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "Scriptable-Gipfel-Widget" };
             req.body = `data=${encodeURIComponent(query)}`;
             let json = await req.loadJSON();
