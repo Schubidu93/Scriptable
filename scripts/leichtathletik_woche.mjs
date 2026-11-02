@@ -8,10 +8,10 @@ import { writeFile, mkdir } from "node:fs/promises";
 import { EVENTS, CONCURRENCY, isoDate, parseDate, loadToplist, mapLimited } from "./wa_toplists.mjs";
 
 const TOP = 5;
-// Reicht eine Woche nicht für 5 Leistungen, wird der Zeitraum erweitert (Tage)
+// Zeitraum fest 7 Tage (früher bei zu wenigen Leistungen auf 14/30/90 erweitert); sonst ggf. weniger als 5
 const REGIONS = [
-    { name: "Welt", query: "regionType=world", output: "data/leichtathletik_woche.json", windows: [7, 14, 30] },
-    { name: "Deutschland", query: "regionType=countries&region=ger", output: "data/leichtathletik_woche_ger.json", windows: [7, 14, 30, 90] },
+    { name: "Welt", query: "regionType=world", output: "data/leichtathletik_woche.json", windows: [7] },
+    { name: "Deutschland", query: "regionType=countries&region=ger", output: "data/leichtathletik_woche_ger.json", windows: [7] },
 ];
 
 function best(rows, from) {
@@ -74,7 +74,8 @@ async function collect(region, today) {
         list.forEach(r => console.log(`  ${r.rank}. ${r.score} ${r.event} ${r.mark} ${r.name} (${r.nat}) ${r.venue} ${r.date}`));
     }
 
-    if (!women.length && !men.length) {
+    // Leere Woche nur speichern, wenn die Listen auch geladen wurden (sonst Abruffehler – alten Stand behalten)
+    if (!women.length && !men.length && !stats.ok) {
         console.error(`${region.name}: keine Ergebnisse gefunden – Datei bleibt unverändert.`);
         return false;
     }
