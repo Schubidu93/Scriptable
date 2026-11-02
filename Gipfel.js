@@ -1,4 +1,4 @@
-// Gipfel – die nächsten Berggipfel vom aktuellen Standort aus (mindestens 10 m über dir) und die markantesten im Umkreis (OpenStreetMap, natural=peak mit Namen):
+// Gipfel – die nächsten Berggipfel vom aktuellen Standort aus (höher als du) und die markantesten im Umkreis (OpenStreetMap, natural=peak mit Namen):
 // Name, Höhe, Entfernung (Luftlinie) und Richtungspfeil; daneben ein Haken, wenn eine deiner Strava-/Garmin-
 // Aktivitäten auf 75 m an den Gipfel heranführte, sonst klein dein geringster Abstand (ohne Strava: Himmelsrichtung) (Strava-Zugang des Strava-Widgets;
 // abgeglichen wird in der App, z. B. nach Antippen – das Widget liest nur das Ergebnis).
@@ -25,8 +25,9 @@ const NOTABLE_ABOVE = 200;
 const MIN_ISOLATION = 2000;
 // Ohne Dominanz-Angabe in Wikidata zählt ein Gipfel, wenn er mindestens so viel höher ist als du
 const NO_ISOLATION_ABOVE = 300;
-// Im Flachland (München) sind die Hügel klein – der Luitpoldhügel liegt nur ~25 m über der Umgebung
-const MIN_ABOVE = 10;
+// Im Flachland (München) sind die Hügel klein – Luitpoldhügel ~25 m, Hypoberg (517 m) nur knapp über der Umgebung;
+// daher alle, die höher liegen als du
+const MIN_ABOVE = 0;
 
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), "gipfel.json");
