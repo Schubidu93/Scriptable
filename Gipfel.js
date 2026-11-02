@@ -144,24 +144,52 @@ function elevation(tag) {
     return m ? Math.round(Number(m[0].replace(",", "."))) : null;
 }
 
-// Fehlende Höhen (kleine Hügel haben in Wikidata oft keine) aus einem Geländemodell ergänzen: Open-Meteo,
-// kostenlos, bis zu 100 Punkte je Abfrage. Ungefähr (Raster ~90 m), daher im Widget etwas blasser
+// Fehlende Höhen ergänzen – Reihenfolge der Quellen: Wikidata, OpenStreetMap (beim Zusammenführen), dann ein
+// Geländemodell. Zuerst EU-DEM (25-m-Raster, über OpenTopoData, kostenlos), außerhalb Europas Open-Meteo (90 m).
+// Ein Raster glättet kleine, spitze Hügel (Olympiaberg: 90 m → 543 statt 564 m); daher je Gipfel fünf Punkte
+// (Mitte und je 30 m in alle Richtungen) und davon der höchste – liegt die Koordinate etwas neben dem Gipfel,
+// hilft das zusätzlich. Bleibt ein Schätzwert, im Widget etwas blasser.
+const DEM_OFFSETS = [[0, 0], [0.00027, 0], [-0.00027, 0], [0, 0.0004], [0, -0.0004]];
+
+async function demOpenTopo(points) {
+    let req = new Request(`https://api.opentopodata.org/v1/eudem25m?locations=${points.map(([la, lo]) => `${la.toFixed(5)},${lo.toFixed(5)}`).join("|")}`);
+    req.timeoutInterval = 10;
+    let json = await req.loadJSON();
+    if (json.status !== "OK") throw new Error(json.error || json.status);
+    return json.results.map(r => (typeof r.elevation === "number" ? r.elevation : null));
+}
+
+async function demOpenMeteo(points) {
+    let req = new Request(`https://api.open-meteo.com/v1/elevation?latitude=${points.map(p => p[0].toFixed(5)).join(",")}&longitude=${points.map(p => p[1].toFixed(5)).join(",")}`);
+    req.timeoutInterval = 10;
+    let json = await req.loadJSON();
+    return (json.elevation || []).map(e => (typeof e === "number" && isFinite(e) ? e : null));
+}
+
 async function fillElevations(peaks) {
-    let missing = peaks.filter(p => p.ele === null || p.ele === undefined).slice(0, 100);
-    if (!missing.length) return;
-    try {
-        let lat = missing.map(p => p.lat.toFixed(5)).join(","), lon = missing.map(p => p.lon.toFixed(5)).join(",");
-        let req = new Request(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`);
-        req.timeoutInterval = 10;
-        let json = await req.loadJSON();
-        (json.elevation || []).forEach((ele, i) => {
-            if (typeof ele === "number" && isFinite(ele)) {
-                missing[i].ele = Math.round(ele);
-                missing[i].eleApprox = true;
+    // OpenTopoData: höchstens 100 Punkte je Abfrage (20 Gipfel) und eine Abfrage je Sekunde; im Widget nur eine
+    let missing = peaks.filter(p => p.ele === null || p.ele === undefined).slice(0, config.runsInWidget ? 20 : 60);
+    for (let start = 0; start < missing.length; start += 20) {
+        let chunk = missing.slice(start, start + 20);
+        let points = chunk.flatMap(p => DEM_OFFSETS.map(([dLat, dLon]) => [p.lat + dLat, p.lon + dLon]));
+        let values = [];
+        try {
+            if (start > 0) await new Promise(resolve => Timer.schedule(1100, false, resolve));
+            values = await demOpenTopo(points);
+        } catch (e) {
+            console.log(`EU-DEM: ${e}`);
+        }
+        // Außerhalb Europas (oder bei Fehlern) liefert EU-DEM nichts – dann Open-Meteo
+        if (!values.some(v => v !== null)) {
+            try { values = await demOpenMeteo(points); } catch (e) { console.log(`Open-Meteo: ${e}`); }
+        }
+        chunk.forEach((p, i) => {
+            let own = values.slice(i * DEM_OFFSETS.length, (i + 1) * DEM_OFFSETS.length).filter(v => v !== null);
+            if (own.length) {
+                p.ele = Math.round(Math.max(...own));
+                p.eleApprox = true;
             }
         });
-    } catch (e) {
-        console.log(`Höhen: ${e}`);
     }
 }
 
@@ -202,7 +230,7 @@ async function loadPeaks(here) {
     // 30 Minuten erneut versuchen
     let age = cached ? Date.now() - cached.time : Infinity;
     let complete = cached && cached.wdOk && cached.osmOk && cached.notableOk;
-    if (cached && cached.peaks && cached.version === 10 && distanceKm(here, cached.center) < 1 && age < 7 * 86400000
+    if (cached && cached.peaks && cached.version === 11 && distanceKm(here, cached.center) < 1 && age < 7 * 86400000
         && (complete || age < 30 * 60000)) return cached;
     let [wd, osm, notable] = await Promise.all([
         wikidata(here, RADIUS).catch(e => { console.log(`Wikidata: ${e}`); return null; }),
@@ -211,7 +239,7 @@ async function loadPeaks(here) {
     ]);
     // Frisch geladen? (sonst beim nächsten Lauf nach 30 Minuten erneut versuchen)
     let fresh = { wdOk: !!wd, osmOk: !!osm, notableOk: !!notable };
-    let sameArea = cached && cached.version === 10 && distanceKm(here, cached.center) < 1;
+    let sameArea = cached && cached.version === 11 && distanceKm(here, cached.center) < 1;
     // Fehlt eine Quelle, ihren letzten Stand (gleicher Ort) weiterverwenden
     if (!wd && sameArea && cached.wd) wd = cached.wd;
     if (!osm && sameArea && cached.osm) osm = cached.osm;
@@ -224,7 +252,7 @@ async function loadPeaks(here) {
     let peaks = mergePeaks((wd || []).map(p => ({ ...p })), osm || []);
     await fillElevations(peaks);
     let source = wd && osm ? "Wikidata · OSM" : wd ? "Wikidata" : "OpenStreetMap";
-    let data = { version: 10, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source,
+    let data = { version: 11, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source,
         wd, osm, ...fresh };
     fm.writeString(cachePath, JSON.stringify(data));
     return data;
