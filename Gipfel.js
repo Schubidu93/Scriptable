@@ -1,4 +1,4 @@
-// Gipfel – die nächsten Berggipfel vom aktuellen Standort aus (mindestens 10 m über dir) und die markantesten im Umkreis (OpenStreetMap, natural=peak mit Namen):
+// Gipfel – die nächsten Berggipfel vom aktuellen Standort aus (höher als du) und die markantesten im Umkreis (OpenStreetMap, natural=peak mit Namen):
 // Name, Höhe, Entfernung (Luftlinie) und Richtungspfeil; daneben ein Haken, wenn eine deiner Strava-/Garmin-
 // Aktivitäten auf 75 m an den Gipfel heranführte, sonst klein dein geringster Abstand (ohne Strava: Himmelsrichtung) (Strava-Zugang des Strava-Widgets;
 // abgeglichen wird in der App, z. B. nach Antippen – das Widget liest nur das Ergebnis).
@@ -25,8 +25,9 @@ const NOTABLE_ABOVE = 200;
 const MIN_ISOLATION = 2000;
 // Ohne Dominanz-Angabe in Wikidata zählt ein Gipfel, wenn er mindestens so viel höher ist als du
 const NO_ISOLATION_ABOVE = 300;
-// Im Flachland (München) sind die Hügel klein – der Luitpoldhügel liegt nur ~25 m über der Umgebung
-const MIN_ABOVE = 10;
+// Im Flachland (München) sind die Hügel klein – Luitpoldhügel ~25 m, Hypoberg (517 m) nur knapp über der Umgebung;
+// daher alle, die höher liegen als du
+const MIN_ABOVE = 0;
 
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), "gipfel.json");
@@ -216,7 +217,38 @@ function mergePeaks(wd, osm) {
     return merged;
 }
 
+// OpenStreetMap-Gipfel: im Gebiet OSM_AREA aus den wöchentlich per GitHub Actions gespeicherten Kacheln (schnell und
+// zuverlässig, siehe scripts/osm_gipfel.mjs), sonst direkt über Overpass
+const OSM_AREA = { south: 46.5, north: 49.5, west: 8.5, east: 13.5 };
+const OSM_TILES = "https://raw.githubusercontent.com/Schubidu93/Scriptable/main/data/gipfel/";
+
+async function loadOsmTiles(here) {
+    let dLat = RADIUS / 111320, dLon = RADIUS / (111320 * Math.cos(rad(here.lat)));
+    let box = { south: here.lat - dLat, north: here.lat + dLat, west: here.lon - dLon, east: here.lon + dLon };
+    if (box.south < OSM_AREA.south || box.north > OSM_AREA.north || box.west < OSM_AREA.west || box.east > OSM_AREA.east) return null;
+    let tiles = [];
+    for (let lat = Math.floor(box.south * 2) / 2; lat < box.north; lat += 0.5) {
+        for (let lon = Math.floor(box.west * 2) / 2; lon < box.east; lon += 0.5) tiles.push(`${lat.toFixed(1)}_${lon.toFixed(1)}`);
+    }
+    // Neue Kacheln kommen wöchentlich – Tagesstempel gegen den Zwischenspeicher von GitHub
+    let day = Math.floor(Date.now() / 86400000);
+    let lists = await Promise.all(tiles.map(async t => {
+        let req = new Request(`${OSM_TILES}${t}.json?t=${day}`);
+        req.timeoutInterval = 10;
+        return req.loadJSON();
+    }));
+    return lists.flat()
+        .map(([name, lat, lon, ele]) => ({ id: `osm:${lat},${lon}`, name, lat, lon, ele }))
+        .filter(p => !isSpotHeight(p.name) && distanceKm(here, p) <= RADIUS / 1000);
+}
+
 async function loadOsm(here) {
+    try {
+        let tiles = await loadOsmTiles(here);
+        if (tiles) return tiles;
+    } catch (e) {
+        console.log(`OSM-Kacheln: ${e}`);
+    }
     return (await overpass(here, RADIUS)).map(e => ({
         id: `osm:${e.id}`,
         name: e.tags["name:de"] || e.tags.name,
@@ -234,7 +266,7 @@ async function loadPeaks(here) {
     // 30 Minuten erneut versuchen
     let age = cached ? Date.now() - cached.time : Infinity;
     let complete = cached && cached.wdOk && cached.osmOk && cached.notableOk;
-    if (cached && cached.peaks && cached.version === 11 && distanceKm(here, cached.center) < 1 && age < 7 * 86400000
+    if (cached && cached.peaks && cached.version === 12 && distanceKm(here, cached.center) < 1 && age < 7 * 86400000
         && (complete || age < 30 * 60000)) return cached;
     let [wd, osm, notable] = await Promise.all([
         wikidata(here, RADIUS).catch(e => { console.log(`Wikidata: ${e}`); return null; }),
@@ -243,7 +275,7 @@ async function loadPeaks(here) {
     ]);
     // Frisch geladen? (sonst beim nächsten Lauf nach 30 Minuten erneut versuchen)
     let fresh = { wdOk: !!wd, osmOk: !!osm, notableOk: !!notable };
-    let sameArea = cached && cached.version === 11 && distanceKm(here, cached.center) < 1;
+    let sameArea = cached && cached.version === 12 && distanceKm(here, cached.center) < 1;
     // Fehlt eine Quelle, ihren letzten Stand (gleicher Ort) weiterverwenden
     if (!wd && sameArea && cached.wd) wd = cached.wd;
     if (!osm && sameArea && cached.osm) osm = cached.osm;
@@ -256,7 +288,7 @@ async function loadPeaks(here) {
     let peaks = mergePeaks((wd || []).map(p => ({ ...p })), osm || []);
     await fillElevations(peaks);
     let source = wd && osm ? "Wikidata · OSM" : wd ? "Wikidata" : "OpenStreetMap";
-    let data = { version: 11, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source,
+    let data = { version: 12, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source,
         wd, osm, ...fresh };
     fm.writeString(cachePath, JSON.stringify(data));
     return data;
