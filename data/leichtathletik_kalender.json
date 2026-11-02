@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-01T20:35:58.927Z",
+  "generated": "2026-11-02T01:35:05.864Z",
   "track": [
     {
       "id": 7242316,
@@ -94,24 +94,6 @@
   ],
   "road": [
     {
-      "id": 7235596,
-      "name": "Istanbul Marathon",
-      "venue": "Istanbul (TUR)",
-      "category": "A",
-      "group": "World Athletics Label Road Races – Gold",
-      "startDate": "2026-11-01",
-      "endDate": "2026-11-01"
-    },
-    {
-      "id": 7235564,
-      "name": "TCS New York City Marathon",
-      "venue": "New York, NY (USA)",
-      "category": "GW",
-      "group": "World Athletics Label Road Races – Platinum",
-      "startDate": "2026-11-01",
-      "endDate": "2026-11-01"
-    },
-    {
       "id": 7241749,
       "name": "Bank of China Hong Kong-Zhuhai-Macao Bridge Half Marathon",
       "venue": "Hong Kong (HKG)",
@@ -182,6 +164,15 @@
       "group": "Area RR Championships, Area Road Running Championships",
       "startDate": "2027-04-17",
       "endDate": "2027-04-18"
+    },
+    {
+      "id": 7216591,
+      "name": "World Athletics Championships, Beijing 2027",
+      "venue": "National Stadium, Beijing (CHN)",
+      "category": "OW",
+      "group": "World Athletics Championships, World Athletics Series",
+      "startDate": "2027-09-10",
+      "endDate": "2027-09-19"
     }
   ]
 }

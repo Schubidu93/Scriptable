@@ -1,9 +1,9 @@
 {
-  "generated": "2026-11-01T20:34:08.503Z",
+  "generated": "2026-11-02T01:33:46.587Z",
   "region": "Deutschland",
-  "days": 7,
-  "from": "2026-10-25",
-  "to": "2026-11-01",
+  "days": 14,
+  "from": "2026-10-19",
+  "to": "2026-11-02",
   "women": [
     {
       "rank": 1,
@@ -29,6 +29,17 @@
     },
     {
       "rank": 3,
+      "mark": "2:28:49",
+      "wind": "",
+      "name": "Fabienne KÖNIGSTEIN",
+      "nat": "GER",
+      "venue": "New York, NY (USA)",
+      "date": "01 NOV 2026",
+      "score": 1128,
+      "event": "Marathon"
+    },
+    {
+      "rank": 4,
       "mark": "1:12:20",
       "wind": "",
       "name": "Hannah STEGENWALLNER",
@@ -39,7 +50,7 @@
       "event": "Halbmarathon"
     },
     {
-      "rank": 4,
+      "rank": 5,
       "mark": "1:13:06",
       "wind": "",
       "name": "Mia JURENKA",
@@ -47,17 +58,6 @@
       "venue": "Hamburg (GER)",
       "date": "25 OCT 2026",
       "score": 1067,
-      "event": "Halbmarathon"
-    },
-    {
-      "rank": 5,
-      "mark": "1:14:07",
-      "wind": "",
-      "name": "Leah HANLE",
-      "nat": "GER",
-      "venue": "Valencia (ESP)",
-      "date": "25 OCT 2026",
-      "score": 1047,
       "event": "Halbmarathon"
     }
   ],
@@ -97,6 +97,17 @@
     },
     {
       "rank": 4,
+      "mark": "1:27:45",
+      "wind": "",
+      "name": "Leo KÖPP",
+      "nat": "GER",
+      "venue": "Weinauparkstadion, Zittau (GER)",
+      "date": "24 OCT 2026",
+      "score": 1140,
+      "event": "Halbmarathon Gehen"
+    },
+    {
+      "rank": 5,
       "mark": "1:01:30",
       "wind": "",
       "name": "Jan Lukas BECKER",
@@ -104,17 +115,6 @@
       "venue": "Valencia (ESP)",
       "date": "25 OCT 2026",
       "score": 1127,
-      "event": "Halbmarathon"
-    },
-    {
-      "rank": 5,
-      "mark": "1:02:30",
-      "wind": "",
-      "name": "Jona BODIRSKY",
-      "nat": "GER",
-      "venue": "Valencia (ESP)",
-      "date": "25 OCT 2026",
-      "score": 1088,
       "event": "Halbmarathon"
     }
   ]
