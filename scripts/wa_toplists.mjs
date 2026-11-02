@@ -124,10 +124,11 @@ export async function fetchPage(url) {
 //   from/to:   Zeitraum (ohne Angabe: alle Zeiten)
 //   bestOnly:  nur die beste Leistung je Athlet
 //   season:    Jahr – Saison-Topliste statt All-Time-Liste
-export async function loadToplist(gender, [group, slug, label, env = "all"], { query, from, to, bestOnly = false, season }) {
+//   page:      Seite (je 100 Zeilen)
+export async function loadToplist(gender, [group, slug, label, env = "all"], { query, from, to, bestOnly = false, season, page = 1 }) {
     let range = from && to ? `&firstDay=${isoDate(from)}&lastDay=${isoDate(to)}` : "";
     let path = season ? `${SEASON_BASE}${group}/${slug}/${env}/${gender}/senior/${season}` : `${BASE}${group}/${slug}/${env}/${gender}/senior`;
-    let url = `${path}?${query}&page=1&bestResultsOnly=${bestOnly}`
+    let url = `${path}?${query}&page=${page}&bestResultsOnly=${bestOnly}`
         + `${range}&maxResultsByCountry=all&ageCategory=senior`;
     try {
         let { status, html } = await fetchPage(url);
