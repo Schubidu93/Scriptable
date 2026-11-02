@@ -360,6 +360,7 @@ function gameInfo(event) {
         ourScore,
         theirScore,
         result,
+        tbd: !!event.tbd,
     };
 }
 
@@ -486,6 +487,11 @@ async function loadSeasonEvents() {
         loadJSON(`${base}?dates=${ymd(day)}&_=${Math.floor(Date.now() / 60000)}`).catch(() => null)));
     let recent = fresh.flatMap(json => (json && Array.isArray(json.events) && json.events) || []);
     if (recent.length) events = mergeEvents([events, recent]);
+    // DFB-Pokal: Nach der Auslosung trägt ESPN die Paarungen erst ein, wenn die Termine feststehen – bis dahin
+    // die ausgelosten Spiele der nächsten Runde von OpenLigaDB (Termin offen)
+    if (LEAGUE_KEY === "pokal" && events.length && !events.some(e => stateOf(e) !== "post")) {
+        events = mergeEvents([events, await openLigaNextRound(events).catch(e => { console.log(`OpenLigaDB: ${e}`); return []; })]);
+    }
     SEASON_EVENTS = events;
     return SEASON_EVENTS;
 }
@@ -495,6 +501,64 @@ function mergeEvents(lists) {
     let byId = {};
     lists.flat().forEach(e => { if (e && e.id) byId[e.id] = e; });
     return Object.values(byId).sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
+// OpenLigaDB (frei, von der Community gepflegt): DFB-Pokal-Paarungen der nächsten offenen Runde als ESPN-artige
+// Spiele. Vereine werden über den Namen den ESPN-Vereinen der bisherigen Runden zugeordnet (ESPN-ID und -Logo);
+// unbekannte bekommen Name und Wappen von OpenLigaDB.
+const OLDB_ROUNDS = [[/achtel/i, "Round of 16"], [/viertel/i, "Quarterfinals"], [/halb/i, "Semifinals"], [/finale/i, "Final"],
+    [/2\. ?runde/i, "Second Round"], [/1\. ?runde/i, "First Round"]];
+
+async function openLigaNextRound(espnEvents) {
+    let year = seasonRange().from.getFullYear();
+    let req = new Request(`https://api.openligadb.de/getmatchdata/dfb/${year}`);
+    req.timeoutInterval = 10;
+    let matches = await req.loadJSON();
+    if (!Array.isArray(matches)) return [];
+    let open = matches.filter(m => !m.matchIsFinished && m.team1 && m.team2 && m.team1.teamName && m.team2.teamName);
+    if (!open.length) return [];
+    let order = m => (m.group && m.group.groupOrderID) || 0;
+    let round = Math.min(...open.map(order));
+    let espnTeams = {};
+    espnEvents.forEach(e => e.competitions[0].competitors.forEach(c => {
+        for (let key of [c.team.displayName, c.team.shortDisplayName, c.team.name, germanTeam(c.team).name]) {
+            if (key) espnTeams[normalizeName(key)] = c.team;
+        }
+    }));
+    let team = t => {
+        let names = [t.teamName, t.shortName, germanTeam({ displayName: t.teamName, shortDisplayName: t.shortName }).name];
+        for (let n of names) if (n && espnTeams[normalizeName(n)]) return espnTeams[normalizeName(n)];
+        return { id: `oldb-${t.teamId}`, displayName: t.teamName, shortDisplayName: t.shortName || t.teamName,
+            abbreviation: (t.shortName || t.teamName).slice(0, 3).toUpperCase(),
+            // SVG-Wappen kann Scriptable nicht zeichnen – dann über Wikipedia suchen
+            logo: t.teamIconUrl && !/\.svg/i.test(t.teamIconUrl) ? t.teamIconUrl : null };
+    };
+    let roundMatches = open.filter(m => order(m) === round);
+    // Frühestes angegebenes Datum in der Zukunft, sonst eine Woche ab heute
+    let future = roundMatches.map(m => new Date(m.matchDateTimeUTC || m.matchDateTime || 0).getTime())
+        .filter(t => !isNaN(t) && t > Date.now());
+    let roundDate = new Date(future.length ? Math.min(...future) : Date.now() + 7 * 86400000).toISOString();
+    return roundMatches.map(m => {
+        let groupName = (m.group && m.group.groupName) || "";
+        let hit = OLDB_ROUNDS.find(([re]) => re.test(groupName));
+        // Vorläufiges Datum nur zum Sortieren (angezeigt wird "Termin folgt"): für die ganze Runde dasselbe, damit
+        // sie im Ergebnis-Widget eine Gruppe bleibt
+        let date = roundDate;
+        return {
+            id: `oldb-${m.matchID}`,
+            date,
+            tbd: true,
+            notes: hit ? [{ headline: hit[1] }] : [],
+            competitions: [{
+                date,
+                status: { type: { state: "pre", completed: false } },
+                competitors: [
+                    { homeAway: "home", team: team(m.team1), score: null },
+                    { homeAway: "away", team: team(m.team2), score: null },
+                ],
+            }],
+        };
+    });
 }
 
 // Spiele des eigenen Teams: aus dem Scoreboard und zusätzlich aus dem Team-Spielplan
@@ -651,6 +715,7 @@ function toGame(e) {
     return {
         id: String(e.id),
         date: e.date,
+        tbd: !!e.tbd,
         state: stateOf(e),
         detail: stateOf(e) === "in" ? liveDetail(statusOf(e)) : resultSuffix(e),
         home: side("home"),
@@ -1049,7 +1114,7 @@ function addNextGame(stack, next, images) {
     addLogo(row, images, next.opponentLogo, 20);
     row.addSpacer(4);
     addLabel(row, next.opponentName, Font.semiboldSystemFont(14), WHITE);
-    addLabel(stack, formatKickoff(next.date), Font.mediumSystemFont(10), WHITE, 0.6);
+    addLabel(stack, next.tbd ? "Termin folgt" : formatKickoff(next.date), Font.mediumSystemFont(10), WHITE, 0.6);
 }
 
 // 7 Zeilen: kompakt, damit sie ins mittlere Widget passen; Lücken als „···“
@@ -1227,7 +1292,7 @@ function addGameRow(stack, game, images) {
     if (game.state === "pre") {
         let df = new DateFormatter();
         df.dateFormat = "HH:mm";
-        text = addLabel(mid, df.string(new Date(game.date)), Font.semiboldMonospacedSystemFont(10), WHITE, 0.7);
+        text = addLabel(mid, game.tbd ? "offen" : df.string(new Date(game.date)), Font.semiboldMonospacedSystemFont(10), WHITE, 0.7);
     } else {
         text = addLabel(mid, `${game.home.score}:${game.away.score}`, Font.boldRoundedSystemFont(13),
             game.state === "in" ? LIVE_RED : WHITE);
@@ -1248,6 +1313,11 @@ function dayKey(date) {
     return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
+// Ausgeloste Spiele ohne Termin (OpenLigaDB) unter einer gemeinsamen Zwischenzeile
+function gameDayKey(game) {
+    return game.tbd ? "tbd" : dayKey(game.date);
+}
+
 function dayTitle(date) {
     let df = new DateFormatter();
     df.locale = "de_DE";
@@ -1260,8 +1330,8 @@ function splitByDay(games) {
     let days = [];
     games.forEach(g => {
         let last = days[days.length - 1];
-        if (last && last.key === dayKey(g.date)) last.games.push(g);
-        else days.push({ key: dayKey(g.date), games: [g] });
+        if (last && last.key === gameDayKey(g)) last.games.push(g);
+        else days.push({ key: gameDayKey(g), games: [g] });
     });
     let left = [], right = [];
     for (let day of days) {
@@ -1295,7 +1365,7 @@ function buildMatchdays(widget, data, images) {
 
     // Höhe: Titel 18, Tageszeile 17, Spielzeile 17 – der Rest (Budget ~290) als Abstand zwischen den Spielen
     let layout = columns.map(column => {
-        let days = new Set(column.games.map(g => dayKey(g.date))).size;
+        let days = new Set(column.games.map(g => gameDayKey(g))).size;
         return { fixed: (column.title ? 18 : 0) + days * 15 + column.games.length * 17, rows: column.games.length };
     });
     let gap = Math.max(4, Math.min(22, Math.min(...layout.map(l => (290 - l.fixed) / Math.max(1, l.rows - 1)))));
@@ -1311,11 +1381,11 @@ function buildMatchdays(widget, data, images) {
         }
         let lastDay = null;
         column.games.forEach((game, i) => {
-            if (dayKey(game.date) !== lastDay) {
+            if (gameDayKey(game) !== lastDay) {
                 if (i > 0) col.addSpacer(gap);
-                addLabel(col, dayTitle(game.date), Font.semiboldSystemFont(9), ACCENT, 0.8);
+                addLabel(col, game.tbd ? "TERMINE FOLGEN" : dayTitle(game.date), Font.semiboldSystemFont(9), ACCENT, 0.8);
                 col.addSpacer(4);
-                lastDay = dayKey(game.date);
+                lastDay = gameDayKey(game);
             } else {
                 col.addSpacer(gap);
             }
@@ -1807,7 +1877,7 @@ function addPokalNext(stack, data, images) {
         addLogo(row, images, data.next.opponentLogo, 18);
         row.addSpacer(4);
         addLabel(row, data.next.opponentName, Font.semiboldSystemFont(13), WHITE);
-        addLabel(stack, formatKickoff(data.next.date), Font.mediumSystemFont(10), WHITE, 0.6);
+        addLabel(stack, data.next.tbd ? "ausgelost · Termin folgt" : formatKickoff(data.next.date), Font.mediumSystemFont(10), WHITE, 0.6);
     } else {
         addLabel(stack, "Gegner wird ausgelost", Font.mediumSystemFont(11), WHITE, 0.7);
     }
