@@ -25,9 +25,9 @@ const NOTABLE_ABOVE = 200;
 const MIN_ISOLATION = 2000;
 // Ohne Dominanz-Angabe in Wikidata zählt ein Gipfel, wenn er mindestens so viel höher ist als du
 const NO_ISOLATION_ABOVE = 300;
-// Im Flachland (München) sind die Hügel klein – Luitpoldhügel ~25 m, Hypoberg (517 m) nur knapp über der Umgebung;
-// daher alle, die höher liegen als du
-const MIN_ABOVE = 0;
+// Im Flachland (München) sind die Hügel klein und die GPS-Höhe schwankt um ±10–20 m: auch Gipfel bis 30 m unter
+// deinem Standort zählen (Hypoberg 517 m bei "du: 519 m"); nur deutlich tiefere rücken nach hinten
+const MIN_ABOVE = -30;
 
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), "gipfel.json");
@@ -278,7 +278,8 @@ async function loadPeaks(here) {
     ]);
     // Frisch geladen? (sonst beim nächsten Lauf nach 30 Minuten erneut versuchen)
     let fresh = { wdOk: !!wd, osmOk: !!osm, notableOk: !!notable };
-    let sameArea = cached && cached.version === 13 && distanceKm(here, cached.center) < 1;
+    // Auch Zwischenspeicher älterer Versionen (ab 10 mit getrennten Quellen) taugen als Ersatz für eine ausgefallene Quelle
+    let sameArea = cached && cached.version >= 10 && distanceKm(here, cached.center) < 1;
     // Fehlt eine Quelle, ihren letzten Stand (gleicher Ort) weiterverwenden
     if (!wd && sameArea && cached.wd) wd = cached.wd;
     if (!osm && sameArea && cached.osm) osm = cached.osm;
@@ -629,8 +630,21 @@ async function createWidget() {
         // nur in der App rechnen – für alle gespeicherten Gipfel – und als kleine Liste merken
         if (!config.runsInWidget) saveApproach((data.peaks || []).concat(data.notable || []), await syncTracks());
         let approach = readApproach();
+        // Abgleich über die Koordinate; liegt der Gipfel aus der anderen Quelle ein paar Meter daneben (Olympiaberg in
+        // Wikidata und OSM), den nächsten gespeicherten Eintrag bis 300 m nehmen
+        let stored = Object.entries(approach).map(([k, m]) => { let [lat, lon] = k.split(",").map(Number); return { lat, lon, m }; });
+        let lookup = p => {
+            if (approach[peakKey(p)] !== undefined) return approach[peakKey(p)];
+            let best = null, bestKm = 0.3;
+            for (let s of stored) {
+                if (Math.abs(s.lat - p.lat) > 0.003) continue;
+                let d = distanceKm(p, s);
+                if (d <= bestKm) { best = s.m; bestKm = d; }
+            }
+            return best === null ? undefined : best;
+        };
         peaks.forEach(p => {
-            p.approach = approach[peakKey(p)];
+            p.approach = lookup(p);
             p.visited = p.approach !== undefined && p.approach >= 0 && p.approach <= TOLERANCE_M;
         });
         UNCHECKED = peaks.some(p => p.approach === undefined);
