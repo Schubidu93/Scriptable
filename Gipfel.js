@@ -171,9 +171,12 @@ async function demOpenMeteo(points) {
     return (json.elevation || []).map(e => (typeof e === "number" && isFinite(e) ? e : null));
 }
 
-async function fillElevations(peaks) {
-    // OpenTopoData: höchstens 100 Punkte je Abfrage (20 Gipfel) und eine Abfrage je Sekunde; im Widget nur eine
-    let missing = peaks.filter(p => p.ele === null || p.ele === undefined).slice(0, config.runsInWidget ? 20 : 60);
+async function fillElevations(peaks, here) {
+    // OpenTopoData: höchstens 100 Punkte je Abfrage (20 Gipfel) und eine Abfrage je Sekunde; im Widget nur eine.
+    // Die nächsten zuerst – die stehen im Widget (vorher in Quellen-Reihenfolge, daher fehlte z. B. beim Monopteros die Höhe)
+    let missing = peaks.filter(p => p.ele === null || p.ele === undefined)
+        .sort((a, b) => distanceKm(here, a) - distanceKm(here, b))
+        .slice(0, config.runsInWidget ? 20 : 60);
     for (let start = 0; start < missing.length; start += 20) {
         let chunk = missing.slice(start, start + 20);
         let points = chunk.flatMap(p => DEM_OFFSETS.map(([dLat, dLon]) => [p.lat + dLat, p.lon + dLon]));
@@ -266,7 +269,7 @@ async function loadPeaks(here) {
     // 30 Minuten erneut versuchen
     let age = cached ? Date.now() - cached.time : Infinity;
     let complete = cached && cached.wdOk && cached.osmOk && cached.notableOk;
-    if (cached && cached.peaks && cached.version === 12 && distanceKm(here, cached.center) < 1 && age < 7 * 86400000
+    if (cached && cached.peaks && cached.version === 13 && distanceKm(here, cached.center) < 1 && age < 7 * 86400000
         && (complete || age < 30 * 60000)) return cached;
     let [wd, osm, notable] = await Promise.all([
         wikidata(here, RADIUS).catch(e => { console.log(`Wikidata: ${e}`); return null; }),
@@ -275,7 +278,7 @@ async function loadPeaks(here) {
     ]);
     // Frisch geladen? (sonst beim nächsten Lauf nach 30 Minuten erneut versuchen)
     let fresh = { wdOk: !!wd, osmOk: !!osm, notableOk: !!notable };
-    let sameArea = cached && cached.version === 12 && distanceKm(here, cached.center) < 1;
+    let sameArea = cached && cached.version === 13 && distanceKm(here, cached.center) < 1;
     // Fehlt eine Quelle, ihren letzten Stand (gleicher Ort) weiterverwenden
     if (!wd && sameArea && cached.wd) wd = cached.wd;
     if (!osm && sameArea && cached.osm) osm = cached.osm;
@@ -286,9 +289,9 @@ async function loadPeaks(here) {
     // Fehlschlag: die bisherigen markanten Gipfel (gleicher Ort) behalten
     if (!notable) notable = cached && cached.notable && distanceKm(here, cached.center) < 20 ? cached.notable : [];
     let peaks = mergePeaks((wd || []).map(p => ({ ...p })), osm || []);
-    await fillElevations(peaks);
+    await fillElevations(peaks, here);
     let source = wd && osm ? "Wikidata · OSM" : wd ? "Wikidata" : "OpenStreetMap";
-    let data = { version: 12, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source,
+    let data = { version: 13, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source,
         wd, osm, ...fresh };
     fm.writeString(cachePath, JSON.stringify(data));
     return data;
