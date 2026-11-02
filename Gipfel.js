@@ -431,7 +431,8 @@ const peakKey = p => `${p.lat.toFixed(4)},${p.lon.toFixed(4)}`;
 function saveApproach(peaks, store) {
     let known = readApproach();
     closestApproach(peaks, store).forEach((m, i) => {
-        if (m <= NEAR_M) known[peakKey(peaks[i])] = Math.round(m);
+        // Weiter als NEAR_M: als -1 merken ("> 2 km") – so ist klar, dass der Gipfel schon abgeglichen wurde
+        known[peakKey(peaks[i])] = m <= NEAR_M ? Math.round(m) : -1;
     });
     fm.writeString(nearPath, JSON.stringify(known));
 }
@@ -508,6 +509,8 @@ function background(widget) {
 }
 
 let SHOW_CHECKS = false;
+// Mindestens ein angezeigter Gipfel noch ohne Abgleich (neu dazugekommen)
+let UNCHECKED = false;
 
 function addRow(widget, peak) {
     let row = widget.addStack();
@@ -528,8 +531,13 @@ function addRow(widget, peak) {
         addLabel(info, compass(peak.bearing), Font.semiboldSystemFont(SIZE.dir), WHITE, 0.75).minimumScaleFactor = 0.7;
     } else if (peak.visited) {
         addSymbol(info, "checkmark", SIZE.dir + 1, new Color("#7CE38B")).imageOpacity = 0.9;
+    } else if (peak.approach === -1) {
+        addLabel(info, `> ${NEAR_M / 1000} km`, Font.mediumSystemFont(Math.max(8, SIZE.dir - 1)), WHITE, 0.4).minimumScaleFactor = 0.8;
     } else if (peak.approach !== undefined) {
         addLabel(info, formatApproach(peak.approach), Font.mediumSystemFont(Math.max(8, SIZE.dir - 1)), WHITE, 0.5).minimumScaleFactor = 0.8;
+    } else {
+        // Noch nicht abgeglichen (neuer Gipfel) – der Abgleich läuft nur in der App, also antippen
+        addLabel(info, "?", Font.mediumSystemFont(Math.max(8, SIZE.dir - 1)), WHITE, 0.4);
     }
     info.addSpacer();
     let name = addLabel(row, peak.name, Font.semiboldSystemFont(SIZE.name));
@@ -620,8 +628,9 @@ async function createWidget() {
         let approach = readApproach();
         peaks.forEach(p => {
             p.approach = approach[peakKey(p)];
-            p.visited = p.approach !== undefined && p.approach <= TOLERANCE_M;
+            p.visited = p.approach !== undefined && p.approach >= 0 && p.approach <= TOLERANCE_M;
         });
+        UNCHECKED = peaks.some(p => p.approach === undefined);
     }
     if (!peaks.length) addLabel(widget, "Keine Gipfel im Umkreis von 40 km", Font.mediumSystemFont(12), WHITE, 0.8);
     peaks.forEach((p, i) => {
@@ -648,7 +657,7 @@ async function createWidget() {
     }
     widget.addSpacer();
 
-    let note = [here.old ? "letzter Standort" : "", data.stale ? "offline" : ""].filter(Boolean).join(" · ");
+    let note = [here.old ? "letzter Standort" : "", data.stale ? "offline" : "", UNCHECKED ? "? = antippen zum Abgleich" : ""].filter(Boolean).join(" · ");
     // Mittel: keine Fußzeile (Platz für 8 Gipfel), Hinweise wie "offline" klein am Ende der Liste
     if (!SIZE.footer) {
         if (note) addLabel(widget, note, Font.mediumSystemFont(8), WHITE, 0.5);
