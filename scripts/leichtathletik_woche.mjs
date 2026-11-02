@@ -8,6 +8,9 @@ import { writeFile, mkdir } from "node:fs/promises";
 import { EVENTS, CONCURRENCY, isoDate, parseDate, loadToplist, mapLimited } from "./wa_toplists.mjs";
 
 const TOP = 5;
+// Höchstens so viele Seiten (je 100 Zeilen) je Saisonliste
+const MAX_PAGES = 10;
+const PAGE_SIZE = 100;
 // Zeitraum fest 7 Tage (früher bei zu wenigen Leistungen auf 14/30/90 erweitert); sonst ggf. weniger als 5
 const REGIONS = [
     { name: "Welt", query: "regionType=world", output: "data/leichtathletik_woche.json", windows: [7] },
@@ -41,20 +44,45 @@ async function collect(region, today) {
     let years = [...new Set([maxFrom.getUTCFullYear(), today.getUTCFullYear()])];
     let jobs = EVENTS.women.map(ev => ["women", ev]).concat(EVENTS.men.map(ev => ["men", ev]))
         .flatMap(job => years.map(year => [...job, year]));
-    let loaded = await mapLimited(jobs, CONCURRENCY, ([gender, ev, year]) => {
+    let load = ([gender, ev, year], page) => {
         let from = year === maxFrom.getUTCFullYear() ? maxFrom : new Date(Date.UTC(year, 0, 1));
         let to = year === today.getUTCFullYear() ? today : new Date(Date.UTC(year, 11, 31));
-        return loadToplist(gender, ev, { query: region.query, from, to, season: year }).then(r => ({ ...r, gender }));
-    });
-    for (let gender of ["women", "men"]) {
-        let results = loaded.filter(r => r.gender === gender);
-        for (let r of results) {
-            if (r.status !== 200) stats.failed.push(`${gender} ${r.label}: ${r.status}`);
-            else if (r.rows.length) stats.ok++;
-            else stats.empty++;
-            all[gender] = all[gender].concat(r.rows);
-        }
+        return loadToplist(gender, ev, { query: region.query, from, to, season: year, page });
+    };
+    let state = jobs.map(job => ({ job, gender: job[0], page: 1, last: null }));
+    await mapLimited(state, CONCURRENCY, async st => { st.last = await load(st.job, 1); });
+    for (let st of state) {
+        let r = st.last;
+        if (r.status !== 200) stats.failed.push(`${st.gender} ${r.label}: ${r.status}`);
+        else if (r.rows.length) stats.ok++;
+        else stats.empty++;
+        all[st.gender] = all[st.gender].concat(r.rows);
     }
+
+    // Weitere Seiten: Die Saisonlisten sind nach Leistung sortiert, aktuelle Ergebnisse stehen oft weiter hinten
+    // (z. B. in ruhigen Wochen nach dem Saisonende). Eine Liste wird weiter geblättert, solange ihre letzte Seite
+    // voll war und deren schwächste Leistung noch mehr Punkte hat als Platz 5 der bisherigen Auswahl – tiefer kann
+    // sie nichts mehr verdrängen.
+    let from7 = new Date(today.getTime() - windows[0] * 86400000);
+    from7.setUTCHours(0, 0, 0, 0);
+    let extra = 0;
+    for (let page = 2; page <= MAX_PAGES; page++) {
+        let bar = {};
+        for (let gender of ["women", "men"]) {
+            let list = best(all[gender], from7);
+            bar[gender] = list.length >= TOP ? list[TOP - 1].score : 0;
+        }
+        let next = state.filter(st => st.last && st.last.status === 200 && st.last.rows.length >= PAGE_SIZE
+            && Math.min(...st.last.rows.map(r => r.score || 0)) > bar[st.gender]);
+        if (!next.length) break;
+        await mapLimited(next, CONCURRENCY, async st => {
+            st.page = page;
+            st.last = await load(st.job, page);
+            if (st.last.status === 200) all[st.gender] = all[st.gender].concat(st.last.rows);
+        });
+        extra += next.length;
+    }
+    console.log(`${region.name}: ${extra} weitere Seiten geladen`);
 
     let days = windows[0], women = [], men = [];
     for (let window of windows) {
