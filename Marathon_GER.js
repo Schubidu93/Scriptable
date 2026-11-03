@@ -231,15 +231,16 @@ async function loadResults() {
     return results;
 }
 
-// "Melat Yisak KEJETA" → "M. Kejeta"
+// Schreibweise wie bei World Athletics: erster Vorname, Nachname in Großbuchstaben
+// "Amelie HOFBAUER" bleibt, "Melat Yisak KEJETA" → "Melat KEJETA", "Edna Ngeringwony KIPLAGAT" → "Edna KIPLAGAT"
 function shortName(name) {
-    let words = name.split(" ").filter(Boolean);
-    let isSurname = w => w.length > 1 && w === w.toUpperCase();
+    let words = String(name || "").split(" ").filter(Boolean);
+    // "ß" hat keine Großform ("WEIßENBERG") – beim Vergleich weglassen
+    let isSurname = w => { let x = w.replace(/ß/g, ""); return w.length > 1 && x === x.toUpperCase() && /\p{L}/u.test(x); };
     let first = words.filter(w => !isSurname(w));
-    let last = words.filter(isSurname).map(w => w.charAt(0) + w.slice(1).toLowerCase()
-        .replace(/[-'](\p{L})/gu, m => m.toUpperCase()));
-    if (!last.length) return name;
-    return first.length ? `${first[0].charAt(0)}. ${last.join(" ")}` : last.join(" ");
+    let last = words.filter(isSurname);
+    if (!last.length) return words.join(" ");
+    return first.length ? `${first[0]} ${last.join(" ")}` : last.join(" ");
 }
 
 // "Berlin (GER)" → "Berlin"
