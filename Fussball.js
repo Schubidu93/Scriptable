@@ -1325,7 +1325,9 @@ function dayTitle(date) {
     return df.string(new Date(date)).replace(".", "").toUpperCase();
 }
 
-// Ein Spieltag auf zwei Spalten: ganze Tage zusammenhalten (CL: Di | Mi), sonst halbieren
+// Ein Spieltag auf zwei Spalten: ganze Tage zusammenhalten, wenn das aufgeht (CL: Di | Mi), sonst halbieren –
+// der Tageswechsel steht dann innerhalb einer Spalte, und eine fortgesetzte Spalte beginnt wieder mit dem Datum
+// (EL: 1 Spiel am Mittwoch, 17 am Donnerstag → 9 | 9 statt 1 | 17)
 function splitByDay(games) {
     let days = [];
     games.forEach(g => {
@@ -1338,7 +1340,7 @@ function splitByDay(games) {
         if (left.length < games.length / 2 && left.length + day.games.length <= Math.ceil(games.length / 2) + 2) left.push(...day.games);
         else right.push(...day.games);
     }
-    if (!left.length || !right.length) {
+    if (!left.length || !right.length || Math.abs(left.length - right.length) > 2) {
         let half = Math.ceil(games.length / 2);
         return [games.slice(0, half), games.slice(half)];
     }
