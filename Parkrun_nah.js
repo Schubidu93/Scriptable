@@ -3,14 +3,16 @@
 // Deine parkrun-ID wird beim ersten Start in der App abgefragt und nur in der Keychain dieses iPhones gespeichert
 // (nicht im Skript, nicht auf GitHub). Ändern: Skript in Scriptable starten → "parkrun-ID ändern".
 // Quellen: Veranstaltungsliste von parkrun (images.parkrun.com/events.json) und deine öffentliche Ergebnisseite.
-// Mittleres Widget. Antippen einer Zeile öffnet die Seite des parkruns.
+// Großes Widget: 10 parkruns, mittleres: 5 (mehr passen dort nicht). Antippen einer Zeile öffnet die Seite des parkruns.
 
 const fm = FileManager.local();
 const eventsPath = fm.joinPath(fm.documentsDirectory(), "parkrun-nah-events.json");
 const statsPath = fm.joinPath(fm.documentsDirectory(), "parkrun-nah-ergebnisse.json");
 const locationPath = fm.joinPath(fm.cacheDirectory(), "parkrun-nah-standort.json");
 const ID_KEY = "parkrun_nah_id";
-const COUNT = 5;
+// In der App wird das große Widget gezeigt
+const LARGE = !config.widgetFamily || config.widgetFamily === "large" || config.widgetFamily === "extraLarge";
+const COUNT = LARGE ? 10 : 5;
 const HOUR = 3600000;
 
 const WHITE = Color.white();
@@ -299,7 +301,7 @@ async function createWidget() {
     let widget = new ListWidget();
     widget.url = `${URLScheme.forRunningScript()}?aus=widget`;
     background(widget);
-    widget.setPadding(10, PAD, 8, PAD);
+    widget.setPadding(LARGE ? 14 : 10, PAD, 8, PAD);
     // Samstags während der Läufe und bis die Ergebnisse da sind öfter, sonst alle 3 Stunden (Standortwechsel)
     let now = new Date();
     let saturday = now.getDay() === 6 && now.getHours() >= 8 && now.getHours() < 20;
@@ -325,7 +327,7 @@ async function createWidget() {
     addColumnTitles(widget);
     let nearest = events.map(e => ({ ...e, km: distanceKm(here, e) })).sort((a, b) => a.km - b.km).slice(0, COUNT);
     nearest.forEach((event, i) => {
-        if (i > 0) widget.addSpacer(2);
+        if (i > 0) widget.addSpacer(LARGE ? 10 : 2);
         addEventRow(widget, event, stats && stats.events[event.slug]);
     });
     widget.addSpacer();
@@ -348,6 +350,7 @@ async function main() {
     }
     let widget = await createWidget();
     if (config.runsInWidget) Script.setWidget(widget);
+    else if (LARGE) await widget.presentLarge();
     else await widget.presentMedium();
     Script.complete();
 }
