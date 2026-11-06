@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-06T12:14:36.395Z",
+  "generated": "2026-11-06T21:37:10.800Z",
   "track": [
     {
       "id": 7242316,
@@ -164,6 +164,15 @@
       "group": "Area RR Championships, Area Road Running Championships",
       "startDate": "2027-04-17",
       "endDate": "2027-04-18"
+    },
+    {
+      "id": 7248683,
+      "name": "27th Asian Athletics Championships",
+      "venue": "Egret Stadium, Xiamen (CHN)",
+      "category": "GL",
+      "group": "Area Senior Outdoor Championships",
+      "startDate": "2027-05-28",
+      "endDate": "2027-06-02"
     },
     {
       "id": 7216591,
