@@ -3,7 +3,7 @@
 // Deine parkrun-ID wird beim ersten Start in der App abgefragt und nur in der Keychain dieses iPhones gespeichert
 // (nicht im Skript, nicht auf GitHub). Ändern: Skript in Scriptable starten → "parkrun-ID ändern".
 // Quellen: Veranstaltungsliste von parkrun (images.parkrun.com/events.json) und deine öffentliche Ergebnisseite.
-// Großes Widget: 10 parkruns, mittleres: 5 (mehr passen dort nicht). Antippen einer Zeile öffnet die Seite des parkruns.
+// Großes Widget: 15 parkruns, mittleres: 7 (kompakter). Antippen einer Zeile öffnet die Seite des parkruns.
 
 const fm = FileManager.local();
 const eventsPath = fm.joinPath(fm.documentsDirectory(), "parkrun-nah-events.json");
@@ -12,7 +12,9 @@ const locationPath = fm.joinPath(fm.cacheDirectory(), "parkrun-nah-standort.json
 const ID_KEY = "parkrun_nah_id";
 // In der App wird das große Widget gezeigt
 const LARGE = !config.widgetFamily || config.widgetFamily === "large" || config.widgetFamily === "extraLarge";
-const COUNT = LARGE ? 10 : 5;
+const COUNT = LARGE ? 15 : 7;
+// Zeilenhöhe, Abstand und Schriftgrößen: mittel kompakt, damit 7 Zeilen passen
+const ROW = LARGE ? { h: 16, gap: 2, name: 12, num: 11.5 } : { h: 13, gap: 1, name: 11, num: 10.5 };
 const HOUR = 3600000;
 
 const WHITE = Color.white();
@@ -265,7 +267,7 @@ function addHeader(widget, stats) {
     df.dateFormat = "dd.MM. HH:mm";
     let stamp = stats ? `${STATUS === "offline" ? "offline · " : ""}Stand ${df.string(new Date(stats.time))}` : "";
     addLabel(b, stamp, Font.mediumSystemFont(8), WHITE, 0.5);
-    widget.addSpacer(4);
+    widget.addSpacer(LARGE ? 6 : 2);
 }
 
 function addColumnTitles(widget) {
@@ -278,30 +280,30 @@ function addColumnTitles(widget) {
     addCell(row, "ENTF.", COL.dist, font, WHITE, 0.55);
     addCell(row, "BESTZEIT", COL.best, font, WHITE, 0.55);
     addCell(row, "STARTS", COL.runs, font, WHITE, 0.55);
-    widget.addSpacer(3);
+    widget.addSpacer(LARGE ? 4 : 1);
 }
 
 function addEventRow(widget, event, mine) {
     let row = widget.addStack();
     row.centerAlignContent();
-    row.size = new Size(0, 16);
+    row.size = new Size(0, ROW.h);
     row.url = event.url;
     let visited = mine && mine.runs > 0;
     let name = row.addStack();
     name.size = new Size(nameWidth(), 0);
-    addLabel(name, event.name, Font.semiboldSystemFont(12), WHITE, visited ? 1 : 0.75).minimumScaleFactor = 0.8;
+    addLabel(name, event.name, Font.semiboldSystemFont(ROW.name), WHITE, visited ? 1 : 0.75).minimumScaleFactor = 0.8;
     name.addSpacer();
     let km = event.km < 10 ? event.km.toFixed(1).replace(".", ",") : String(Math.round(event.km));
-    addCell(row, `${km} km`, COL.dist, Font.mediumSystemFont(11), WHITE, 0.7);
-    addCell(row, visited ? formatTime(mine.best) : "–", COL.best, Font.semiboldMonospacedSystemFont(11.5), visited ? APRICOT : WHITE, visited ? 1 : 0.45);
-    addCell(row, visited ? `${mine.runs}×` : "–", COL.runs, Font.mediumSystemFont(11.5), WHITE, visited ? 0.9 : 0.45);
+    addCell(row, `${km} km`, COL.dist, Font.mediumSystemFont(ROW.num - 0.5), WHITE, 0.7);
+    addCell(row, visited ? formatTime(mine.best) : "–", COL.best, Font.semiboldMonospacedSystemFont(ROW.num), visited ? APRICOT : WHITE, visited ? 1 : 0.45);
+    addCell(row, visited ? `${mine.runs}×` : "–", COL.runs, Font.mediumSystemFont(ROW.num), WHITE, visited ? 0.9 : 0.45);
 }
 
 async function createWidget() {
     let widget = new ListWidget();
     widget.url = `${URLScheme.forRunningScript()}?aus=widget`;
     background(widget);
-    widget.setPadding(LARGE ? 14 : 10, PAD, 8, PAD);
+    widget.setPadding(LARGE ? 14 : 8, PAD, LARGE ? 8 : 6, PAD);
     // Samstags während der Läufe und bis die Ergebnisse da sind öfter, sonst alle 3 Stunden (Standortwechsel)
     let now = new Date();
     let saturday = now.getDay() === 6 && now.getHours() >= 8 && now.getHours() < 20;
@@ -327,7 +329,7 @@ async function createWidget() {
     addColumnTitles(widget);
     let nearest = events.map(e => ({ ...e, km: distanceKm(here, e) })).sort((a, b) => a.km - b.km).slice(0, COUNT);
     nearest.forEach((event, i) => {
-        if (i > 0) widget.addSpacer(LARGE ? 10 : 2);
+        if (i > 0) widget.addSpacer(ROW.gap);
         addEventRow(widget, event, stats && stats.events[event.slug]);
     });
     widget.addSpacer();
