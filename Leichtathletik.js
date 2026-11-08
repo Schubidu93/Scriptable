@@ -150,7 +150,11 @@ function addHeader(widget, data) {
 // Weltweite Liste: Namen deutscher Athletinnen und Athleten in Gold wie in den Biathlon-Widgets
 const GERMAN = new Color("#FFCE00");
 
-function addPerformance(stack, p, compact) {
+function addPerformance(parent, p, compact) {
+    // Antippen öffnet die Ergebnisseite des Wettkampfs bei World Athletics (sonst das Athletenprofil)
+    let stack = parent.addStack();
+    stack.layoutVertically();
+    if (p.url) stack.url = p.url;
     let top = stack.addStack();
     top.centerAlignContent();
     let rank = top.addStack();
