@@ -17,6 +17,44 @@ const REGIONS = [
     { name: "Deutschland", query: "regionType=countries&region=ger", output: "data/leichtathletik_woche_ger.json", windows: [7] },
 ];
 
+// Ergebnisseite des Wettkampfs: Die Toplisten verlinken nur den Athleten. Der World-Athletics-Kalender kennt je
+// Wettkampf eine ID (Ergebnisse unter /competition/calendar-results/results/<ID>) – zugeordnet über Datum und Ort.
+const CALENDAR = "https://worldathletics.org/competition/calendar-results";
+
+async function loadCalendar(from, to) {
+    let events = [];
+    for (let page = 1; page <= 10; page++) {
+        let url = `${CALENDAR}?startDate=${isoDate(from)}&endDate=${isoDate(to)}&page=${page}`;
+        let res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15" } });
+        if (res.status !== 200) break;
+        let next = /<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/.exec(await res.text());
+        if (!next) break;
+        let data = JSON.parse(next[1]).props.pageProps.initialEvents || {};
+        let results = data.results || [];
+        if (page === 1) console.log(`Kalender: ${results.length} Einträge auf Seite 1, gesamt ${data.hits ?? data.total ?? "?"} · Felder ${Object.keys(data).join(",")}`);
+        events = events.concat(results);
+        if (!results.length || (data.hits && events.length >= data.hits)) break;
+    }
+    return events.map(e => ({ id: e.id, name: e.name, venue: e.venue || "", start: e.startDate, end: e.endDate || e.startDate }));
+}
+
+// "Nemzeti Atlétikai Központ, Budapest (HUN)" → ["nemzeti atletikai kozpont", "budapest", "hun"]
+const venueWords = v => String(v).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/[,()]/).map(w => w.trim()).filter(Boolean);
+
+function linkResults(list, calendar) {
+    for (let r of list) {
+        let date = isoDate(parseDate(r.date));
+        let words = venueWords(r.venue);
+        let candidates = calendar.filter(e => e.start <= date && date <= e.end);
+        // Gleicher Ort: identisch, sonst Stadt und Land gleich
+        let hit = candidates.find(e => venueWords(e.venue).join("|") === words.join("|"))
+            || candidates.find(e => { let w = venueWords(e.venue); return w.slice(-2).join("|") === words.slice(-2).join("|"); });
+        r.url = hit ? `${CALENDAR}/results/${hit.id}` : r.athlete || "";
+        if (DEBUG_LINKS) console.log(`  Link ${r.name} ${r.venue} ${date}: ${hit ? hit.name : "kein Wettkampf"} → ${r.url}`);
+    }
+}
+const DEBUG_LINKS = process.env.DEBUG === "1";
+
 function best(rows, from) {
     let seen = new Set();
     return rows
@@ -103,6 +141,14 @@ async function collect(region, today) {
     }
 
     // Leere Woche nur speichern, wenn die Listen auch geladen wurden (sonst Abruffehler – alten Stand behalten)
+    try {
+        let calendar = await loadCalendar(new Date(today.getTime() - (days + 1) * 86400000), today);
+        linkResults(women.concat(men), calendar);
+    } catch (e) {
+        console.log(`Kalender für Links: ${e.message}`);
+        women.concat(men).forEach(r => { r.url = r.athlete || ""; });
+    }
+
     if (!women.length && !men.length && !stats.ok) {
         console.error(`${region.name}: keine Ergebnisse gefunden – Datei bleibt unverändert.`);
         return false;
