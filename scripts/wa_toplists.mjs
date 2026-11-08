@@ -93,6 +93,11 @@ export function parseTable(html) {
             parseTable.shown = true;
             console.log(`Beispiel Nationalität (HTML): ${(raw[idx.nat] || "").replace(/\s+/g, " ").slice(0, 400)}`);
         }
+        if (DEBUG && !parseTable.linksShown) {
+            parseTable.linksShown = true;
+            console.log(`Beispiel Links: ${[...row.matchAll(/href=["']([^"']+)["']/g)].map(m => m[1]).join(" | ")}`);
+            console.log(`Beispiel Zeile: ${row.replace(/\s+/g, " ").slice(0, 1500)}`);
+        }
         let nat = idx.nat >= 0 && raw[idx.nat] ? natFromHtml(raw[idx.nat]) : "";
         if (!nat) nat = (cells.find((c, i) => i !== idx.mark && /^[A-Z]{3}$/.test(c)) || "");
         return {
