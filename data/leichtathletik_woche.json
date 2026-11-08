@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-08T11:21:19.670Z",
+  "generated": "2026-11-08T20:32:40.938Z",
   "region": "Welt",
   "days": 7,
   "from": "2026-11-01",
@@ -108,14 +108,14 @@
     },
     {
       "rank": 5,
-      "mark": "2:06:34",
+      "mark": "59:49",
       "wind": "",
-      "name": "Haftu STRINTZOS",
-      "nat": "AUS",
-      "venue": "New York, NY (USA)",
-      "date": "01 NOV 2026",
-      "score": 1193,
-      "event": "Marathon"
+      "name": "Habtom SAMUEL",
+      "nat": "ERI",
+      "venue": "Boston, MA (USA)",
+      "date": "08 NOV 2026",
+      "score": 1194,
+      "event": "Halbmarathon"
     }
   ]
 }
