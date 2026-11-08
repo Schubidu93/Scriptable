@@ -1,9 +1,9 @@
 {
-  "generated": "2026-11-07T20:16:48.865Z",
+  "generated": "2026-11-08T01:28:53.640Z",
   "region": "Deutschland",
   "days": 7,
-  "from": "2026-10-31",
-  "to": "2026-11-07",
+  "from": "2026-11-01",
+  "to": "2026-11-08",
   "women": [
     {
       "rank": 1,
@@ -94,17 +94,6 @@
       "date": "01 NOV 2026",
       "score": 745,
       "event": "Marathon"
-    },
-    {
-      "rank": 5,
-      "mark": "50.10",
-      "wind": "",
-      "name": "Patrick WEBER",
-      "nat": "GER",
-      "venue": "Stade Boy Kohnen, Luxembourg (LUX)",
-      "date": "31 OCT 2026",
-      "score": 741,
-      "event": "Hammerwurf"
     }
   ]
 }
