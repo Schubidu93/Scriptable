@@ -95,7 +95,9 @@ export function parseTable(html) {
         }
         let nat = idx.nat >= 0 && raw[idx.nat] ? natFromHtml(raw[idx.nat]) : "";
         if (!nat) nat = (cells.find((c, i) => i !== idx.mark && /^[A-Z]{3}$/.test(c)) || "");
+        let athlete = /href=["'](\/athletes\/[^"']+)["']/.exec(raw[idx.name] || "");
         return {
+            athlete: athlete ? `https://worldathletics.org${athlete[1]}` : "",
             rank: Number(get(idx.rank)) || 0,
             mark: get(idx.mark),
             wind: get(idx.wind),
