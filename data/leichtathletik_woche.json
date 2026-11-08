@@ -1,11 +1,12 @@
 {
-  "generated": "2026-11-08T20:32:40.938Z",
+  "generated": "2026-11-08T22:23:34.349Z",
   "region": "Welt",
   "days": 7,
   "from": "2026-11-01",
   "to": "2026-11-08",
   "women": [
     {
+      "athlete": "https://worldathletics.org/athletes/athlete=14329875",
       "rank": 1,
       "mark": "2:24:34",
       "wind": "",
@@ -14,9 +15,11 @@
       "venue": "Den Haag (NED)",
       "date": "01 NOV 2026",
       "score": 1168,
-      "event": "Marathon"
+      "event": "Marathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7243223"
     },
     {
+      "athlete": "https://worldathletics.org/athletes/athlete=14289156",
       "rank": 2,
       "mark": "2:24:36",
       "wind": "",
@@ -25,9 +28,11 @@
       "venue": "New York, NY (USA)",
       "date": "01 NOV 2026",
       "score": 1168,
-      "event": "Marathon"
+      "event": "Marathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7235564"
     },
     {
+      "athlete": "https://worldathletics.org/athletes/ethiopia/kasanesh-baze-15049168",
       "rank": 3,
       "mark": "2:24:41",
       "wind": "",
@@ -36,9 +41,11 @@
       "venue": "Istanbul (TUR)",
       "date": "01 NOV 2026",
       "score": 1167,
-      "event": "Marathon"
+      "event": "Marathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7235596"
     },
     {
+      "athlete": "https://worldathletics.org/athletes/athlete=14335825",
       "rank": 4,
       "mark": "2:24:42",
       "wind": "",
@@ -47,9 +54,11 @@
       "venue": "New York, NY (USA)",
       "date": "01 NOV 2026",
       "score": 1167,
-      "event": "Marathon"
+      "event": "Marathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7235564"
     },
     {
+      "athlete": "https://worldathletics.org/athletes/athlete=14424921",
       "rank": 5,
       "mark": "2:24:43",
       "wind": "",
@@ -58,11 +67,13 @@
       "venue": "New York, NY (USA)",
       "date": "01 NOV 2026",
       "score": 1167,
-      "event": "Marathon"
+      "event": "Marathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7235564"
     }
   ],
   "men": [
     {
+      "athlete": "https://worldathletics.org/athletes/athlete=14460738",
       "rank": 1,
       "mark": "2:06:01",
       "wind": "",
@@ -71,9 +82,11 @@
       "venue": "New York, NY (USA)",
       "date": "01 NOV 2026",
       "score": 1203,
-      "event": "Marathon"
+      "event": "Marathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7235564"
     },
     {
+      "athlete": "https://worldathletics.org/athletes/athlete=14513998",
       "rank": 2,
       "mark": "2:06:14",
       "wind": "",
@@ -82,9 +95,11 @@
       "venue": "New York, NY (USA)",
       "date": "01 NOV 2026",
       "score": 1199,
-      "event": "Marathon"
+      "event": "Marathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7235564"
     },
     {
+      "athlete": "https://worldathletics.org/athletes/lesotho/kamohelo-mofolo-15155359",
       "rank": 3,
       "mark": "2:06:26",
       "wind": "",
@@ -93,9 +108,11 @@
       "venue": "New York, NY (USA)",
       "date": "01 NOV 2026",
       "score": 1196,
-      "event": "Marathon"
+      "event": "Marathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7235564"
     },
     {
+      "athlete": "https://worldathletics.org/athletes/athlete=14758213",
       "rank": 4,
       "mark": "2:06:27",
       "wind": "",
@@ -104,9 +121,11 @@
       "venue": "New York, NY (USA)",
       "date": "01 NOV 2026",
       "score": 1195,
-      "event": "Marathon"
+      "event": "Marathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7235564"
     },
     {
+      "athlete": "https://worldathletics.org/athletes/athlete=14919315",
       "rank": 5,
       "mark": "59:49",
       "wind": "",
@@ -115,7 +134,8 @@
       "venue": "Boston, MA (USA)",
       "date": "08 NOV 2026",
       "score": 1194,
-      "event": "Halbmarathon"
+      "event": "Halbmarathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7245289"
     }
   ]
 }
