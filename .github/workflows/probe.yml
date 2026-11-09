@@ -1,0 +1,19 @@
+name: Probe
+on:
+  push:
+    branches: [probe-*]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: IBU-Schnittstelle
+        run: |
+          for u in "https://api.biathlonresults.com/modules/sportapi/api/Seasons" \
+                   "https://api.biathlonresults.com/modules/sportapi/api/Events?SeasonId=2627&Level=0" \
+                   "https://biathlonresults.com/modules/sportapi/api/Events?SeasonId=2627&Level=0" \
+                   "https://api.biathlonresults.com/modules/sportapi/api/Events?SeasonId=2627&Level=1" \
+                   "https://api.biathlonresults.com/modules/sportapi/api/CupResults?CupId=BT2627SWRLCP__SWTS"; do
+            echo "== $u"
+            curl -sS -m 30 -D - -o body.txt -A "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)" "$u" | grep -iE "^HTTP|^content-type|^location" || true
+            head -c 600 body.txt; echo
+          done
