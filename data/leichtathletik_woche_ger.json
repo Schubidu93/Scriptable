@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-09T01:45:36.346Z",
+  "generated": "2026-11-09T12:58:42.467Z",
   "region": "Deutschland",
   "days": 7,
   "from": "2026-11-02",
@@ -58,5 +58,19 @@
       "url": "https://worldathletics.org/competition/calendar-results/results/7241511"
     }
   ],
-  "men": []
+  "men": [
+    {
+      "athlete": "https://worldathletics.org/athletes/germany/robin-siegert-15318097",
+      "rank": 1,
+      "mark": "2:33:33",
+      "wind": "",
+      "name": "Robin SIEGERT",
+      "nat": "GER",
+      "venue": "Málaga (ESP)",
+      "date": "08 NOV 2026",
+      "score": 744,
+      "event": "Marathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7244448"
+    }
+  ]
 }

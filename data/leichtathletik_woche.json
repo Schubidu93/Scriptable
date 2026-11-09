@@ -1,13 +1,52 @@
 {
-  "generated": "2026-11-09T01:45:36.346Z",
+  "generated": "2026-11-09T12:58:42.467Z",
   "region": "Welt",
   "days": 7,
   "from": "2026-11-02",
   "to": "2026-11-09",
   "women": [
     {
-      "athlete": "https://worldathletics.org/athletes/athlete=14989892",
+      "athlete": "https://worldathletics.org/athletes/athlete=14288981",
       "rank": 1,
+      "mark": "2:21:18",
+      "wind": "",
+      "name": "Rebeca Kangogo CHESIR",
+      "nat": "KEN",
+      "venue": "Málaga (ESP)",
+      "date": "08 NOV 2026",
+      "score": 1200,
+      "event": "Marathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7244448"
+    },
+    {
+      "athlete": "https://worldathletics.org/athletes/athlete=14783730",
+      "rank": 2,
+      "mark": "2:22:31",
+      "wind": "",
+      "name": "Ivyne JERUTO",
+      "nat": "KEN",
+      "venue": "Málaga (ESP)",
+      "date": "08 NOV 2026",
+      "score": 1188,
+      "event": "Marathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7244448"
+    },
+    {
+      "athlete": "https://worldathletics.org/athletes/athlete=14620553",
+      "rank": 3,
+      "mark": "2:24:33",
+      "wind": "",
+      "name": "Rodah Jepkorir TANUI",
+      "nat": "KEN",
+      "venue": "Málaga (ESP)",
+      "date": "08 NOV 2026",
+      "score": 1169,
+      "event": "Marathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7244448"
+    },
+    {
+      "athlete": "https://worldathletics.org/athletes/athlete=14989892",
+      "rank": 4,
       "mark": "2:25:14",
       "wind": "",
       "name": "Jackline CHEPKOECH",
@@ -20,7 +59,7 @@
     },
     {
       "athlete": "https://worldathletics.org/athletes/athlete=14702015",
-      "rank": 2,
+      "rank": 5,
       "mark": "31:37",
       "wind": "",
       "name": "Célia TABET",
@@ -30,45 +69,6 @@
       "score": 1159,
       "event": "10 km",
       "url": "https://worldathletics.org/competition/calendar-results/results/7245960"
-    },
-    {
-      "athlete": "https://worldathletics.org/athletes/athlete=14646117",
-      "rank": 3,
-      "mark": "31:47",
-      "wind": "",
-      "name": "Méline ROLLIN",
-      "nat": "FRA",
-      "venue": "Bordeaux (FRA)",
-      "date": "08 NOV 2026",
-      "score": 1151,
-      "event": "10 km",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7245960"
-    },
-    {
-      "athlete": "https://worldathletics.org/athletes/athlete=14977672",
-      "rank": 4,
-      "mark": "1:09:14",
-      "wind": "",
-      "name": "Fentaye BELAYNEH",
-      "nat": "ETH",
-      "venue": "Boston, MA (USA)",
-      "date": "08 NOV 2026",
-      "score": 1145,
-      "event": "Halbmarathon",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7245289"
-    },
-    {
-      "athlete": "https://worldathletics.org/athletes/athlete=14643562",
-      "rank": 5,
-      "mark": "1:09:16",
-      "wind": "",
-      "name": "Winfred Nzisa MBITHE",
-      "nat": "KEN",
-      "venue": "Boston, MA (USA)",
-      "date": "08 NOV 2026",
-      "score": 1145,
-      "event": "Halbmarathon",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7245289"
     }
   ],
   "men": [
@@ -99,8 +99,34 @@
       "url": "https://worldathletics.org/competition/calendar-results/results/7245960"
     },
     {
-      "athlete": "https://worldathletics.org/athletes/japan/taiju-goto-15181238",
+      "athlete": "https://worldathletics.org/athletes/athlete=14692944",
       "rank": 3,
+      "mark": "2:08:18",
+      "wind": "",
+      "name": "Simon NJUGUNA",
+      "nat": "KEN",
+      "venue": "Málaga (ESP)",
+      "date": "08 NOV 2026",
+      "score": 1161,
+      "event": "Marathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7244448"
+    },
+    {
+      "athlete": "https://worldathletics.org/athletes/kenya/victor-kiplimo-14672198",
+      "rank": 4,
+      "mark": "2:08:26",
+      "wind": "",
+      "name": "Victor KIPLIMO",
+      "nat": "KEN",
+      "venue": "Málaga (ESP)",
+      "date": "08 NOV 2026",
+      "score": 1159,
+      "event": "Marathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7244448"
+    },
+    {
+      "athlete": "https://worldathletics.org/athletes/japan/taiju-goto-15181238",
+      "rank": 5,
       "mark": "45.33",
       "wind": "",
       "name": "Taiju GOTO",
@@ -110,32 +136,6 @@
       "score": 1157,
       "event": "400 m",
       "url": "https://worldathletics.org/competition/calendar-results/results/7239212"
-    },
-    {
-      "athlete": "https://worldathletics.org/athletes/kenya/andrea-kiptoo-15266477",
-      "rank": 4,
-      "mark": "1:01:03",
-      "wind": "",
-      "name": "Andrea KIPTOO",
-      "nat": "KEN",
-      "venue": "Boston, MA (USA)",
-      "date": "08 NOV 2026",
-      "score": 1144,
-      "event": "Halbmarathon",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7245289"
-    },
-    {
-      "athlete": "https://worldathletics.org/athletes/athlete=14785951",
-      "rank": 5,
-      "mark": "1:01:16",
-      "wind": "",
-      "name": "Abel KIPCHUMBA",
-      "nat": "KEN",
-      "venue": "Boston, MA (USA)",
-      "date": "08 NOV 2026",
-      "score": 1136,
-      "event": "Halbmarathon",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7245289"
     }
   ]
 }
