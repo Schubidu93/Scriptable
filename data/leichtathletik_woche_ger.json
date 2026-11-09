@@ -1,9 +1,9 @@
 {
-  "generated": "2026-11-08T22:23:34.349Z",
+  "generated": "2026-11-09T01:45:36.346Z",
   "region": "Deutschland",
   "days": 7,
-  "from": "2026-11-01",
-  "to": "2026-11-08",
+  "from": "2026-11-02",
+  "to": "2026-11-09",
   "women": [
     {
       "athlete": "https://worldathletics.org/athletes/athlete=14466358",
@@ -19,47 +19,8 @@
       "url": "https://worldathletics.org/competition/calendar-results/results/7245289"
     },
     {
-      "athlete": "https://worldathletics.org/athletes/athlete=14390193",
-      "rank": 2,
-      "mark": "2:28:49",
-      "wind": "",
-      "name": "Fabienne KÖNIGSTEIN",
-      "nat": "GER",
-      "venue": "New York, NY (USA)",
-      "date": "01 NOV 2026",
-      "score": 1128,
-      "event": "Marathon",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7235564"
-    },
-    {
-      "athlete": "https://worldathletics.org/athletes/athlete=14683438",
-      "rank": 3,
-      "mark": "2:49:34",
-      "wind": "",
-      "name": "Sophia WUNSCH",
-      "nat": "GER",
-      "venue": "New York, NY (USA)",
-      "date": "01 NOV 2026",
-      "score": 942,
-      "event": "Marathon",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7235564"
-    },
-    {
-      "athlete": "https://worldathletics.org/athletes/germany/anna-kleemann-14729161",
-      "rank": 4,
-      "mark": "2:51:21",
-      "wind": "",
-      "name": "Anna KLEEMANN",
-      "nat": "GER",
-      "venue": "New York, NY (USA)",
-      "date": "01 NOV 2026",
-      "score": 927,
-      "event": "Marathon",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7235564"
-    },
-    {
       "athlete": "https://worldathletics.org/athletes/germany/viktoria-hossbach-15226514",
-      "rank": 5,
+      "rank": 2,
       "mark": "2:55:19",
       "wind": "",
       "name": "Viktoria HOSSBACH",
@@ -69,60 +30,33 @@
       "score": 894,
       "event": "Marathon",
       "url": "https://worldathletics.org/competition/calendar-results/results/7241511"
+    },
+    {
+      "athlete": "https://worldathletics.org/athletes/germany/margarita-geistdorfer-15087476",
+      "rank": 3,
+      "mark": "2:55:27",
+      "wind": "",
+      "name": "Margarita GEISTDÖRFER",
+      "nat": "GER",
+      "venue": "Nice (FRA)",
+      "date": "08 NOV 2026",
+      "score": 893,
+      "event": "Marathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7238379"
+    },
+    {
+      "athlete": "https://worldathletics.org/athletes/germany/marie-therese-linne-15142665",
+      "rank": 4,
+      "mark": "2:58:25",
+      "wind": "",
+      "name": "Marie-Therese LINNE",
+      "nat": "GER",
+      "venue": "Athina (GRE)",
+      "date": "08 NOV 2026",
+      "score": 868,
+      "event": "Marathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7241511"
     }
   ],
-  "men": [
-    {
-      "athlete": "https://worldathletics.org/athletes/athlete=14879755",
-      "rank": 1,
-      "mark": "2:26:59",
-      "wind": "",
-      "name": "Daniel KRASEMANN",
-      "nat": "GER",
-      "venue": "New York, NY (USA)",
-      "date": "01 NOV 2026",
-      "score": 844,
-      "event": "Marathon",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7235564"
-    },
-    {
-      "athlete": "https://worldathletics.org/athletes/germany/jan-stelzner-15082794",
-      "rank": 2,
-      "mark": "2:27:39",
-      "wind": "",
-      "name": "Jan STELZNER",
-      "nat": "GER",
-      "venue": "New York, NY (USA)",
-      "date": "01 NOV 2026",
-      "score": 833,
-      "event": "Marathon",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7235564"
-    },
-    {
-      "athlete": "https://worldathletics.org/athletes/germany/jannik-tillar-15111820",
-      "rank": 3,
-      "mark": "2:31:01",
-      "wind": "",
-      "name": "Jannik TILLAR",
-      "nat": "GER",
-      "venue": "New York, NY (USA)",
-      "date": "01 NOV 2026",
-      "score": 782,
-      "event": "Marathon",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7235564"
-    },
-    {
-      "athlete": "https://worldathletics.org/athletes/germany/benedikt-nubaum-15264734",
-      "rank": 4,
-      "mark": "2:33:28",
-      "wind": "",
-      "name": "Benedikt NUßBAUM",
-      "nat": "GER",
-      "venue": "New York, NY (USA)",
-      "date": "01 NOV 2026",
-      "score": 745,
-      "event": "Marathon",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7235564"
-    }
-  ]
+  "men": []
 }
