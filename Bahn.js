@@ -5,7 +5,7 @@
 // Gezeigt werden die frühesten drei Verbindungen, die höchstens zwei Stunden vor jetzt abfahren
 // (auch schon abgefahrene, solange sie unterwegs sind – mit Verspätung).
 // Quelle: offizielle Timetables-API der DB (DB API Marketplace, kostenlos). Einrichten: Skript in der App starten
-// und Client ID sowie API Key eingeben – sie liegen nur in der Keychain dieses iPhones. Mittleres Widget.
+// und Client ID sowie API Key eingeben – sie liegen nur in der Keychain dieses iPhones. Mittleres Widget (3 + 2 Fahrten) oder großes (je Richtung bis zu 6).
 
 const STATIONS = {
     kisslegg: { name: "Kißlegg", query: "Kißlegg", lat: 47.7886, lon: 9.8809 },
@@ -14,7 +14,10 @@ const STATIONS = {
 };
 
 const fm = FileManager.local();
-const cachePath = fm.joinPath(fm.cacheDirectory(), "bahn-verbindungen.json");
+// Großes Widget: mehr Verbindungen (je Richtung bis zu 6), mittleres: 3 und 2
+const LARGE = config.widgetFamily === "large" || config.widgetFamily === "extraLarge";
+const SLOTS = LARGE ? { primary: 6, back: 6 } : { primary: 3, back: 2 };
+const cachePath = fm.joinPath(fm.cacheDirectory(), `bahn-verbindungen${LARGE ? "-gross" : ""}.json`);
 const stationPath = fm.joinPath(fm.cacheDirectory(), "bahn-bahnhoefe-v3.json");
 const locationPath = fm.joinPath(fm.cacheDirectory(), "bahn-ort.json");
 
@@ -354,18 +357,18 @@ function localStamp(date) {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
 }
 
-// Oben die Fahrten ab dem näheren Ort (bis zu 3), darunter die Gegenrichtung (bis zu 2)
+// Oben die Fahrten ab dem näheren Ort (SLOTS.primary), darunter die Gegenrichtung (SLOTS.back)
 async function loadData() {
     let [fromKey, toKey] = await chooseDirection();
     try {
-        let journeys = await loadJourneys(fromKey, toKey, 3);
+        let journeys = await loadJourneys(fromKey, toKey, SLOTS.primary);
         // Schon geladene Stunden immer merken – sonst fragt jeder Lauf wieder alles ab und läuft erneut ins Limit
         savePlanCache();
         // Leer nur wegen des DB-Limits: lieber den letzten Stand zeigen als "keine Direktverbindung"
         if (!journeys.length && RATE_LIMITED) throw new Error("DB-Abfragelimit, gleich neuer Versuch");
         let back = { journeys: [] };
         try {
-            back.journeys = await loadJourneys(toKey, fromKey, 2);
+            back.journeys = await loadJourneys(toKey, fromKey, SLOTS.back);
             if (!back.journeys.length && RATE_LIMITED) back.error = "DB-Abfragelimit";
         } catch (e) {
             back.error = String(e.message || e);
@@ -488,7 +491,7 @@ function background(widget) {
 const NONE = `Keine Direktverbindung in den nächsten ${HOURS_AHEAD} Stunden`;
 
 const ROW_H = 16;
-const ROW_GAP = 3;
+const ROW_GAP = LARGE ? 6 : 3;
 
 // Kopf einer Richtung und genau `slots` Zeilen (fehlende Fahrten als leere Zeilen gleicher Höhe)
 function addSection(widget, title, right, journeys, slots, emptyText) {
@@ -525,7 +528,7 @@ async function createWidget() {
     let widget = new ListWidget();
     widget.url = `${URLScheme.forRunningScript()}?aus=widget`;
     background(widget);
-    widget.setPadding(10, 16, 6, 16);
+    widget.setPadding(LARGE ? 14 : 10, 16, 6, 16);
     let from = STATIONS[data.from], to = STATIONS[data.to];
     let short = st => st.short || st.name;
 
@@ -537,9 +540,9 @@ async function createWidget() {
 
     // Beide Richtungen gleich aufgebaut: Kopf (Zug-Symbol, Strecke) und feste Zeilenplätze – die Gegenrichtung
     // beginnt so immer an derselben Stelle, auch wenn oben weniger als drei Fahrten stehen
-    addSection(widget, `${short(from)} → ${short(to)}`, stamp, data.journeys, 3, data.error ? `Keine Verbindungen (${data.error})` : NONE);
-    widget.addSpacer(8);
-    addSection(widget, `${short(to)} → ${short(from)}`, "", back.journeys, 2, back.error ? `nicht abrufbar (${back.error})` : NONE);
+    addSection(widget, `${short(from)} → ${short(to)}`, stamp, data.journeys, SLOTS.primary, data.error ? `Keine Verbindungen (${data.error})` : NONE);
+    widget.addSpacer(LARGE ? 14 : 8);
+    addSection(widget, `${short(to)} → ${short(from)}`, "", back.journeys, SLOTS.back, back.error ? `nicht abrufbar (${back.error})` : NONE);
     widget.addSpacer();
 
     // Alle 5 Minuten neu (iOS entscheidet selbst, wann genau)
@@ -566,6 +569,7 @@ async function main() {
     }
     let widget = await createWidget();
     if (config.runsInWidget) Script.setWidget(widget);
+    else if (LARGE) await widget.presentLarge();
     else await widget.presentMedium();
     Script.complete();
 }
