@@ -12,6 +12,8 @@ const RADIUS = 40000; // Umkreis in Metern
 const NOTABLE_RADIUS = 50000; // Umkreis für markante Gipfel (etwas weiter, z. B. von München bis an die Voralpen)
 const FAMILY = config.widgetFamily || "medium";
 const LARGE = FAMILY === "large" || FAMILY === "extraLarge";
+// Sperrbildschirm (rechteckig, Zeile über der Uhr, rund): nur der nächste markante Gipfel
+const ACCESSORY = FAMILY.startsWith("accessory");
 // Mittel: 8 Gipfel kompakt (ohne Fußzeile; 5 nahe + 3 markante), groß: 16 (8 + 8)
 const SIZE = LARGE
     ? { count: 16, name: 13, num: 12, dir: 11, arrow: 13, gap: 2, header: 15, headerGap: 6, footer: true }
@@ -574,31 +576,44 @@ function nextRefresh() {
 async function createWidget() {
     let widget = new ListWidget();
     widget.url = URLScheme.forRunningScript();
-    background(widget);
-    widget.setPadding(LARGE ? 12 : 10, 16, LARGE ? 6 : 8, 16);
     widget.refreshAfterDate = nextRefresh();
-
-    let header = widget.addStack();
-    header.centerAlignContent();
-    addSymbol(header, "mountain.2.fill", SIZE.header);
-    header.addSpacer(6);
-    addLabel(header, "Gipfel in der Nähe", Font.semiboldSystemFont(SIZE.header));
-    header.addSpacer();
+    // Sperrbildschirm: ohne Hintergrund und Kopfzeile (iOS färbt dort alles einheitlich ein)
+    let header = null;
+    if (!ACCESSORY) {
+        background(widget);
+        widget.setPadding(LARGE ? 12 : 10, 16, LARGE ? 6 : 8, 16);
+        header = widget.addStack();
+        header.centerAlignContent();
+        addSymbol(header, "mountain.2.fill", SIZE.header);
+        header.addSpacer(6);
+        addLabel(header, "Gipfel in der Nähe", Font.semiboldSystemFont(SIZE.header));
+        header.addSpacer();
+    }
 
     let here = await currentLocation();
+    if (!here && ACCESSORY) {
+        addLabel(widget, "Kein Standort", Font.mediumSystemFont(12));
+        return widget;
+    }
     if (!here) {
         widget.addSpacer(8);
         addLabel(widget, "Kein Standort – Ortungsdienste für Scriptable erlauben", Font.mediumSystemFont(12), WHITE, 0.8).lineLimit = 2;
         widget.addSpacer();
         return widget;
     }
-    if (here.alt) addLabel(header, `du: ${Math.round(here.alt)} m`, Font.mediumSystemFont(LARGE ? 11 : 10), WHITE, 0.6);
-    widget.addSpacer(SIZE.headerGap);
+    if (!ACCESSORY) {
+        if (here.alt) addLabel(header, `du: ${Math.round(here.alt)} m`, Font.mediumSystemFont(LARGE ? 11 : 10), WHITE, 0.6);
+        widget.addSpacer(SIZE.headerGap);
+    }
 
     let data;
     try {
         data = await loadPeaks(here);
     } catch (e) {
+        if (ACCESSORY) {
+            addLabel(widget, "Gipfel nicht abrufbar", Font.mediumSystemFont(12));
+            return widget;
+        }
         addLabel(widget, `Gipfel nicht abrufbar (${e.message || e}) – antippen, um es in der App zu laden`, Font.mediumSystemFont(12), WHITE, 0.8).lineLimit = 3;
         widget.addSpacer();
         return widget;
@@ -624,6 +639,8 @@ async function createWidget() {
     if (nearest.length < nearCount) nearest = nearest.concat(near.filter(p => !nearest.includes(p)).slice(0, nearCount - nearest.length))
         .sort((a, b) => a.km - b.km);
     let peaks = nearest.concat(notable);
+    // Sperrbildschirm: der nächste markante Gipfel (gibt es keinen, der nächste Gipfel)
+    if (ACCESSORY) peaks = (notable.length ? notable : nearest).slice(0, 1);
     if (stravaConnected()) {
         SHOW_CHECKS = true;
         // Der Abgleich mit allen Routen ist für den Homescreen zu schwer (iOS verwirft dann still das Bild):
@@ -648,6 +665,10 @@ async function createWidget() {
             p.visited = p.approach !== undefined && p.approach >= 0 && p.approach <= TOLERANCE_M;
         });
         UNCHECKED = peaks.some(p => p.approach === undefined);
+    }
+    if (ACCESSORY) {
+        buildAccessory(widget, peaks[0]);
+        return widget;
     }
     if (!peaks.length) addLabel(widget, "Keine Gipfel im Umkreis von 40 km", Font.mediumSystemFont(12), WHITE, 0.8);
     peaks.forEach((p, i) => {
@@ -687,6 +708,46 @@ async function createWidget() {
     addLabel(footer, `${note ? note + " · " : ""}${data.source || "OpenStreetMap"} · Luftlinie · aktualisiert ${df.string(new Date())}`,
         Font.mediumSystemFont(8), WHITE, 0.5);
     return widget;
+}
+
+// Sperrbildschirm. Rechteckig: Name, Richtungspfeil, ggf. Haken – darunter Höhe und Entfernung.
+// Über der Uhr (eine Zeile): "Name ↗ 1119 m · 21 km". Rund: Pfeil und Entfernung.
+function buildAccessory(widget, peak) {
+    if (!peak) {
+        addLabel(widget, "Keine Gipfel", Font.mediumSystemFont(12));
+        return;
+    }
+    if (peak.wiki) widget.url = peak.wiki;
+    let info = `${peak.ele ? `${peak.ele} m · ` : ""}${formatKm(peak.km)}`;
+    if (FAMILY === "accessoryInline") {
+        let arrows = ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"];
+        addLabel(widget, `${peak.visited ? "✓ " : ""}${peak.name} ${arrows[Math.round(peak.bearing / 45) % 8]} ${info}`, Font.mediumSystemFont(12));
+        return;
+    }
+    if (FAMILY === "accessoryCircular") {
+        widget.addAccessoryWidgetBackground = true;
+        let top = widget.addStack();
+        top.addSpacer();
+        top.addImage(arrowImage(peak.bearing)).imageSize = new Size(16, 16);
+        top.addSpacer();
+        let bottom = widget.addStack();
+        bottom.addSpacer();
+        addLabel(bottom, formatKm(peak.km), Font.semiboldSystemFont(11)).minimumScaleFactor = 0.6;
+        bottom.addSpacer();
+        return;
+    }
+    let top = widget.addStack();
+    top.centerAlignContent();
+    addLabel(top, peak.name, Font.semiboldSystemFont(15)).minimumScaleFactor = 0.7;
+    top.addSpacer(5);
+    top.addImage(arrowImage(peak.bearing)).imageSize = new Size(13, 13);
+    if (peak.visited) {
+        top.addSpacer(4);
+        addSymbol(top, "checkmark", 12);
+    }
+    top.addSpacer();
+    addLabel(widget, info, Font.mediumSystemFont(13), WHITE, 0.8);
+    widget.addSpacer();
 }
 
 async function main() {
