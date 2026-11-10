@@ -711,7 +711,7 @@ async function createWidget() {
 }
 
 // Sperrbildschirm. Rechteckig: Name, Richtungspfeil, ggf. Haken – darunter Höhe und Entfernung.
-// Über der Uhr (eine Zeile): "Name ↗ 1119 m · 21 km". Rund: Pfeil und Entfernung.
+// Über der Uhr (eine Zeile): "Name ↗ 1119 m · 21 km". Rund: Pfeil und Entfernung, darunter klein Name und Höhe.
 function buildAccessory(widget, peak) {
     if (!peak) {
         addLabel(widget, "Keine Gipfel", Font.mediumSystemFont(12));
@@ -725,15 +725,26 @@ function buildAccessory(widget, peak) {
         return;
     }
     if (FAMILY === "accessoryCircular") {
+        // Rund (~70 pt): oben Pfeil und Entfernung, darunter klein Name (ggf. mit Haken) und Höhe
         widget.addAccessoryWidgetBackground = true;
-        let top = widget.addStack();
-        top.addSpacer();
-        top.addImage(arrowImage(peak.bearing)).imageSize = new Size(16, 16);
-        top.addSpacer();
-        let bottom = widget.addStack();
-        bottom.addSpacer();
-        addLabel(bottom, formatKm(peak.km), Font.semiboldSystemFont(11)).minimumScaleFactor = 0.6;
-        bottom.addSpacer();
+        let line = (build) => {
+            let row = widget.addStack();
+            row.centerAlignContent();
+            row.addSpacer();
+            build(row);
+            row.addSpacer();
+        };
+        line(row => {
+            row.addImage(arrowImage(peak.bearing)).imageSize = new Size(11, 11);
+            row.addSpacer(2);
+            addLabel(row, formatKm(peak.km), Font.semiboldSystemFont(10)).minimumScaleFactor = 0.7;
+        });
+        line(row => {
+            let t = addLabel(row, `${peak.visited ? "✓ " : ""}${peak.name}`, Font.semiboldSystemFont(9));
+            t.minimumScaleFactor = 0.5;
+            t.centerAlignText();
+        });
+        if (peak.ele) line(row => addLabel(row, `${peak.ele} m`, Font.mediumSystemFont(9), WHITE, 0.8));
         return;
     }
     let top = widget.addStack();
