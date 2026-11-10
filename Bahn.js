@@ -290,8 +290,10 @@ function shortStation(name) {
     return String(name).replace(/\s*\(.*?\)/g, "").replace(/^München-/, "").replace(/ Hbf$/, "").trim();
 }
 
-// Abfahrten ab HOURS_BACK Stunden vor jetzt bis HOURS_AHEAD Stunden voraus (so weit liefert die Abfrage Fahrten)
-const HOURS_BACK = 2;
+// Abfahrten ab HOURS_BACK Stunden vor jetzt bis HOURS_AHEAD Stunden voraus (so weit liefert die Abfrage Fahrten).
+// Bereits gestartete Züge bleiben stehen, solange sie unterwegs sind und bis 30 Minuten nach der Ankunft
+const HOURS_BACK = 3;
+const SHOW_AFTER_ARRIVAL = 30 * MINUTE;
 const HOURS_AHEAD = 11;
 
 async function loadJourneys(fromKey, toKey, count = 3) {
@@ -300,13 +302,14 @@ async function loadJourneys(fromKey, toKey, count = 3) {
     let query = STATIONS[toKey].query;
     let isTarget = name => name === query || name.startsWith(query + " ") || to.some(st => st.name === name);
     let since = new Date(Date.now() - HOURS_BACK * 60 * MINUTE);
-    // Abfahrten ab vor zwei Stunden bis in 11 Stunden (die Direktzüge fahren etwa alle zwei Stunden; einer ist ~2 h unterwegs)
+    // Abfahrten ab vor drei Stunden bis in 11 Stunden (die Direktzüge fahren etwa alle zwei Stunden; einer ist ~2 h
+    // unterwegs) – ein paar mehr als nötig, weil längst angekommene Züge danach wegfallen
     let departures = Object.values(await plansAll(from, since, HOURS_AHEAD + HOURS_BACK))
         .filter(s => s.dp && (s.dp.ppth || "").split("|").some(isTarget))
         .map(s => ({ ...s, depTime: parseTime(s.dp.pt) }))
         .filter(s => s.depTime >= since)
         .sort((a, b) => a.depTime - b.depTime)
-        .slice(0, count);
+        .slice(0, count + 3);
     if (!departures.length) return [];
     // Teilbahnhöfe des Ziels aus den Laufwegen ergänzen, damit dort die Ankunft gefunden wird
     let seenTargets = new Set(departures.flatMap(d => d.dp.ppth.split("|").filter(isTarget)));
@@ -337,8 +340,15 @@ async function loadJourneys(fromKey, toKey, count = 3) {
             cancelled: dc.cs === "c" || ac.cs === "c",
         };
     });
-    // Fahrende Züge: letzter Halt unterwegs (nur für Züge zwischen Abfahrt und Ankunft)
+    // Angekommene Züge nur bis 30 Minuten nach der Ankunft (ohne bekannte Ankunft: bis 3 h nach Abfahrt)
     let now = Date.now();
+    let keep = parsed.map((j, i) => ({ j, s: departures[i] })).filter(({ j }) => {
+        let arr = j.arrReal || j.arr;
+        return arr ? new Date(arr).getTime() >= now - SHOW_AFTER_ARRIVAL : new Date(j.depReal || j.dep).getTime() >= now - HOURS_BACK * 60 * MINUTE;
+    }).slice(0, count);
+    parsed = keep.map(k => k.j);
+    departures = keep.map(k => k.s);
+    // Fahrende Züge: letzter Halt unterwegs (nur für Züge zwischen Abfahrt und Ankunft)
     await Promise.all(parsed.map(async (j, i) => {
         let dep = new Date(j.depReal || j.dep).getTime();
         let arr = j.arr ? new Date(j.arrReal || j.arr).getTime() : dep + 3 * 3600000;
