@@ -9,6 +9,7 @@ on:
     branches-ignore: [main]
     paths:
       - "scripts/osm_gipfel.mjs"
+      - "scripts/wikidata_gipfel.mjs"
       - ".github/workflows/gipfel.yml"
 
 permissions:
@@ -25,6 +26,10 @@ jobs:
           node-version: 22
       - name: Gipfel laden
         run: node scripts/osm_gipfel.mjs
+        continue-on-error: true
+      - name: Markante Gipfel (Wikidata) laden
+        run: node scripts/wikidata_gipfel.mjs
+        continue-on-error: true
       - name: Ergebnis speichern
         if: github.ref == 'refs/heads/main'
         run: |
