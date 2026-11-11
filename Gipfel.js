@@ -247,6 +247,28 @@ async function loadOsmTiles(here) {
         .filter(p => !isSpotHeight(p.name) && distanceKm(here, p) <= RADIUS / 1000);
 }
 
+// Markante Gipfel: im Gebiet aus der wöchentlich per GitHub Actions gespeicherten Wikidata-Liste
+// (scripts/wikidata_gipfel.mjs) – die Wikidata-Abfrage scheitert im Widget in den Alpen oft am Zeitlimit
+async function loadNotable(here) {
+    let inside = here.lat >= OSM_AREA.south && here.lat <= OSM_AREA.north && here.lon >= OSM_AREA.west && here.lon <= OSM_AREA.east;
+    if (inside) {
+        try {
+            let req = new Request(`${OSM_TILES}markant.json?t=${Math.floor(Date.now() / 86400000)}`);
+            req.timeoutInterval = 10;
+            let list = await req.loadJSON();
+            if (Array.isArray(list) && list.length) {
+                let minEle = Math.round((here.alt || 800) + NOTABLE_ABOVE);
+                return list.map(([name, lat, lon, ele, isolation, wiki, id]) => ({ id: `http://www.wikidata.org/entity/${id}`, name, lat, lon, ele, isolation, wiki, links: 0 }))
+                    .filter(p => p.ele >= minEle && distanceKm(here, p) <= NOTABLE_RADIUS / 1000 && !isSpotHeight(p.name))
+                    .sort((a, b) => distanceKm(here, a) - distanceKm(here, b));
+            }
+        } catch (e) {
+            console.log(`Markante Gipfel (GitHub): ${e}`);
+        }
+    }
+    return wikidata(here, NOTABLE_RADIUS, true);
+}
+
 async function loadOsm(here) {
     try {
         let tiles = await loadOsmTiles(here);
@@ -271,12 +293,12 @@ async function loadPeaks(here) {
     // 30 Minuten erneut versuchen
     let age = cached ? Date.now() - cached.time : Infinity;
     let complete = cached && cached.wdOk && cached.osmOk && cached.notableOk;
-    if (cached && cached.peaks && cached.version === 13 && distanceKm(here, cached.center) < 1 && age < 7 * 86400000
+    if (cached && cached.peaks && cached.version === 14 && distanceKm(here, cached.center) < 1 && age < 7 * 86400000
         && (complete || age < 30 * 60000)) return cached;
     let [wd, osm, notable] = await Promise.all([
         wikidata(here, RADIUS).catch(e => { console.log(`Wikidata: ${e}`); return null; }),
         loadOsm(here).catch(e => { console.log(`OpenStreetMap: ${e}`); return null; }),
-        wikidata(here, NOTABLE_RADIUS, true).catch(e => { console.log(`Wikidata markant: ${e}`); return null; }),
+        loadNotable(here).catch(e => { console.log(`Wikidata markant: ${e}`); return null; }),
     ]);
     // Frisch geladen? (sonst beim nächsten Lauf nach 30 Minuten erneut versuchen)
     let fresh = { wdOk: !!wd, osmOk: !!osm, notableOk: !!notable };
@@ -294,7 +316,7 @@ async function loadPeaks(here) {
     let peaks = mergePeaks((wd || []).map(p => ({ ...p })), osm || []);
     await fillElevations(peaks, here);
     let source = wd && osm ? "Wikidata · OSM" : wd ? "Wikidata" : "OpenStreetMap";
-    let data = { version: 13, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source,
+    let data = { version: 14, center: { lat: here.lat, lon: here.lon }, time: Date.now(), peaks, notable, source,
         wd, osm, ...fresh };
     fm.writeString(cachePath, JSON.stringify(data));
     return data;
@@ -691,7 +713,9 @@ async function createWidget() {
     });
     if (peaks.length && !notable.length) {
         widget.addSpacer(LARGE ? 6 : 3);
-        addLabel(widget, "Keine markanten Berge in der Umgebung", Font.mediumSystemFont(LARGE ? 11 : 10), WHITE, 0.5);
+        // Abfrage gescheitert ist etwas anderes als "keine da"
+        addLabel(widget, data.notableOk === false ? "Markante Berge nicht geladen – antippen zum Nachladen" : "Keine markanten Berge in der Umgebung",
+            Font.mediumSystemFont(LARGE ? 11 : 10), WHITE, 0.5);
     }
     widget.addSpacer();
 
