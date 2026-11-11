@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-11T11:55:52.917Z",
+  "generated": "2026-11-11T22:45:00.781Z",
   "region": "Welt",
   "days": 7,
   "from": "2026-11-04",
@@ -45,8 +45,21 @@
       "url": "https://worldathletics.org/competition/calendar-results/results/7244448"
     },
     {
-      "athlete": "https://worldathletics.org/athletes/athlete=14989892",
+      "athlete": "https://worldathletics.org/athletes/athlete=14630180",
       "rank": 4,
+      "mark": "31:33",
+      "wind": "",
+      "name": "Hanne Mjøen MARIDAL",
+      "nat": "NOR",
+      "venue": "Warszawa (POL)",
+      "date": "11 NOV 2026",
+      "score": 1163,
+      "event": "10 km",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7248877"
+    },
+    {
+      "athlete": "https://worldathletics.org/athletes/athlete=14989892",
+      "rank": 5,
       "mark": "2:25:14",
       "wind": "",
       "name": "Jackline CHEPKOECH",
@@ -56,19 +69,6 @@
       "score": 1162,
       "event": "Marathon",
       "url": "https://worldathletics.org/competition/calendar-results/results/7246843"
-    },
-    {
-      "athlete": "https://worldathletics.org/athletes/athlete=14702015",
-      "rank": 5,
-      "mark": "31:37",
-      "wind": "",
-      "name": "Célia TABET",
-      "nat": "FRA",
-      "venue": "Bordeaux (FRA)",
-      "date": "08 NOV 2026",
-      "score": 1159,
-      "event": "10 km",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7245960"
     }
   ],
   "men": [
