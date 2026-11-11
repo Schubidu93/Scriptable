@@ -18,17 +18,18 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Gipfel laden
-        run: node scripts/osm_gipfel.mjs
-        continue-on-error: true
+      # Wikidata zuerst: schnell und zuverlässig – hängt Overpass, bleibt sie trotzdem nicht auf der Strecke
       - name: Markante Gipfel (Wikidata) laden
         run: node scripts/wikidata_gipfel.mjs
+        continue-on-error: true
+      - name: Gipfel laden
+        run: node scripts/osm_gipfel.mjs
         continue-on-error: true
       - name: Ergebnis speichern
         if: github.ref == 'refs/heads/main'
