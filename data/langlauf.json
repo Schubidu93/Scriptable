@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-09T17:41:37.438Z",
+  "generated": "2026-11-13T17:55:31.736Z",
   "areas": [
     {
       "id": "vogt",
@@ -173,7 +173,8 @@
       "snow": null,
       "updated": "2026-01-12",
       "status": "closed",
-      "note": "Keine Loipe."
+      "note": "Keine Loipe.",
+      "stale": true
     },
     {
       "id": "holzkirchen",
@@ -186,9 +187,9 @@
       "classic": null,
       "skating": null,
       "snow": 0,
-      "updated": "2026-03-17T08:42",
+      "updated": "2026-11-13T11:54",
       "status": "closed",
-      "note": "Schneebericht für die Saison eingestellt."
+      "note": "Warten auf Schnee."
     },
     {
       "id": "warngau",
