@@ -1,9 +1,9 @@
 {
-  "generated": "2026-11-14T20:46:23.493Z",
+  "generated": "2026-11-15T01:58:19.925Z",
   "region": "Welt",
   "days": 7,
-  "from": "2026-11-07",
-  "to": "2026-11-14",
+  "from": "2026-11-08",
+  "to": "2026-11-15",
   "women": [
     {
       "athlete": "https://worldathletics.org/athletes/athlete=14288981",
@@ -32,21 +32,8 @@
       "url": "https://worldathletics.org/competition/calendar-results/results/7244448"
     },
     {
-      "athlete": "https://worldathletics.org/athletes/athlete=14798246",
-      "rank": 3,
-      "mark": "14:53.19",
-      "wind": "",
-      "name": "Teresiah GATERI",
-      "nat": "KEN",
-      "venue": "NITTAIDAI Athletic Stadium, Yokohama (JPN)",
-      "date": "07 NOV 2026",
-      "score": 1176,
-      "event": "5000 m",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7245265"
-    },
-    {
       "athlete": "https://worldathletics.org/athletes/athlete=14620553",
-      "rank": 4,
+      "rank": 3,
       "mark": "2:24:33",
       "wind": "",
       "name": "Rodah Jepkorir TANUI",
@@ -59,7 +46,7 @@
     },
     {
       "athlete": "https://worldathletics.org/athletes/athlete=14630180",
-      "rank": 5,
+      "rank": 4,
       "mark": "31:33",
       "wind": "",
       "name": "Hanne Mjøen MARIDAL",
@@ -69,6 +56,19 @@
       "score": 1163,
       "event": "10 km",
       "url": "https://worldathletics.org/competition/calendar-results/results/7248877"
+    },
+    {
+      "athlete": "https://worldathletics.org/athletes/athlete=14989892",
+      "rank": 5,
+      "mark": "2:25:14",
+      "wind": "",
+      "name": "Jackline CHEPKOECH",
+      "nat": "KEN",
+      "venue": "La Baule (FRA)",
+      "date": "08 NOV 2026",
+      "score": 1162,
+      "event": "Marathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7246843"
     }
   ],
   "men": [
@@ -96,7 +96,7 @@
       "date": "08 NOV 2026",
       "score": 1175,
       "event": "10 km",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7245960"
+      "url": "https://worldathletics.org/athletes/athlete=14756540"
     },
     {
       "athlete": "https://worldathletics.org/athletes/athlete=14692944",

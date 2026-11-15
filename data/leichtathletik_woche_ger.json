@@ -1,9 +1,9 @@
 {
-  "generated": "2026-11-14T20:46:23.493Z",
+  "generated": "2026-11-15T01:58:19.925Z",
   "region": "Deutschland",
   "days": 7,
-  "from": "2026-11-07",
-  "to": "2026-11-14",
+  "from": "2026-11-08",
+  "to": "2026-11-15",
   "women": [
     {
       "athlete": "https://worldathletics.org/athletes/athlete=14466358",
@@ -29,7 +29,7 @@
       "date": "08 NOV 2026",
       "score": 894,
       "event": "Marathon",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7241511"
+      "url": "https://worldathletics.org/athletes/germany/viktoria-hossbach-15226514"
     },
     {
       "athlete": "https://worldathletics.org/athletes/germany/margarita-geistdorfer-15087476",
@@ -55,7 +55,7 @@
       "date": "08 NOV 2026",
       "score": 868,
       "event": "Marathon",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7241511"
+      "url": "https://worldathletics.org/athletes/germany/marie-therese-linne-15142665"
     }
   ],
   "men": [
