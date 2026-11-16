@@ -1,6 +1,183 @@
 {
-  "generated": "2026-11-16T02:15:50.649Z",
+  "generated": "2026-11-16T07:29:48.747Z",
   "items": [
+    {
+      "type": "ER",
+      "label": "Europarekord",
+      "priority": 90,
+      "rank": 1,
+      "records": [
+        "ER"
+      ],
+      "badges": [
+        {
+          "type": "ER",
+          "rank": 1
+        }
+      ],
+      "lists": [
+        "europe"
+      ],
+      "gender": "men",
+      "event": "15 km",
+      "name": "Mike FOPPEN",
+      "nat": "NED",
+      "mark": "42:10",
+      "wind": "",
+      "venue": "Nijmegen (NED)",
+      "date": "15 NOV 2026",
+      "score": 1181
+    },
+    {
+      "type": "WT",
+      "label": "Platz 2 ewig Welt",
+      "priority": 68,
+      "rank": 2,
+      "records": [],
+      "badges": [
+        {
+          "type": "WT",
+          "rank": 2
+        }
+      ],
+      "lists": [
+        "world"
+      ],
+      "gender": "women",
+      "event": "15 km",
+      "name": "Asayech AYICHEW",
+      "nat": "ETH",
+      "mark": "45:29",
+      "wind": "",
+      "venue": "Nijmegen (NED)",
+      "date": "15 NOV 2026",
+      "score": 1237
+    },
+    {
+      "type": "WT",
+      "label": "Platz 2 ewig Welt",
+      "priority": 68,
+      "rank": 2,
+      "records": [],
+      "badges": [
+        {
+          "type": "WT",
+          "rank": 2
+        }
+      ],
+      "lists": [
+        "world"
+      ],
+      "gender": "men",
+      "event": "15 km",
+      "name": "Alex Nzioka MATATA",
+      "nat": "KEN",
+      "mark": "40:49",
+      "wind": "",
+      "venue": "Nijmegen (NED)",
+      "date": "15 NOV 2026",
+      "score": 1265
+    },
+    {
+      "type": "WT",
+      "label": "Platz 4 ewig Welt",
+      "priority": 66,
+      "rank": 4,
+      "records": [],
+      "badges": [
+        {
+          "type": "WT",
+          "rank": 4
+        }
+      ],
+      "lists": [
+        "world"
+      ],
+      "gender": "women",
+      "event": "15 km",
+      "name": "Peruth CHEMUTAI",
+      "nat": "UGA",
+      "mark": "45:56",
+      "wind": "",
+      "venue": "Nijmegen (NED)",
+      "date": "15 NOV 2026",
+      "score": 1222
+    },
+    {
+      "type": "WT",
+      "label": "Platz 5 ewig Welt",
+      "priority": 65,
+      "rank": 5,
+      "records": [],
+      "badges": [
+        {
+          "type": "WT",
+          "rank": 5
+        }
+      ],
+      "lists": [
+        "world"
+      ],
+      "gender": "men",
+      "event": "15 km",
+      "name": "Benjamin Fernandi RATSIM",
+      "nat": "TAN",
+      "mark": "41:26",
+      "wind": "",
+      "venue": "Nijmegen (NED)",
+      "date": "15 NOV 2026",
+      "score": 1226
+    },
+    {
+      "type": "WT",
+      "label": "Platz 8 ewig Welt",
+      "priority": 62,
+      "rank": 8,
+      "records": [],
+      "badges": [
+        {
+          "type": "WT",
+          "rank": 8
+        }
+      ],
+      "lists": [
+        "world"
+      ],
+      "gender": "women",
+      "event": "15 km",
+      "name": "Melak MULETA",
+      "nat": "ETH",
+      "mark": "46:44",
+      "wind": "",
+      "venue": "Nijmegen (NED)",
+      "date": "15 NOV 2026",
+      "score": 1196
+    },
+    {
+      "type": "ET",
+      "label": "Platz 5 ewig Europa",
+      "priority": 45,
+      "rank": 5,
+      "records": [],
+      "badges": [
+        {
+          "type": "ET",
+          "rank": 5
+        }
+      ],
+      "lists": [
+        "europe"
+      ],
+      "gender": "women",
+      "event": "15 km",
+      "name": "Maureen KOSTER",
+      "nat": "NED",
+      "mark": "47:33",
+      "wind": "",
+      "venue": "Nijmegen (NED)",
+      "date": "15 NOV 2026",
+      "score": 1170
+    },
     {
       "type": "WT",
       "label": "Platz 5 ewig Welt",
@@ -75,190 +252,135 @@
       "venue": "Valencia (ESP)",
       "date": "25 OCT 2026",
       "score": 1266
-    },
-    {
-      "type": "WT",
-      "label": "Platz 10 ewig Welt",
-      "priority": 60,
-      "rank": 10,
-      "records": [],
-      "badges": [
-        {
-          "type": "WT",
-          "rank": 10
-        }
-      ],
-      "lists": [
-        "world"
-      ],
-      "gender": "women",
-      "event": "Halbmarathon",
-      "name": "Daisilah JERONO",
-      "nat": "KEN",
-      "mark": "1:04:11",
-      "wind": "",
-      "venue": "Valencia (ESP)",
-      "date": "25 OCT 2026",
-      "score": 1252
-    },
-    {
-      "type": "ET",
-      "label": "Platz 2 ewig Europa",
-      "priority": 48,
-      "rank": 2,
-      "records": [],
-      "badges": [
-        {
-          "type": "ET",
-          "rank": 2
-        }
-      ],
-      "lists": [
-        "europe"
-      ],
-      "gender": "men",
-      "event": "Halbmarathon",
-      "name": "Thierry NDIKUMWENAYO",
-      "nat": "ESP",
-      "mark": "58:09",
-      "wind": "",
-      "venue": "Valencia (ESP)",
-      "date": "25 OCT 2026",
-      "score": 1262
-    },
-    {
-      "type": "ET",
-      "label": "Platz 6 ewig Europa",
-      "priority": 44,
-      "rank": 6,
-      "records": [],
-      "badges": [
-        {
-          "type": "ET",
-          "rank": 6
-        }
-      ],
-      "lists": [
-        "europe"
-      ],
-      "gender": "men",
-      "event": "Halbmarathon",
-      "name": "Emmanuel ROUDOLFF LEVISSE",
-      "nat": "FRA",
-      "mark": "59:23",
-      "wind": "",
-      "venue": "Valencia (ESP)",
-      "date": "25 OCT 2026",
-      "score": 1211
-    },
-    {
-      "type": "ET",
-      "label": "Platz 8 ewig Europa",
-      "priority": 42,
-      "rank": 8,
-      "records": [],
-      "badges": [
-        {
-          "type": "ET",
-          "rank": 8
-        },
-        {
-          "type": "DT",
-          "rank": 2
-        }
-      ],
-      "lists": [
-        "europe",
-        "germany"
-      ],
-      "gender": "women",
-      "event": "Marathon",
-      "name": "Blanka DÖRFEL",
-      "nat": "GER",
-      "mark": "2:20:46",
-      "wind": "",
-      "venue": "Frankfurt (GER)",
-      "date": "25 OCT 2026",
-      "score": 1205
-    },
-    {
-      "type": "WT",
-      "label": "Platz 4 ewig Welt",
-      "priority": 66,
-      "rank": 4,
-      "records": [],
-      "badges": [
-        {
-          "type": "WT",
-          "rank": 4
-        }
-      ],
-      "lists": [
-        "world"
-      ],
-      "gender": "women",
-      "event": "Marathon",
-      "name": "Hawi FEYSA",
-      "nat": "ETH",
-      "mark": "2:13:33",
-      "wind": "",
-      "venue": "Chicago, IL (USA)",
-      "date": "11 OCT 2026",
-      "score": 1276
-    },
-    {
-      "type": "WT",
-      "label": "Platz 5 ewig Welt",
-      "priority": 65,
-      "rank": 5,
-      "records": [],
-      "badges": [
-        {
-          "type": "WT",
-          "rank": 5
-        }
-      ],
-      "lists": [
-        "world"
-      ],
-      "gender": "men",
-      "event": "Marathon",
-      "name": "Amos KIPRUTO",
-      "nat": "KEN",
-      "mark": "2:01:09",
-      "wind": "",
-      "venue": "Chicago, IL (USA)",
-      "date": "11 OCT 2026",
-      "score": 1296
-    },
-    {
-      "type": "WT",
-      "label": "Platz 8 ewig Welt",
-      "priority": 62,
-      "rank": 8,
-      "records": [],
-      "badges": [
-        {
-          "type": "WT",
-          "rank": 8
-        }
-      ],
-      "lists": [
-        "world"
-      ],
-      "gender": "women",
-      "event": "Marathon",
-      "name": "Sharon LOKEDI",
-      "nat": "KEN",
-      "mark": "2:14:07",
-      "wind": "",
-      "venue": "Chicago, IL (USA)",
-      "date": "11 OCT 2026",
-      "score": 1270
     }
   ],
   "scopes": {
     "world": [
+      {
+        "type": "WT",
+        "label": "Platz 2 ewig Welt",
+        "priority": 68,
+        "rank": 2,
+        "records": [],
+        "badges": [
+          {
+            "type": "WT",
+            "rank": 2
+          }
+        ],
+        "lists": [
+          "world"
+        ],
+        "gender": "women",
+        "event": "15 km",
+        "name": "Asayech AYICHEW",
+        "nat": "ETH",
+        "mark": "45:29",
+        "wind": "",
+        "venue": "Nijmegen (NED)",
+        "date": "15 NOV 2026",
+        "score": 1237
+      },
+      {
+        "type": "WT",
+        "label": "Platz 2 ewig Welt",
+        "priority": 68,
+        "rank": 2,
+        "records": [],
+        "badges": [
+          {
+            "type": "WT",
+            "rank": 2
+          }
+        ],
+        "lists": [
+          "world"
+        ],
+        "gender": "men",
+        "event": "15 km",
+        "name": "Alex Nzioka MATATA",
+        "nat": "KEN",
+        "mark": "40:49",
+        "wind": "",
+        "venue": "Nijmegen (NED)",
+        "date": "15 NOV 2026",
+        "score": 1265
+      },
+      {
+        "type": "WT",
+        "label": "Platz 4 ewig Welt",
+        "priority": 66,
+        "rank": 4,
+        "records": [],
+        "badges": [
+          {
+            "type": "WT",
+            "rank": 4
+          }
+        ],
+        "lists": [
+          "world"
+        ],
+        "gender": "women",
+        "event": "15 km",
+        "name": "Peruth CHEMUTAI",
+        "nat": "UGA",
+        "mark": "45:56",
+        "wind": "",
+        "venue": "Nijmegen (NED)",
+        "date": "15 NOV 2026",
+        "score": 1222
+      },
+      {
+        "type": "WT",
+        "label": "Platz 5 ewig Welt",
+        "priority": 65,
+        "rank": 5,
+        "records": [],
+        "badges": [
+          {
+            "type": "WT",
+            "rank": 5
+          }
+        ],
+        "lists": [
+          "world"
+        ],
+        "gender": "men",
+        "event": "15 km",
+        "name": "Benjamin Fernandi RATSIM",
+        "nat": "TAN",
+        "mark": "41:26",
+        "wind": "",
+        "venue": "Nijmegen (NED)",
+        "date": "15 NOV 2026",
+        "score": 1226
+      },
+      {
+        "type": "WT",
+        "label": "Platz 8 ewig Welt",
+        "priority": 62,
+        "rank": 8,
+        "records": [],
+        "badges": [
+          {
+            "type": "WT",
+            "rank": 8
+          }
+        ],
+        "lists": [
+          "world"
+        ],
+        "gender": "women",
+        "event": "15 km",
+        "name": "Melak MULETA",
+        "nat": "ETH",
+        "mark": "46:44",
+        "wind": "",
+        "venue": "Nijmegen (NED)",
+        "date": "15 NOV 2026",
+        "score": 1196
+      },
       {
         "type": "WT",
         "label": "Platz 5 ewig Welt",
@@ -383,82 +505,9 @@
         "venue": "Chicago, IL (USA)",
         "date": "11 OCT 2026",
         "score": 1276
-      },
-      {
-        "type": "WT",
-        "label": "Platz 5 ewig Welt",
-        "priority": 65,
-        "rank": 5,
-        "records": [],
-        "badges": [
-          {
-            "type": "WT",
-            "rank": 5
-          }
-        ],
-        "lists": [
-          "world"
-        ],
-        "gender": "men",
-        "event": "Marathon",
-        "name": "Amos KIPRUTO",
-        "nat": "KEN",
-        "mark": "2:01:09",
-        "wind": "",
-        "venue": "Chicago, IL (USA)",
-        "date": "11 OCT 2026",
-        "score": 1296
-      },
-      {
-        "type": "WT",
-        "label": "Platz 8 ewig Welt",
-        "priority": 62,
-        "rank": 8,
-        "records": [],
-        "badges": [
-          {
-            "type": "WT",
-            "rank": 8
-          }
-        ],
-        "lists": [
-          "world"
-        ],
-        "gender": "women",
-        "event": "Marathon",
-        "name": "Sharon LOKEDI",
-        "nat": "KEN",
-        "mark": "2:14:07",
-        "wind": "",
-        "venue": "Chicago, IL (USA)",
-        "date": "11 OCT 2026",
-        "score": 1270
-      },
-      {
-        "type": "WT",
-        "label": "Platz 3 ewig Welt",
-        "priority": 67,
-        "rank": 3,
-        "records": [],
-        "badges": [
-          {
-            "type": "WT",
-            "rank": 3
-          }
-        ],
-        "lists": [
-          "world"
-        ],
-        "gender": "women",
-        "event": "Marathon",
-        "name": "Tigst ASSEFA",
-        "nat": "ETH",
-        "mark": "2:11:04",
-        "wind": "",
-        "venue": "Berlin (GER)",
-        "date": "27 SEP 2026",
-        "score": 1300
-      },
+      }
+    ],
+    "europe": [
       {
         "type": "ER",
         "label": "Europarekord",
@@ -471,65 +520,46 @@
           {
             "type": "ER",
             "rank": 1
-          },
-          {
-            "type": "WT",
-            "rank": 10
           }
         ],
         "lists": [
-          "europe",
-          "world"
-        ],
-        "gender": "men",
-        "event": "Halbmarathon",
-        "name": "Andreas ALMGREN",
-        "nat": "SWE",
-        "mark": "58:06",
-        "wind": "",
-        "venue": "København (DEN)",
-        "date": "20 SEP 2026",
-        "score": 1264
-      },
-      {
-        "type": "DR",
-        "label": "Deutscher Rekord",
-        "priority": 80,
-        "rank": 1,
-        "records": [
-          "DR"
-        ],
-        "badges": [
-          {
-            "type": "DR",
-            "rank": 1
-          },
-          {
-            "type": "WT",
-            "rank": 9
-          },
-          {
-            "type": "ET",
-            "rank": 2
-          }
-        ],
-        "lists": [
-          "germany",
-          "world",
           "europe"
         ],
         "gender": "men",
-        "event": "400 m Hürden",
-        "name": "Emil AGYEKUM",
-        "nat": "GER",
-        "mark": "47.10",
+        "event": "15 km",
+        "name": "Mike FOPPEN",
+        "nat": "NED",
+        "mark": "42:10",
         "wind": "",
-        "venue": "Nemzeti Atlétikai Központ, Budapest (HUN)",
-        "date": "13 SEP 2026",
-        "score": 1279
-      }
-    ],
-    "europe": [
+        "venue": "Nijmegen (NED)",
+        "date": "15 NOV 2026",
+        "score": 1181
+      },
+      {
+        "type": "ET",
+        "label": "Platz 5 ewig Europa",
+        "priority": 45,
+        "rank": 5,
+        "records": [],
+        "badges": [
+          {
+            "type": "ET",
+            "rank": 5
+          }
+        ],
+        "lists": [
+          "europe"
+        ],
+        "gender": "women",
+        "event": "15 km",
+        "name": "Maureen KOSTER",
+        "nat": "NED",
+        "mark": "47:33",
+        "wind": "",
+        "venue": "Nijmegen (NED)",
+        "date": "15 NOV 2026",
+        "score": 1170
+      },
       {
         "type": "ET",
         "label": "Platz 2 ewig Europa",
@@ -611,6 +641,31 @@
         "score": 1205
       },
       {
+        "type": "ET",
+        "label": "Platz 3 ewig Europa",
+        "priority": 47,
+        "rank": 3,
+        "records": [],
+        "badges": [
+          {
+            "type": "ET",
+            "rank": 3
+          }
+        ],
+        "lists": [
+          "europe"
+        ],
+        "gender": "women",
+        "event": "20 km",
+        "name": "Mekdes WOLDU",
+        "nat": "FRA",
+        "mark": "1:04:37",
+        "wind": "",
+        "venue": "Paris (FRA)",
+        "date": "11 OCT 2026",
+        "score": 1164
+      },
+      {
         "type": "ER",
         "label": "Europarekord",
         "priority": 90,
@@ -641,6 +696,31 @@
         "venue": "København (DEN)",
         "date": "20 SEP 2026",
         "score": 1264
+      },
+      {
+        "type": "ET",
+        "label": "Platz 3 ewig Europa",
+        "priority": 47,
+        "rank": 3,
+        "records": [],
+        "badges": [
+          {
+            "type": "ET",
+            "rank": 3
+          }
+        ],
+        "lists": [
+          "europe"
+        ],
+        "gender": "men",
+        "event": "5 km",
+        "name": "Jakob INGEBRIGTSEN",
+        "nat": "NOR",
+        "mark": "12:59",
+        "wind": "",
+        "venue": "København (DEN)",
+        "date": "19 SEP 2026",
+        "score": 1213
       },
       {
         "type": "ET",
@@ -703,121 +783,6 @@
         "venue": "Nemzeti Atlétikai Központ, Budapest (HUN)",
         "date": "13 SEP 2026",
         "score": 1279
-      },
-      {
-        "type": "ET",
-        "label": "Platz 6 ewig Europa",
-        "priority": 44,
-        "rank": 6,
-        "records": [],
-        "badges": [
-          {
-            "type": "ET",
-            "rank": 6
-          }
-        ],
-        "lists": [
-          "europe"
-        ],
-        "gender": "women",
-        "event": "1500 m",
-        "name": "Klaudia KAZIMIERSKA",
-        "nat": "POL",
-        "mark": "3:54.05",
-        "wind": "",
-        "venue": "Boudewijnstadion, Bruxelles (BEL)",
-        "date": "05 SEP 2026",
-        "score": 1254
-      },
-      {
-        "type": "WT",
-        "label": "Platz 2 ewig Welt",
-        "priority": 68,
-        "rank": 2,
-        "records": [],
-        "badges": [
-          {
-            "type": "WT",
-            "rank": 2
-          },
-          {
-            "type": "ET",
-            "rank": 2
-          }
-        ],
-        "lists": [
-          "world",
-          "europe"
-        ],
-        "gender": "men",
-        "event": "Stabhochsprung",
-        "name": "Emmanouil KARALIS",
-        "nat": "GRE",
-        "mark": "6.20",
-        "wind": "",
-        "venue": "Letzigrund, Zürich (SUI)",
-        "date": "27 AUG 2026",
-        "score": 1322
-      },
-      {
-        "type": "WT",
-        "label": "Platz 3 ewig Welt",
-        "priority": 67,
-        "rank": 3,
-        "records": [],
-        "badges": [
-          {
-            "type": "WT",
-            "rank": 3
-          },
-          {
-            "type": "ET",
-            "rank": 3
-          }
-        ],
-        "lists": [
-          "world",
-          "europe"
-        ],
-        "gender": "women",
-        "event": "800 m",
-        "name": "Audrey WERRO",
-        "nat": "SUI",
-        "mark": "1:53.70",
-        "wind": "",
-        "venue": "Letzigrund, Zürich (SUI)",
-        "date": "27 AUG 2026",
-        "score": 1278
-      },
-      {
-        "type": "WT",
-        "label": "Platz 9 ewig Welt",
-        "priority": 61,
-        "rank": 9,
-        "records": [],
-        "badges": [
-          {
-            "type": "WT",
-            "rank": 9
-          },
-          {
-            "type": "ET",
-            "rank": 5
-          }
-        ],
-        "lists": [
-          "world",
-          "europe"
-        ],
-        "gender": "women",
-        "event": "800 m",
-        "name": "Femke BROEDERS-BOL",
-        "nat": "NED",
-        "mark": "1:54.71",
-        "wind": "",
-        "venue": "Letzigrund, Zürich (SUI)",
-        "date": "27 AUG 2026",
-        "score": 1259
       }
     ],
     "germany": [
