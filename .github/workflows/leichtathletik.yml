@@ -1,9 +1,9 @@
 name: Leichtathletik Woche
 
-# Alle 6 Stunden von World Athletics: Top-Leistungen der Woche, Rekorde und Bestleistungen, Wettkampfkalender
+# Alle 2 Stunden von World Athletics: Top-Leistungen der Woche, Rekorde und Bestleistungen, Wettkampfkalender
 on:
   schedule:
-    - cron: "17 4,10,16,22 * * *"
+    - cron: "17 */2 * * *"
   workflow_dispatch:
   push:
     branches-ignore: [main]
