@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-15T21:08:24.287Z",
+  "generated": "2026-11-16T02:16:21.683Z",
   "track": [
     {
       "id": 7242316,
@@ -93,15 +93,6 @@
     }
   ],
   "road": [
-    {
-      "id": 7241749,
-      "name": "Bank of China Hong Kong-Zhuhai-Macao Bridge Half Marathon",
-      "venue": "Hong Kong (HKG)",
-      "category": "GL",
-      "group": "World Athletics Label Road Races – Platinum",
-      "startDate": "2026-11-15",
-      "endDate": "2026-11-15"
-    },
     {
       "id": 7238229,
       "name": "Ring Running Series",
