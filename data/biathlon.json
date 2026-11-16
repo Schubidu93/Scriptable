@@ -1,0 +1,360 @@
+{
+ "generated": "2026-11-16T07:21:53.241Z",
+ "source": "Wikipedia",
+ "races": {
+  "men": {
+   "past": [
+    {
+     "id": "2026-03-22-Massenstart (15 km)",
+     "name": "Massenstart 15 km",
+     "start": "2026-03-22T11:00:00.000Z",
+     "place": "Oslo",
+     "nat": "NOR",
+     "type": "Weltcup",
+     "podium": [
+      {
+       "name": "J. Botn",
+       "nat": "NOR",
+       "time": ""
+      },
+      {
+       "name": "P. Nawrath",
+       "nat": "GER",
+       "time": ""
+      },
+      {
+       "name": "É. Perrot",
+       "nat": "FRA",
+       "time": ""
+      }
+     ]
+    },
+    {
+     "id": "2026-03-21-Verfolgung (12,5 km)",
+     "name": "Verfolgung 12,5 km",
+     "start": "2026-03-21T11:00:00.000Z",
+     "place": "Oslo",
+     "nat": "NOR",
+     "type": "Weltcup",
+     "podium": [
+      {
+       "name": "S. Holm Lægreid",
+       "nat": "NOR",
+       "time": ""
+      },
+      {
+       "name": "É. Perrot",
+       "nat": "FRA",
+       "time": ""
+      },
+      {
+       "name": "É. Jacquelin",
+       "nat": "FRA",
+       "time": ""
+      }
+     ]
+    },
+    {
+     "id": "2026-03-20-Sprint (10 km)",
+     "name": "Sprint 10 km",
+     "start": "2026-03-20T11:00:00.000Z",
+     "place": "Oslo",
+     "nat": "NOR",
+     "type": "Weltcup",
+     "podium": [
+      {
+       "name": "S. Holm Lægreid",
+       "nat": "NOR",
+       "time": ""
+      },
+      {
+       "name": "É. Jacquelin",
+       "nat": "FRA",
+       "time": ""
+      },
+      {
+       "name": "É. Perrot",
+       "nat": "FRA",
+       "time": ""
+      }
+     ]
+    }
+   ],
+   "upcoming": [
+    {
+     "id": "station-2026-11-24",
+     "name": "Einzel, Sprint",
+     "start": "2026-11-24T08:00:00.000Z",
+     "end": "2026-11-29T20:00:00.000Z",
+     "place": "Kontiolahti",
+     "nat": "FIN",
+     "type": "Weltcup",
+     "station": true
+    },
+    {
+     "id": "station-2026-12-01",
+     "name": "Sprint, Verfolgung, Staffel",
+     "start": "2026-12-01T08:00:00.000Z",
+     "end": "2026-12-06T20:00:00.000Z",
+     "place": "Hochfilzen",
+     "nat": "AUT",
+     "type": "Weltcup",
+     "station": true
+    },
+    {
+     "id": "station-2026-12-08",
+     "name": "Sprint, Verfolgung, Massenstart",
+     "start": "2026-12-08T08:00:00.000Z",
+     "end": "2026-12-13T20:00:00.000Z",
+     "place": "Le Grand-Bornand",
+     "nat": "FRA",
+     "type": "Weltcup",
+     "station": true
+    }
+   ]
+  },
+  "women": {
+   "past": [
+    {
+     "id": "2026-03-22-Massenstart (12,5 km)",
+     "name": "Massenstart 12,5 km",
+     "start": "2026-03-22T11:00:00.000Z",
+     "place": "Oslo",
+     "nat": "NOR",
+     "type": "Weltcup",
+     "podium": [
+      {
+       "name": "L. Vittozzi",
+       "nat": "ITA",
+       "time": ""
+      },
+      {
+       "name": "H. Öberg",
+       "nat": "SWE",
+       "time": ""
+      },
+      {
+       "name": "T. Voborníková",
+       "nat": "CZE",
+       "time": ""
+      }
+     ]
+    },
+    {
+     "id": "2026-03-21-Verfolgung (10 km)",
+     "name": "Verfolgung 10 km",
+     "start": "2026-03-21T11:00:00.000Z",
+     "place": "Oslo",
+     "nat": "NOR",
+     "type": "Weltcup",
+     "podium": [
+      {
+       "name": "H. Öberg",
+       "nat": "SWE",
+       "time": ""
+      },
+      {
+       "name": "J. Simon",
+       "nat": "FRA",
+       "time": ""
+      },
+      {
+       "name": "E. Öberg",
+       "nat": "SWE",
+       "time": ""
+      }
+     ]
+    },
+    {
+     "id": "2026-03-19-Sprint (7,5 km)",
+     "name": "Sprint 7,5 km",
+     "start": "2026-03-19T11:00:00.000Z",
+     "place": "Oslo",
+     "nat": "NOR",
+     "type": "Weltcup",
+     "podium": [
+      {
+       "name": "H. Öberg",
+       "nat": "SWE",
+       "time": ""
+      },
+      {
+       "name": "L. Vittozzi",
+       "nat": "ITA",
+       "time": ""
+      },
+      {
+       "name": "E. Öberg",
+       "nat": "SWE",
+       "time": ""
+      }
+     ]
+    }
+   ],
+   "upcoming": [
+    {
+     "id": "station-2026-11-24",
+     "name": "Einzel, Sprint",
+     "start": "2026-11-24T08:00:00.000Z",
+     "end": "2026-11-29T20:00:00.000Z",
+     "place": "Kontiolahti",
+     "nat": "FIN",
+     "type": "Weltcup",
+     "station": true
+    },
+    {
+     "id": "station-2026-12-01",
+     "name": "Sprint, Verfolgung, Staffel",
+     "start": "2026-12-01T08:00:00.000Z",
+     "end": "2026-12-06T20:00:00.000Z",
+     "place": "Hochfilzen",
+     "nat": "AUT",
+     "type": "Weltcup",
+     "station": true
+    },
+    {
+     "id": "station-2026-12-08",
+     "name": "Sprint, Verfolgung, Massenstart",
+     "start": "2026-12-08T08:00:00.000Z",
+     "end": "2026-12-13T20:00:00.000Z",
+     "place": "Le Grand-Bornand",
+     "nat": "FRA",
+     "type": "Weltcup",
+     "station": true
+    }
+   ]
+  }
+ },
+ "cup": {
+  "season": "2526",
+  "final": true,
+  "men": {
+   "top": [
+    {
+     "rank": 1,
+     "name": "É. Perrot",
+     "nat": "FRA",
+     "score": 1263
+    },
+    {
+     "rank": 2,
+     "name": "S. Holm Lægreid",
+     "nat": "NOR",
+     "score": 984
+    },
+    {
+     "rank": 3,
+     "name": "J. Botn",
+     "nat": "NOR",
+     "score": 968
+    }
+   ],
+   "germans": [
+    {
+     "rank": 9,
+     "name": "P. Nawrath",
+     "nat": "GER",
+     "score": 716
+    },
+    {
+     "rank": 18,
+     "name": "P. Horn",
+     "nat": "GER",
+     "score": 381
+    },
+    {
+     "rank": 21,
+     "name": "J. Strelow",
+     "nat": "GER",
+     "score": 340
+    }
+   ],
+   "bestGermans": [
+    {
+     "rank": 9,
+     "name": "P. Nawrath",
+     "nat": "GER",
+     "score": 716
+    },
+    {
+     "rank": 18,
+     "name": "P. Horn",
+     "nat": "GER",
+     "score": 381
+    },
+    {
+     "rank": 21,
+     "name": "J. Strelow",
+     "nat": "GER",
+     "score": 340
+    }
+   ],
+   "nations": [],
+   "count": 98
+  },
+  "women": {
+   "top": [
+    {
+     "rank": 1,
+     "name": "L. Jeanmonnot",
+     "nat": "FRA",
+     "score": 1135
+    },
+    {
+     "rank": 2,
+     "name": "H. Öberg",
+     "nat": "SWE",
+     "score": 958
+    },
+    {
+     "rank": 3,
+     "name": "L. Vittozzi",
+     "nat": "ITA",
+     "score": 935
+    }
+   ],
+   "germans": [
+    {
+     "rank": 14,
+     "name": "V. Voigt",
+     "nat": "GER",
+     "score": 433
+    },
+    {
+     "rank": 16,
+     "name": "F. Preuß",
+     "nat": "GER",
+     "score": 394
+    },
+    {
+     "rank": 17,
+     "name": "J. Hettich-Walz",
+     "nat": "GER",
+     "score": 360
+    }
+   ],
+   "bestGermans": [
+    {
+     "rank": 14,
+     "name": "V. Voigt",
+     "nat": "GER",
+     "score": 433
+    },
+    {
+     "rank": 16,
+     "name": "F. Preuß",
+     "nat": "GER",
+     "score": 394
+    },
+    {
+     "rank": 17,
+     "name": "J. Hettich-Walz",
+     "nat": "GER",
+     "score": 360
+    }
+   ],
+   "nations": [],
+   "count": 98
+  }
+ }
+}
