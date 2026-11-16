@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-16T07:29:03.636Z",
+  "generated": "2026-11-16T18:33:09.193Z",
   "region": "Welt",
   "days": 7,
   "from": "2026-11-09",
@@ -45,30 +45,30 @@
       "url": "https://worldathletics.org/competition/calendar-results/results/7246259"
     },
     {
-      "athlete": "https://worldathletics.org/athletes/athlete=14372338",
+      "athlete": "https://worldathletics.org/athletes/athlete=14288952",
       "rank": 4,
-      "mark": "47:33",
+      "mark": "31:14",
       "wind": "",
-      "name": "Maureen KOSTER",
-      "nat": "NED",
-      "venue": "Nijmegen (NED)",
+      "name": "Mercy CHERONO",
+      "nat": "KEN",
+      "venue": "Regional Park, Miramar, FL (USA)",
       "date": "15 NOV 2026",
-      "score": 1170,
-      "event": "15 km",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7246259"
+      "score": 1180,
+      "event": "10 km",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7248882"
     },
     {
-      "athlete": "https://worldathletics.org/athletes/ethiopia/tibeb-enyew-15236033",
+      "athlete": "https://worldathletics.org/athletes/athlete=14847671",
       "rank": 5,
-      "mark": "47:41",
+      "mark": "31:21",
       "wind": "",
-      "name": "Tibeb ENYEW",
-      "nat": "ETH",
-      "venue": "Nijmegen (NED)",
+      "name": "Jadyn KEELER",
+      "nat": "CAN",
+      "venue": "Regional Park, Miramar, FL (USA)",
       "date": "15 NOV 2026",
-      "score": 1166,
-      "event": "15 km",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7246259"
+      "score": 1174,
+      "event": "10 km",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7248882"
     }
   ],
   "men": [
