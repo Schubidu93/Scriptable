@@ -188,7 +188,11 @@ async function main() {
             men: parseStandings(genderPart(previous, "men")), women: parseStandings(genderPart(previous, "women")) };
     }
     let data = { generated: now.toISOString(), source: "Wikipedia", races, cup };
-    console.log(JSON.stringify(data, null, 1).slice(0, 4000));
+    for (let g of ["men", "women"]) {
+        console.log(`${g}: ${races[g].past.length} Rennen, nächste: ${races[g].upcoming.map(r => `${r.place} ${r.name}`).join(" | ")}`);
+        console.log(`  Weltcup ${cup.season}${cup.final ? " (Endstand)" : ""}, ${cup[g].count} Athleten: ${cup[g].top.map(r => `${r.rank}. ${r.name} ${r.nat} ${r.score}`).join(", ")}`);
+        console.log(`  Deutsche: ${cup[g].bestGermans.map(r => `${r.rank}. ${r.name} ${r.score}`).join(", ")}`);
+    }
     if (!races.men.past.length && !races.women.past.length && !cup.men.count) throw new Error("nichts gefunden – alter Stand bleibt");
     await mkdir("data", { recursive: true });
     await writeFile("data/biathlon.json", JSON.stringify(data, null, 1) + "\n");

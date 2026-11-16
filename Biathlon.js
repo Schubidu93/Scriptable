@@ -1,4 +1,6 @@
-// Biathlon – Weltcup, WM und Olympia. Quelle: IBU (biathlonresults.com).
+// Biathlon – Weltcup, WM und Olympia. Quelle: IBU (biathlonresults.com); seit die IBU-Schnittstelle eine Anmeldung
+// verlangt (November 2026), ersatzweise die deutsche Wikipedia – stündlich per GitHub Actions in data/biathlon.json
+// (scripts/biathlon_wiki.mjs). Ist die IBU wieder offen, wird sie automatisch wieder genutzt.
 //
 // Zwei Ansichten:
 //   "rennen"  (Standard): die letzten 3 Rennen mit Top 3 und die nächsten 3 Rennen,
@@ -251,18 +253,44 @@ async function loadCupData() {
 }
 
 function reviveDates(data) {
-    let revive = r => ({ ...r, start: new Date(r.start) });
+    let revive = r => ({ ...r, start: new Date(r.start), end: r.end ? new Date(r.end) : undefined });
     if (data.past) data.past = data.past.map(revive);
     if (data.upcoming) data.upcoming = data.upcoming.map(revive);
     return data;
 }
 
+// Ersatzquelle: Wikipedia-Auszug von GitHub
+const WIKI_DATA = "https://raw.githubusercontent.com/Schubidu93/Scriptable/main/data/biathlon.json";
+let SOURCE = "IBU";
+
+async function loadFromGitHub() {
+    let req = new Request(`${WIKI_DATA}?t=${Math.floor(Date.now() / 600000)}`);
+    req.timeoutInterval = 10;
+    let json = await req.loadJSON();
+    SOURCE = "Wikipedia";
+    if (VIEW === "weltcup") return json.cup;
+    let data = json.races[WOMEN ? "women" : "men"];
+    let revive = r => ({ ...r, start: new Date(r.start), end: r.end ? new Date(r.end) : undefined });
+    return { past: data.past.map(revive), upcoming: data.upcoming.map(revive) };
+}
+
 async function loadWithCache() {
     try {
-        let data = VIEW === "weltcup" ? await loadCupData() : await loadRaceData();
+        let data;
+        try {
+            data = VIEW === "weltcup" ? await loadCupData() : await loadRaceData();
+            let ibuEmpty = VIEW === "weltcup" ? !data.women.top.length && !data.men.top.length : !data.past.length && !data.upcoming.length;
+            if (ibuEmpty) throw new Error("IBU ohne Daten");
+        } catch (e) {
+            // IBU gesperrt (401) oder leer: Wikipedia-Auszug
+            console.log(`IBU: ${e} – Wikipedia`);
+            data = await loadFromGitHub();
+            DIAG.length = 0;
+        }
         let empty = VIEW === "weltcup" ? !data.women.top.length && !data.men.top.length : !data.past.length && !data.upcoming.length;
         if (!empty) {
             data.updated = Date.now();
+            data.source = SOURCE;
             fm.writeString(cachePath, JSON.stringify(data));
             return data;
         }
@@ -275,6 +303,7 @@ async function loadWithCache() {
     if (fm.fileExists(cachePath)) {
         let data = reviveDates(JSON.parse(fm.readString(cachePath)));
         data.stale = true;
+        if (data.source) SOURCE = data.source;
         if (data.updated) UPDATED = data.updated;
         return data;
     }
@@ -423,7 +452,22 @@ function addUpcomingRace(stack, race) {
         .minimumScaleFactor = 1;
     row.addSpacer(6);
     row.addSpacer();
-    addLabel(row, formatStart(race.start), Font.mediumSystemFont(NUMBER_SIZE), WHITE, 0.6).minimumScaleFactor = 1;
+    addLabel(row, race.station ? formatRange(race.start, race.end) : race.id && SOURCE === "Wikipedia" ? formatDay(race.start) : formatStart(race.start),
+        Font.mediumSystemFont(NUMBER_SIZE), WHITE, 0.6).minimumScaleFactor = 1;
+}
+
+// Wikipedia kennt keine Startzeiten: Station "24.–29.11.", Einzeltermin "Sa 29.11."
+function formatRange(start, end) {
+    let pad = n => String(n).padStart(2, "0");
+    let a = `${pad(start.getDate())}.`, b = `${pad(end.getDate())}.${pad(end.getMonth() + 1)}.`;
+    return start.getMonth() === end.getMonth() ? `${a}–${b}` : `${a}${pad(start.getMonth() + 1)}.–${b}`;
+}
+
+function formatDay(date) {
+    let df = new DateFormatter();
+    df.locale = "de_DE";
+    df.dateFormat = "EE dd.MM.";
+    return df.string(date);
 }
 
 function addSectionTitle(stack, text) {
@@ -431,7 +475,7 @@ function addSectionTitle(stack, text) {
 }
 
 function buildRaces(widget, data, large) {
-    addHeader(widget, `Biathlon ${WOMEN ? "Frauen" : "Männer"}`, "IBU", data.stale);
+    addHeader(widget, `Biathlon ${WOMEN ? "Frauen" : "Männer"}`, SOURCE, data.stale);
     widget.addSpacer(6);
 
     let past = data.past.slice(0, large ? CONFIG.past : 1);
@@ -531,9 +575,12 @@ function buildCupLarge(widget, data) {
         addTwoColumns(widget, ["Gesamt", cup.top], ["Beste Deutsche", cup.bestGermans || cup.germans]);
         widget.addSpacer(12);
     }
-    addSectionTitle(widget, "Nationenwertung");
-    widget.addSpacer(4);
-    addTwoColumns(widget, ["Männer", data.men.nations], ["Frauen", data.women.nations]);
+    // Die Wikipedia-Seite führt keine Nationenwertung – dann ohne
+    if ((data.men.nations || []).length || (data.women.nations || []).length) {
+        addSectionTitle(widget, "Nationenwertung");
+        widget.addSpacer(4);
+        addTwoColumns(widget, ["Männer", data.men.nations], ["Frauen", data.women.nations]);
+    }
     widget.addSpacer();
 }
 
