@@ -9,20 +9,16 @@ jobs:
       - name: Wikipedia Biathlon
         run: |
           UA="Scriptable-Biathlon-Widget/1.0 (github.com/Schubidu93/Scriptable)"
-          for t in "Biathlon-Weltcup_2026/27" "Biathlon-Weltcup_2025/26"; do
+          for t in "Biathlon-Weltcup_2025/26" "Biathlon-Weltcup_2026/27"; do
             echo "=================== $t"
             curl -sS -A "$UA" "https://de.wikipedia.org/w/api.php?action=parse&page=$t&prop=wikitext&format=json&formatversion=2" -o w.json
             python3 - <<'PY'
           import json,re
-          d=json.load(open("w.json"))
-          if "error" in d: print(d["error"]); raise SystemExit
-          t=d["parse"]["wikitext"]
-          print("Länge",len(t))
-          print("Abschnitte:",re.findall(r"^=+[^=\n]+=+",t,re.M)[:60])
-          i=t.find("Männer"); print(t[:3000]); print("....."); 
-          for kw in ["Gesamtweltcup","Kontiolahti","Östersund","Sprint"]:
-              j=t.find(kw); print("---",kw,j); print(t[j-200:j+1800] if j>0 else "")
+          t=json.load(open("w.json"))["parse"]["wikitext"]
+          print("Abschnitte:",re.findall(r"^=+[^=\n]+=+",t,re.M))
+          for h in ["=== Resultate und Kalender ===","=== Weltcupstände Männer ===","==== Gesamtweltcupführende ===="]:
+              j=t.find(h)
+              print("#####",h,j)
+              if j>=0: print(t[j:j+4500])
           PY
           done
-          echo "=== IBU"
-          curl -sS -o /dev/null -w "%{http_code}\n" "https://api.biathlonresults.com/modules/sportapi/api/Events?SeasonId=2627&Level=0"
