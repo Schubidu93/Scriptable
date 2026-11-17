@@ -1,9 +1,9 @@
 {
-  "generated": "2026-11-16T18:33:09.193Z",
+  "generated": "2026-11-17T02:55:48.434Z",
   "region": "Deutschland",
   "days": 7,
-  "from": "2026-11-09",
-  "to": "2026-11-16",
+  "from": "2026-11-10",
+  "to": "2026-11-17",
   "women": [
     {
       "athlete": "https://worldathletics.org/athletes/athlete=14904605",
@@ -73,8 +73,21 @@
       "url": "https://worldathletics.org/competition/calendar-results/results/7246259"
     },
     {
-      "athlete": "https://worldathletics.org/athletes/germany/robert-meier-15177510",
+      "athlete": "https://worldathletics.org/athletes/germany/julius-ott-15028672",
       "rank": 4,
+      "mark": "1:08:58",
+      "wind": "",
+      "name": "Julius OTT",
+      "nat": "GER",
+      "venue": "Boulogne-Billancourt (FRA)",
+      "date": "15 NOV 2026",
+      "score": 853,
+      "event": "Halbmarathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7246624"
+    },
+    {
+      "athlete": "https://worldathletics.org/athletes/germany/robert-meier-15177510",
+      "rank": 5,
       "mark": "49:54",
       "wind": "",
       "name": "Robert MEIER",
@@ -84,19 +97,6 @@
       "score": 759,
       "event": "15 km",
       "url": "https://worldathletics.org/competition/calendar-results/results/7246259"
-    },
-    {
-      "athlete": "https://worldathletics.org/athletes/germany/sebastian-bock-15306465",
-      "rank": 5,
-      "mark": "2:33:52",
-      "wind": "",
-      "name": "Sebastian BÖCK",
-      "nat": "GER",
-      "venue": "Verona (ITA)",
-      "date": "15 NOV 2026",
-      "score": 740,
-      "event": "Marathon",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7236316"
     }
   ]
 }
