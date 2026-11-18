@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-16T07:21:53.241Z",
+ "generated": "2026-11-18T01:51:15.170Z",
  "source": "Wikipedia",
  "races": {
   "men": {
@@ -82,34 +82,31 @@
    ],
    "upcoming": [
     {
-     "id": "station-2026-11-24",
-     "name": "Einzel, Sprint",
-     "start": "2026-11-24T08:00:00.000Z",
-     "end": "2026-11-29T20:00:00.000Z",
+     "id": "2026-11-26-Einzel (20 km)",
+     "name": "Einzel 20 km",
+     "start": "2026-11-26T11:00:00.000Z",
      "place": "Kontiolahti",
      "nat": "FIN",
      "type": "Weltcup",
-     "station": true
+     "podium": []
     },
     {
-     "id": "station-2026-12-01",
-     "name": "Sprint, Verfolgung, Staffel",
-     "start": "2026-12-01T08:00:00.000Z",
-     "end": "2026-12-06T20:00:00.000Z",
+     "id": "2026-11-29-Sprint (10 km)",
+     "name": "Sprint 10 km",
+     "start": "2026-11-29T11:00:00.000Z",
+     "place": "Kontiolahti",
+     "nat": "FIN",
+     "type": "Weltcup",
+     "podium": []
+    },
+    {
+     "id": "2026-12-04-Sprint (10 km)",
+     "name": "Sprint 10 km",
+     "start": "2026-12-04T11:00:00.000Z",
      "place": "Hochfilzen",
      "nat": "AUT",
      "type": "Weltcup",
-     "station": true
-    },
-    {
-     "id": "station-2026-12-08",
-     "name": "Sprint, Verfolgung, Massenstart",
-     "start": "2026-12-08T08:00:00.000Z",
-     "end": "2026-12-13T20:00:00.000Z",
-     "place": "Le Grand-Bornand",
-     "nat": "FRA",
-     "type": "Weltcup",
-     "station": true
+     "podium": []
     }
    ]
   },
@@ -193,34 +190,31 @@
    ],
    "upcoming": [
     {
-     "id": "station-2026-11-24",
-     "name": "Einzel, Sprint",
-     "start": "2026-11-24T08:00:00.000Z",
-     "end": "2026-11-29T20:00:00.000Z",
+     "id": "2026-11-27-Einzel (15 km)",
+     "name": "Einzel 15 km",
+     "start": "2026-11-27T11:00:00.000Z",
      "place": "Kontiolahti",
      "nat": "FIN",
      "type": "Weltcup",
-     "station": true
+     "podium": []
     },
     {
-     "id": "station-2026-12-01",
-     "name": "Sprint, Verfolgung, Staffel",
-     "start": "2026-12-01T08:00:00.000Z",
-     "end": "2026-12-06T20:00:00.000Z",
+     "id": "2026-11-29-Sprint (7,5 km)",
+     "name": "Sprint 7,5 km",
+     "start": "2026-11-29T11:00:00.000Z",
+     "place": "Kontiolahti",
+     "nat": "FIN",
+     "type": "Weltcup",
+     "podium": []
+    },
+    {
+     "id": "2026-12-04-Sprint (7,5 km)",
+     "name": "Sprint 7,5 km",
+     "start": "2026-12-04T11:00:00.000Z",
      "place": "Hochfilzen",
      "nat": "AUT",
      "type": "Weltcup",
-     "station": true
-    },
-    {
-     "id": "station-2026-12-08",
-     "name": "Sprint, Verfolgung, Massenstart",
-     "start": "2026-12-08T08:00:00.000Z",
-     "end": "2026-12-13T20:00:00.000Z",
-     "place": "Le Grand-Bornand",
-     "nat": "FRA",
-     "type": "Weltcup",
-     "station": true
+     "podium": []
     }
    ]
   }
