@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-18T22:14:03.070Z",
+  "generated": "2026-11-19T03:42:53.698Z",
   "areas": [
     {
       "id": "vogt",
@@ -45,8 +45,7 @@
       "snow": null,
       "updated": "2023-12-03",
       "status": "closed",
-      "note": "alle Loipen geschlossen",
-      "stale": true
+      "note": "alle Loipen geschlossen"
     },
     {
       "id": "leutkirch",
