@@ -1,0 +1,29 @@
+name: Probe
+on:
+  push:
+    branches: [probe-*]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hörnerdörfer Loipenbericht
+        run: |
+          UA="Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"
+          for u in "https://www.hoernerdoerfer.de/winterurlaub-allgaeu/langlaufen/loipen" \
+                   "https://www.hoernerdoerfer.de/loipenbericht" \
+                   "https://www.hoernerdoerfer.de/winterurlaub-allgaeu/langlaufen/loipenbericht" \
+                   "https://www.hoernerdoerfer.de/balderschwang"; do
+            echo "=================== $u"
+            curl -sSL -m 30 -A "$UA" -o p.html -w "HTTP %{http_code} -> %{url_effective}\n" "$u" || true
+            python3 - <<'PY'
+          import re,html
+          t=open("p.html",encoding="utf-8",errors="replace").read()
+          print("Länge",len(t))
+          print("Skript-/iframe-Quellen:", sorted(set(re.findall(r'(?:src|data-src)="([^"]+(?:intermaps|outdooractive|feratel|loipen|snow|schnee|widget|iframe)[^"]*)"',t,re.I)))[:20])
+          txt=re.sub(r"<script[\s\S]*?</script>|<style[\s\S]*?</style>"," ",t)
+          txt=html.unescape(re.sub(r"<[^>]+>"," ",txt)); txt=re.sub(r"\s+"," ",txt)
+          for kw in ["Balderschwang","gespurt","Loipenbericht","geöffnet","km"]:
+              for m in list(re.finditer(kw,txt))[:3]:
+                  print(f"[{kw}]", txt[max(0,m.start()-150):m.start()+250])
+          PY
+          done
