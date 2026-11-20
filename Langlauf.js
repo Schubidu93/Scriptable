@@ -13,7 +13,8 @@ const REGIONS = {
     muenchen: { title: "Loipen München", lat: 48.1374, lon: 11.5755 },
 };
 // Plätze: mittel 6, groß 8 (mit Hinweiszeile)
-const SLOTS = { medium: 6, large: 8 };
+// Großes Widget: alle Gebiete der Region (Allgäu 12, München 13), mittleres: die 6 wichtigsten
+const SLOTS = { medium: 6, large: 13 };
 
 const fm = FileManager.local();
 const cachePath = fm.joinPath(fm.cacheDirectory(), "langlauf.json");
@@ -182,7 +183,7 @@ function addHeader(widget, data, large, region) {
 // Feste Spaltenbreiten; die Zahlenspalten sind zentriert ohne flexiblen Abstand (der kostet mindestens 8 pt – daran
 // wurde "SCHNEE" zu "SCH…"). Die Namensspalte bekommt den Rest der Widget-Breite (je nach iPhone 329–364 pt)
 // Groß zusätzlich Entfernung und Schnee als eigene Spalten
-const COL = { dot: 14, dist: 32, classic: 42, skating: 44, snow: 40, stand: 50 };
+const COL = { dot: 14, dist: 30, classic: 42, skating: 44, snow: 40, stand: 44 };
 
 function widgetWidth() {
     let w = Device.screenSize().width;
@@ -234,7 +235,7 @@ function addAreaRow(widget, area, large) {
     let nameBox = row.addStack();
     nameBox.size = new Size(nameWidth(large), 0);
     nameBox.centerAlignContent();
-    addLabel(nameBox, area.name, Font.semiboldSystemFont(12), WHITE, open ? 1 : 0.8).minimumScaleFactor = 0.85;
+    addLabel(nameBox, area.name, Font.semiboldSystemFont(12), WHITE, open ? 1 : 0.8).minimumScaleFactor = 0.8;
     nameBox.addSpacer();
     if (large) addCenteredCell(row, area.km ? `${Math.round(area.km)} km` : "", COL.dist, Font.mediumSystemFont(9), WHITE, 0.5);
     let num = Font.mediumSystemFont(11.5);
@@ -319,16 +320,17 @@ async function createWidget() {
     }
     addColumnTitles(widget, large);
     let areas = pickAreas(data.areas, large ? SLOTS.large : SLOTS.medium);
-    // Hinweise nur im großen Widget und nur so viele Zeilen, wie Platz ist (die nächsten Gebiete zuerst);
-    // bei vielen Hinweiszeilen rücken die Gebiete enger zusammen
-    let budget = 9, used = 0;
+    // Hinweise nur im großen Widget und nur so viele Zeilen, wie Platz ist (die nächsten Gebiete zuerst).
+    // Höhe für Zeilen, Hinweise und Abstände ~274 pt: Gebietszeile ~16, Hinweiszeile ~14, Abstand mind. 2
+    const HEIGHT = 274, ROW = 16, NOTE = 14;
+    let budget = Math.max(0, Math.floor((HEIGHT - areas.length * ROW - (areas.length - 1) * 2) / NOTE)), used = 0;
     areas = areas.map(area => {
         let lines = large ? noteLines(area.note) : [];
         if (used + lines.length > budget) lines = [];
         used += lines.length;
         return { ...area, noteLines: lines };
     });
-    let gap = large ? (used > 4 ? 4 : 7) : 2;
+    let gap = large ? Math.max(2, Math.min(7, (HEIGHT - areas.length * ROW - used * NOTE) / Math.max(1, areas.length - 1))) : 2;
     areas.forEach((area, i) => {
         if (i > 0) widget.addSpacer(gap);
         addAreaRow(widget, area, large);
