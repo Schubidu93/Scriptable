@@ -5,7 +5,7 @@
 //   Vogt: SC Vogt (Text-Bericht) · Waldburg: ASV Waldburg (Text-Bericht) · Bad Waldsee: Sportpark (Tabelle) · Isny: isny.de (je Loipe offen/zu,
 //   zuletzt gespurt, Tagesmeldung) · Leutkirch: Loipen-Allgäu (km) + Stadt Leutkirch (gespurt am …) ·
 //   Wangen: Loipen-Allgäu (km) + Skilift Berger Höhe/Niederwangen (Loipenzustand mit Datum) ·
-//   Argenbühl, Missen-Wilhams, Heimenkirch, Lindenberg, Scheidegg: Loipen-Allgäu
+//   Argenbühl, Missen-Wilhams, Heimenkirch, Lindenberg, Scheidegg, Balderschwang: Loipen-Allgäu
 //   (Missen meldet selbst nur über ein Skript-Widget).
 // München: Schneebericht der Alpenregion Tegernsee-Schliersee (je Loipe befahrbar ja/nein, gespurte km) für Holzkirchen
 //   bis Bayrischzell · Lenggries: Tourismus Lenggries (Text) · Baierbrunn: Altschützen (Text)
@@ -432,6 +432,9 @@ const AREAS = [
         url: "http://www.loipen-allgaeu.de/loipen.php?name=Lindenberg" },
     { id: "scheidegg", region: "allgaeu", km: 45.6, name: "Scheidegg", load: () => loipenAllgaeu("Scheidegg"),
         url: "http://www.loipen-allgaeu.de/loipen.php?name=Scheidegg" },
+    // Balderschwang (1044 m, schneesicher): weiter weg, steht im Widget aber immer mit drin (pinned)
+    { id: "balderschwang", region: "allgaeu", km: 62.0, name: "Balderschwang", pinned: true, load: () => loipenAllgaeu("Balderschwang"),
+        url: "http://www.loipen-allgaeu.de/loipen.php?name=Balderschwang" },
     // Großraum München – Alpenregion Tegernsee-Schliersee, Lenggries und die Vereinsloipe Baierbrunn
     { id: "baierbrunn", region: "muenchen", km: 15.6, name: "Baierbrunn", load: baierbrunn, url: "http://www.altschuetzen-baierbrunn.de/Loipe.html" },
     { id: "holzkirchen", region: "muenchen", km: 35.1, name: "Holzkirchen", load: () => ats("Holzkirchen"), url: `${ATS}/schneebericht` },
@@ -476,6 +479,8 @@ async function main() {
         }
         areas.push(entry);
     }
+    // Immer im Widget anzeigen (auch geschlossen und weiter entfernt)
+    areas.forEach(a => { if ((AREAS.find(x => x.id === a.id) || {}).pinned) a.pinned = true; });
 
     // Leutkirch: Datum und Zahl der gespurten Loipen von der Stadt, wenn neuer als Loipen-Allgäu
     try {
