@@ -288,7 +288,15 @@ function pickAreas(areas, slots) {
     let dist = a => a.km || 999;
     let open = areas.filter(a => a.status === "open").sort((a, b) => dist(a) - dist(b));
     let rest = areas.filter(a => a.status !== "open").sort((a, b) => dist(a) - dist(b));
-    return open.concat(rest).slice(0, slots);
+    let picked = open.concat(rest).slice(0, slots);
+    // Fest gewählte Gebiete (Balderschwang) immer dabei: statt des entferntesten geschlossenen Gebiets
+    for (let pin of areas.filter(a => a.pinned && !picked.includes(a))) {
+        let i = picked.map(a => a.status !== "open" && !a.pinned).lastIndexOf(true);
+        if (i >= 0) picked.splice(i, 1);
+        picked.push(pin);
+    }
+    let order = a => (a.status === "open" ? 0 : 1) * 1000 + dist(a);
+    return picked.slice(0, slots).sort((a, b) => order(a) - order(b));
 }
 
 async function createWidget() {
