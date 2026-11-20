@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-19T22:20:09.242Z",
+  "generated": "2026-11-20T13:44:21.516Z",
   "areas": [
     {
       "id": "vogt",
@@ -159,6 +159,21 @@
       "snow": 0,
       "updated": "2026-04-02T12:41",
       "status": "closed"
+    },
+    {
+      "id": "balderschwang",
+      "region": "allgaeu",
+      "km": 62,
+      "name": "Balderschwang",
+      "url": "http://www.loipen-allgaeu.de/loipen.php?name=Balderschwang",
+      "network": 113.4,
+      "groomed": 0,
+      "classic": 0,
+      "skating": 0,
+      "snow": 0,
+      "updated": null,
+      "status": "closed",
+      "pinned": true
     },
     {
       "id": "baierbrunn",
