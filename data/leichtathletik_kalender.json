@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-21T12:41:27.325Z",
+  "generated": "2026-11-21T20:34:27.153Z",
   "track": [
     {
       "id": 7242316,
@@ -94,15 +94,6 @@
   ],
   "road": [
     {
-      "id": 7238229,
-      "name": "Ring Running Series",
-      "venue": "Hockenheimring, Hockenheim (GER)",
-      "category": "E",
-      "group": null,
-      "startDate": "2026-11-21",
-      "endDate": "2026-11-21"
-    },
-    {
       "id": 7235578,
       "name": "Maratón Valencia Trinidad Alfonso Zurich",
       "venue": "Valencia (ESP)",
@@ -182,6 +173,15 @@
       "group": "World Athletics Label Road Races – Platinum",
       "startDate": "2027-03-14",
       "endDate": "2027-03-14"
+    },
+    {
+      "id": 7249337,
+      "name": "Seoul Marathon",
+      "venue": "Seoul (KOR)",
+      "category": "GW",
+      "group": "World Athletics Label Road Races – Platinum",
+      "startDate": "2027-03-21",
+      "endDate": "2027-03-21"
     }
   ]
 }
