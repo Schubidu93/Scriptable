@@ -1627,6 +1627,8 @@ function addTableRow(stack, r, images, full) {
 // „Tore“ (am Doppelpunkt ausgerichtet) mittig – Überschrift und Zahlen stehen genau übereinander
 const LEAGUE_COLUMNS = { Sp: 14, S: 14, U: 14, N: 14, Tore: 33, Diff: 22, Pkt: 20 };
 const LEAGUE_GAP = 7;
+// Zeichen je Zahlenspalte (Festbreitenschrift)
+const LEAGUE_CHARS = { Sp: 2, S: 2, U: 2, N: 2, Diff: 3, Pkt: 2 };
 function addLeagueCell(row, column, text, font, color, opacity) {
     let cell = row.addStack();
     cell.size = new Size(LEAGUE_COLUMNS[column] + LEAGUE_GAP, 0);
@@ -1635,8 +1637,11 @@ function addLeagueCell(row, column, text, font, color, opacity) {
         cell.setPadding(0, LEAGUE_GAP, 0, 0);
         cell.centerAlignContent();
     } else {
-        // Rechtsbündig: flexibler Abstand davor (mind. ~8 pt – der Spaltenabstand liegt mit darin)
-        cell.addSpacer();
+        // Rechtsbündig ohne flexiblen Abstand (der kostet mind. 8 pt – dann wurde „10“ Spiele zu „…“): Zahl mit
+        // Ziffern-Leerzeichen auf die Spaltenbreite aufgefüllt und in der Zelle zentriert
+        cell.setPadding(0, LEAGUE_GAP, 0, 0);
+        cell.centerAlignContent();
+        if (/^[+\-]?\d+$/.test(text)) text = padCell(text, LEAGUE_CHARS[column] || text.length);
     }
     let t = addLabel(cell, text, font, color, opacity);
     t.minimumScaleFactor = 1;
