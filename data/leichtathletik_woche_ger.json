@@ -1,13 +1,52 @@
 {
-  "generated": "2026-11-22T09:49:52.894Z",
+  "generated": "2026-11-22T17:49:55.234Z",
   "region": "Deutschland",
   "days": 7,
   "from": "2026-11-15",
   "to": "2026-11-22",
   "women": [
     {
-      "athlete": "https://worldathletics.org/athletes/athlete=14904605",
+      "athlete": "https://worldathletics.org/athletes/germany/emma-simpson-15080689",
       "rank": 1,
+      "mark": "1:16:20",
+      "wind": "",
+      "name": "Emma SIMPSON",
+      "nat": "GER",
+      "venue": "Milano (ITA)",
+      "date": "22 NOV 2026",
+      "score": 1003,
+      "event": "Halbmarathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7240157"
+    },
+    {
+      "athlete": "https://worldathletics.org/athletes/germany/eva-ortner-15329487",
+      "rank": 2,
+      "mark": "1:19:18",
+      "wind": "",
+      "name": "Eva ORTNER",
+      "nat": "GER",
+      "venue": "Milano (ITA)",
+      "date": "22 NOV 2026",
+      "score": 947,
+      "event": "Halbmarathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7240157"
+    },
+    {
+      "athlete": "https://worldathletics.org/athletes/germany/jana-legler-15080688",
+      "rank": 3,
+      "mark": "1:19:48",
+      "wind": "",
+      "name": "Jana LEGLER",
+      "nat": "GER",
+      "venue": "Milano (ITA)",
+      "date": "22 NOV 2026",
+      "score": 937,
+      "event": "Halbmarathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7240157"
+    },
+    {
+      "athlete": "https://worldathletics.org/athletes/athlete=14904605",
+      "rank": 4,
       "mark": "56:20",
       "wind": "",
       "name": "Lena Erja MÜLLER",
@@ -20,7 +59,7 @@
     },
     {
       "athlete": "https://worldathletics.org/athletes/germany/severine-petersen-15211313",
-      "rank": 2,
+      "rank": 5,
       "mark": "2:53:47",
       "wind": "",
       "name": "Severine PETERSEN",
@@ -29,7 +68,7 @@
       "date": "15 NOV 2026",
       "score": 907,
       "event": "Marathon",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7236316"
+      "url": "https://worldathletics.org/competition/calendar-results/results/7236317"
     }
   ],
   "men": [
@@ -73,8 +112,21 @@
       "url": "https://worldathletics.org/competition/calendar-results/results/7246259"
     },
     {
-      "athlete": "https://worldathletics.org/athletes/germany/julius-ott-15028672",
+      "athlete": "https://worldathletics.org/athletes/germany/chris-goltl-15137440",
       "rank": 4,
+      "mark": "1:08:28",
+      "wind": "",
+      "name": "Chris GÖLTL",
+      "nat": "GER",
+      "venue": "Milano (ITA)",
+      "date": "22 NOV 2026",
+      "score": 870,
+      "event": "Halbmarathon",
+      "url": "https://worldathletics.org/competition/calendar-results/results/7240157"
+    },
+    {
+      "athlete": "https://worldathletics.org/athletes/germany/julius-ott-15028672",
+      "rank": 5,
       "mark": "1:08:58",
       "wind": "",
       "name": "Julius OTT",
@@ -84,19 +136,6 @@
       "score": 853,
       "event": "Halbmarathon",
       "url": "https://worldathletics.org/athletes/germany/julius-ott-15028672"
-    },
-    {
-      "athlete": "https://worldathletics.org/athletes/athlete=14627437",
-      "rank": 5,
-      "mark": "56.76",
-      "wind": "",
-      "name": "Sebastian LEHMANN",
-      "nat": "GER",
-      "venue": "SA Athletic Stadium, Adelaide (AUS)",
-      "date": "21 NOV 2026",
-      "score": 819,
-      "event": "400 m Hürden",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7245617"
     }
   ]
 }
