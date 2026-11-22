@@ -1,9 +1,9 @@
 {
-  "generated": "2026-11-21T20:31:50.989Z",
+  "generated": "2026-11-22T02:14:27.479Z",
   "region": "Deutschland",
   "days": 7,
-  "from": "2026-11-14",
-  "to": "2026-11-21",
+  "from": "2026-11-15",
+  "to": "2026-11-22",
   "women": [
     {
       "athlete": "https://worldathletics.org/athletes/athlete=14904605",
@@ -83,7 +83,7 @@
       "date": "15 NOV 2026",
       "score": 853,
       "event": "Halbmarathon",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7246624"
+      "url": "https://worldathletics.org/athletes/germany/julius-ott-15028672"
     },
     {
       "athlete": "https://worldathletics.org/athletes/athlete=14627437",
