@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-24T14:02:06.601Z",
+  "generated": "2026-11-24T23:33:55.560Z",
   "areas": [
     {
       "id": "vogt",
@@ -231,7 +231,7 @@
       "classic": null,
       "skating": null,
       "snow": 0,
-      "updated": "2026-05-27T17:19",
+      "updated": "2026-11-24T16:14",
       "status": "closed"
     },
     {
@@ -273,7 +273,7 @@
       "classic": null,
       "skating": null,
       "snow": 0,
-      "updated": "2026-04-16T10:08",
+      "updated": "2026-11-24T16:14",
       "status": "closed"
     },
     {
@@ -301,8 +301,8 @@
       "groomed": 0,
       "classic": null,
       "skating": null,
-      "snow": 10,
-      "updated": "2026-05-27T17:20",
+      "snow": 0,
+      "updated": "2026-11-24T16:12",
       "status": "closed"
     },
     {
@@ -331,7 +331,7 @@
       "classic": null,
       "skating": null,
       "snow": 0,
-      "updated": "2026-05-27T17:06",
+      "updated": "2026-11-24T16:13",
       "status": "closed"
     },
     {
