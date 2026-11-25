@@ -793,7 +793,17 @@ async function loadMatchdays() {
     if (current < 0) current = 0;
     let picked;
     if (EUROPE) {
-        picked = [groups[current]];
+        // Spieltag gespielt und der nächste liegt in dieser Woche: ab Montag schon den kommenden zeigen
+        let done = groups[current] && groups[current].events.every(e => stateOf(e) === "post");
+        let next = groups[current + 1];
+        let monday = date => {
+            let d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+            return d;
+        };
+        let upcoming = next && done && monday(next.events[0].date) <= new Date();
+        picked = [upcoming ? next : groups[current]];
     } else if (pokal) {
         // Runde beendet und die nächste schon ausgelost (Spiele angesetzt): Vorschau auf die nächste
         let done = groups[current] && groups[current].events.every(e => stateOf(e) === "post");
