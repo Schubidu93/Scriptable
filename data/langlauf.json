@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-24T23:33:55.560Z",
+  "generated": "2026-11-26T12:56:04.938Z",
   "areas": [
     {
       "id": "vogt",
@@ -201,10 +201,10 @@
       "groomed": 0,
       "classic": null,
       "skating": null,
-      "snow": 0,
-      "updated": "2026-11-13T11:54",
+      "snow": 1,
+      "updated": "2026-11-26T13:06",
       "status": "closed",
-      "note": "Warten auf Schnee."
+      "note": "Noch kein Langlauf möglich."
     },
     {
       "id": "warngau",
@@ -344,8 +344,8 @@
       "groomed": 0,
       "classic": null,
       "skating": null,
-      "snow": 1,
-      "updated": "2026-11-24T11:36",
+      "snow": 5,
+      "updated": "2026-11-26T10:41",
       "status": "closed"
     },
     {
@@ -358,8 +358,8 @@
       "groomed": 0,
       "classic": null,
       "skating": null,
-      "snow": 0,
-      "updated": "2026-10-08T11:36",
+      "snow": 15,
+      "updated": "2026-11-26T13:18",
       "status": "closed",
       "note": "Wir sind bereits in den Vorbereitungen in eine schöne und schneereiche Wintersaison :-)."
     }
