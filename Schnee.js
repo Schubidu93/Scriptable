@@ -1,5 +1,5 @@
 // Schneehöhe München – Widget im Stil der iOS-Wetter-Widgets
-// Unterstützt: klein, mittel, groß (zusätzlich Verlauf der letzten 24 Stunden) sowie Sperrbildschirm (rund, rechteckig, inline)
+// Unterstützt: klein, mittel, groß (jeweils mit kleinen Säulen der letzten 24 Stunden) sowie Sperrbildschirm (rund, rechteckig, inline)
 
 const CONFIG = {
     location: "München",
@@ -69,66 +69,48 @@ async function loadHistory() {
     }
 }
 
-// Flächendiagramm wie in der iOS-Wetter-App: weiße Linie, darunter leicht gefüllt, feine Hilfslinien.
-// Lücken (keine Messung) unterbrechen die Linie.
-function chartImage(points, width, height, max) {
+// Stundenwerte der letzten 24 Stunden (je Stunde der letzte Messwert, ohne Messung null)
+function hourly(points) {
+    let now = Date.now();
+    return Array.from({ length: 24 }, (_, i) => {
+        let from = now - (24 - i) * 3600000, to = from + 3600000;
+        let inHour = points.filter(p => p.time >= from && p.time < to && p.value !== null);
+        return inHour.length ? inHour[inHour.length - 1].value : null;
+    });
+}
+
+// Kleine Säulen wie die Niederschlagsvorschau der iOS-Wetter-Widgets: 24 Stunden, ganz rechts jetzt.
+// Ohne Schnee nur ein flacher Strich je Stunde, ohne Messung ein Punkt.
+function barsImage(values, width, height) {
     let ctx = new DrawContext();
     ctx.size = new Size(width, height);
     ctx.opaque = false;
     ctx.respectScreenScale = true;
-    let start = Date.now() - 24 * 3600000;
-    let x = t => ((t - start) / (24 * 3600000)) * width;
-    let y = v => height - 2 - (v / max) * (height - 4);
-
-    // Hilfslinien bei 0, Hälfte und Maximum
-    for (let f of [0, 0.5, 1]) {
-        let line = new Path();
-        let yy = y(max * f);
-        line.move(new Point(0, yy));
-        line.addLine(new Point(width, yy));
-        ctx.addPath(line);
-        ctx.setStrokeColor(new Color("#ffffff", f === 0 ? 0.35 : 0.15));
-        ctx.setLineWidth(1);
-        ctx.strokePath();
-    }
-
-    // Zusammenhängende Abschnitte mit Messwerten
-    let segments = [], current = [];
-    for (let p of points) {
-        if (p.value === null) {
-            if (current.length) segments.push(current);
-            current = [];
-        } else {
-            current.push(p);
-        }
-    }
-    if (current.length) segments.push(current);
-    for (let seg of segments) {
-        let area = new Path();
-        area.move(new Point(x(seg[0].time), y(0)));
-        seg.forEach(p => area.addLine(new Point(x(p.time), y(p.value))));
-        area.addLine(new Point(x(seg[seg.length - 1].time), y(0)));
-        area.closeSubpath();
-        ctx.addPath(area);
-        ctx.setFillColor(new Color("#ffffff", 0.25));
+    let peak = Math.max(0, ...values.filter(v => v !== null));
+    let max = Math.max(5, peak);
+    let slot = width / values.length, bar = Math.max(1.5, slot * 0.6);
+    values.forEach((v, i) => {
+        let x = i * slot + (slot - bar) / 2;
+        let h = v === null ? 1.5 : Math.max(1.5, (v / max) * height);
+        let rect = new Rect(x, height - h, bar, h);
+        let path = new Path();
+        path.addRoundedRect(rect, Math.min(bar / 2, h / 2), Math.min(bar / 2, h / 2));
+        ctx.addPath(path);
+        ctx.setFillColor(new Color("#ffffff", v === null ? 0.2 : v > 0 ? 0.95 : 0.4));
         ctx.fillPath();
-
-        let line = new Path();
-        line.move(new Point(x(seg[0].time), y(seg[0].value)));
-        seg.forEach(p => line.addLine(new Point(x(p.time), y(p.value))));
-        ctx.addPath(line);
-        ctx.setStrokeColor(Color.white());
-        ctx.setLineWidth(2);
-        ctx.strokePath();
-    }
+    });
     return ctx.getImage();
 }
 
-// Großes Widget, unten: "LETZTE 24 STUNDEN" mit Höchstwert, Diagramm, Zeitachse
-function addHistory(widget, points, white) {
-    let values = points.map(p => p.value).filter(v => v !== null);
-    let peak = values.length ? Math.max(...values) : 0;
-    let max = Math.max(5, Math.ceil(peak / 5) * 5);
+function addBars(stack, values, width, height) {
+    let img = stack.addImage(barsImage(values, width, height));
+    img.imageSize = new Size(width, height);
+}
+
+// Großes Widget, unten: "LETZTE 24 STUNDEN" mit Höchstwert, kleine Säulen, Zeitachse
+function addHistory(widget, values, white) {
+    let known = values.filter(v => v !== null);
+    let peak = known.length ? Math.max(...known) : 0;
 
     let rule = widget.addStack();
     rule.size = new Size(0, 1);
@@ -138,26 +120,14 @@ function addHistory(widget, points, white) {
 
     let head = widget.addStack();
     head.centerAlignContent();
-    addSymbol(head, "chart.xyaxis.line", 11, white).imageOpacity = 0.7;
-    head.addSpacer(4);
     addLabel(head, "LETZTE 24 STUNDEN", Font.semiboldSystemFont(11), white, 0.7);
     head.addSpacer();
-    addLabel(head, values.length ? `max. ${peak} cm` : "keine Messwerte", Font.semiboldSystemFont(11), white, 0.7);
+    addLabel(head, known.length ? `max. ${peak} cm` : "keine Messwerte", Font.semiboldSystemFont(11), white, 0.7);
     widget.addSpacer(6);
 
-    let chartRow = widget.addStack();
-    let width = 270, height = 90;
-    let img = chartRow.addImage(chartImage(points, width, height, max));
-    img.imageSize = new Size(width, height);
-    chartRow.addSpacer(4);
-    let axis = chartRow.addStack();
-    axis.layoutVertically();
-    axis.size = new Size(0, height);
-    addLabel(axis, `${max}`, Font.mediumSystemFont(9), white, 0.6);
-    axis.addSpacer();
-    addLabel(axis, `${max / 2}`, Font.mediumSystemFont(9), white, 0.6);
-    axis.addSpacer();
-    addLabel(axis, "0", Font.mediumSystemFont(9), white, 0.6);
+    let width = 300, height = 28;
+    let row = widget.addStack();
+    addBars(row, values, width, height);
     widget.addSpacer(3);
 
     let times = widget.addStack();
@@ -279,16 +249,21 @@ function addFooter(stack, data, white) {
     addLabel(stack, info, Font.semiboldSystemFont(13), white, 0.7);
 }
 
-function buildSmall(widget, data) {
+function buildSmall(widget, data, values) {
     let white = Color.white();
     addHeader(widget, white);
-    addDepth(widget, data, 48, white);
+    addDepth(widget, data, 44, white);
     widget.addSpacer();
+    // Kleine Säulen: Schneehöhe der letzten 24 Stunden
+    if (values) {
+        addBars(widget, values, 126, 14);
+        widget.addSpacer(5);
+    }
     addFooter(widget, data, white);
 }
 
 // height: feste Höhe (großes Widget), damit der Verlauf darunter seinen Platz behält
-function buildMedium(widget, data, height) {
+function buildMedium(widget, data, height, values) {
     let white = Color.white();
     let row = widget.addStack();
     if (height) row.size = new Size(0, height);
@@ -308,13 +283,18 @@ function buildMedium(widget, data, height) {
 
     let title = right.addStack();
     title.addSpacer();
-    addLabel(title, "Schneehöhe", Font.semiboldSystemFont(13), white, 0.7);
+    addLabel(title, values ? "Letzte 24 h" : "Schneehöhe", Font.semiboldSystemFont(13), white, 0.7);
 
     right.addSpacer();
 
+    // Statt des großen Symbols die Säulen der letzten 24 Stunden (ohne Verlauf das Symbol)
     let big = right.addStack();
     big.addSpacer();
-    addSymbol(big, data && data.depth > 0 ? "cloud.snow.fill" : "sun.max.fill", 44, white);
+    if (values) {
+        addBars(big, values, 130, 30);
+    } else {
+        addSymbol(big, data && data.depth > 0 ? "cloud.snow.fill" : "sun.max.fill", 44, white);
+    }
 
     right.addSpacer();
 
@@ -377,7 +357,7 @@ async function createWidget() {
         case "medium":
             background(widget);
             widget.setPadding(16, 16, 6, 16);
-            buildMedium(widget, data);
+            buildMedium(widget, data, 0, hourly(await loadHistory()));
             addUpdated(widget);
             break;
         case "large":
@@ -387,14 +367,14 @@ async function createWidget() {
             widget.setPadding(16, 16, 6, 16);
             buildMedium(widget, data, 130);
             widget.addSpacer(14);
-            addHistory(widget, await loadHistory(), Color.white());
+            addHistory(widget, hourly(await loadHistory()), Color.white());
             widget.addSpacer();
             addUpdated(widget);
             break;
         default:
             background(widget);
             widget.setPadding(16, 16, 6, 16);
-            buildSmall(widget, data);
+            buildSmall(widget, data, hourly(await loadHistory()));
             addUpdated(widget);
     }
     return widget;
