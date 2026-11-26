@@ -1,0 +1,33 @@
+name: Probe
+on:
+  push:
+    branches: [probe-*]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Schneehöhe München Verlauf
+        run: |
+          UA="Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"
+          for u in "https://www.hnd.bayern.de/schnee/inn/muenchen-stadt-10865" \
+                   "https://www.hnd.bayern.de/schnee/inn/muenchen-stadt-10865/tabelle" \
+                   "https://www.hnd.bayern.de/schnee/inn/muenchen-stadt-10865/tabelle?methode=schneehoehe&setdiskr=60" ; do
+            echo "=================== $u"
+            curl -sSL -m 30 -A "$UA" -o p.html -w "HTTP %{http_code} -> %{url_effective}\n" "$u" || true
+            python3 - <<'PY'
+          import re,html
+          t=open("p.html",encoding="utf-8",errors="replace").read()
+          print("Länge",len(t))
+          print("Links:", sorted(set(re.findall(r'href="([^"]*(?:tabelle|grafik|csv|download|schnee)[^"]*)"',t)))[:30])
+          tabs=re.findall(r"<table[\s\S]*?</table>",t)
+          print("Tabellen:",len(tabs))
+          for tb in tabs[:3]:
+              txt=re.sub(r"\s+"," ",html.unescape(re.sub(r"<[^>]+>"," ",tb)))
+              print("TABELLE:",txt[:900])
+          j=t.find("Schneehöhe vom"); print(t[j-200:j+300] if j>0 else "")
+          PY
+          done
+          echo "=== Bright Sky"
+          curl -sS "https://api.brightsky.dev/weather?wmo_station_id=10865&date=$(date -u -d '-1 day' +%Y-%m-%dT%H:00)&last_date=$(date -u +%Y-%m-%dT%H:00)" | head -c 1500; echo
+          echo "=== Open-Meteo"
+          curl -sS "https://api.open-meteo.com/v1/forecast?latitude=48.14&longitude=11.58&hourly=snow_depth&past_days=1&forecast_days=1&timezone=Europe%2FBerlin" | head -c 1500; echo
