@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-26T12:56:04.938Z",
+  "generated": "2026-11-26T22:29:04.741Z",
   "areas": [
     {
       "id": "vogt",
@@ -86,9 +86,9 @@
       "classic": 0,
       "skating": 0,
       "snow": null,
-      "updated": "2026-10-22",
+      "updated": "2026-11-26",
       "status": "closed",
-      "note": "Der erste Schnee ist schon in Sichtweite. Die Vorbereitungen für die Wintersaison beginnen."
+      "note": "Ein bisschen schneit es schon."
     },
     {
       "id": "argenbuehl",
@@ -230,8 +230,8 @@
       "groomed": 0,
       "classic": null,
       "skating": null,
-      "snow": 0,
-      "updated": "2026-11-24T16:14",
+      "snow": 5,
+      "updated": "2026-11-26T15:49",
       "status": "closed"
     },
     {
@@ -272,8 +272,8 @@
       "groomed": 0,
       "classic": null,
       "skating": null,
-      "snow": 0,
-      "updated": "2026-11-24T16:14",
+      "snow": 5,
+      "updated": "2026-11-26T15:50",
       "status": "closed"
     },
     {
@@ -286,10 +286,10 @@
       "groomed": 0,
       "classic": null,
       "skating": null,
-      "snow": 10,
-      "updated": "2026-04-02T08:46",
+      "snow": 15,
+      "updated": "2026-11-26T17:17",
       "status": "closed",
-      "note": "Loipen: Langlaufsaison beendet."
+      "note": "Loipen:"
     },
     {
       "id": "rottach",
@@ -301,8 +301,8 @@
       "groomed": 0,
       "classic": null,
       "skating": null,
-      "snow": 0,
-      "updated": "2026-11-24T16:12",
+      "snow": 5,
+      "updated": "2026-11-26T15:50",
       "status": "closed"
     },
     {
@@ -330,8 +330,8 @@
       "groomed": 0,
       "classic": null,
       "skating": null,
-      "snow": 0,
-      "updated": "2026-11-24T16:13",
+      "snow": 5,
+      "updated": "2026-11-26T15:49",
       "status": "closed"
     },
     {
