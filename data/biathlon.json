@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-27T00:47:26.742Z",
+ "generated": "2026-11-27T14:57:40.553Z",
  "source": "Wikipedia",
  "races": {
   "men": {
@@ -7,7 +7,7 @@
     {
      "id": "2026-11-26-Einzel (20 km)",
      "name": "Einzel 20 km",
-     "start": "2026-11-26T11:00:00.000Z",
+     "start": "2026-11-26T15:10:00.000Z",
      "place": "Kontiolahti",
      "nat": "FIN",
      "type": "Weltcup",
@@ -15,24 +15,46 @@
       {
        "name": "C. Wright",
        "nat": "USA",
-       "time": ""
+       "time": "46:29,8"
       },
       {
        "name": "J. Strelow",
        "nat": "GER",
-       "time": ""
+       "time": "+1:20,1"
       },
       {
        "name": "V. Sjåstad Christiansen",
        "nat": "NOR",
-       "time": ""
+       "time": "+1:23,2"
+      }
+     ],
+     "page": "Biathlon-Weltcup in Kontiolahti 2026/27",
+     "timed": true,
+     "germans": [
+      {
+       "rank": 6,
+       "name": "P. Horn",
+       "nat": "GER",
+       "time": "+2:02,6"
+      },
+      {
+       "rank": 12,
+       "name": "F. Kaskel",
+       "nat": "GER",
+       "time": "+2:38,4"
+      },
+      {
+       "rank": 14,
+       "name": "P. Nawrath",
+       "nat": "GER",
+       "time": "+2:48,4"
       }
      ]
     },
     {
      "id": "2026-03-22-Massenstart (15 km)",
      "name": "Massenstart 15 km",
-     "start": "2026-03-22T11:00:00.000Z",
+     "start": "2026-03-22T14:45:00.000Z",
      "place": "Oslo",
      "nat": "NOR",
      "type": "Weltcup",
@@ -40,24 +62,40 @@
       {
        "name": "J. Botn",
        "nat": "NOR",
-       "time": ""
+       "time": "37:15,6"
       },
       {
        "name": "P. Nawrath",
        "nat": "GER",
-       "time": ""
+       "time": "+3,7"
       },
       {
        "name": "É. Perrot",
        "nat": "FRA",
-       "time": ""
+       "time": "+13,7"
+      }
+     ],
+     "page": "Biathlon-Weltcup in Oslo 2025/26",
+     "timed": true,
+     "germans": [
+      {
+       "rank": 15,
+       "name": "J. Strelow",
+       "nat": "GER",
+       "time": "+1:55,8"
+      },
+      {
+       "rank": 21,
+       "name": "P. Horn",
+       "nat": "GER",
+       "time": "+2:20,0"
       }
      ]
     },
     {
      "id": "2026-03-21-Verfolgung (12,5 km)",
      "name": "Verfolgung 12,5 km",
-     "start": "2026-03-21T11:00:00.000Z",
+     "start": "2026-03-21T15:15:00.000Z",
      "place": "Oslo",
      "nat": "NOR",
      "type": "Weltcup",
@@ -65,17 +103,39 @@
       {
        "name": "S. Holm Lægreid",
        "nat": "NOR",
-       "time": ""
+       "time": "30:31,4"
       },
       {
        "name": "É. Perrot",
        "nat": "FRA",
-       "time": ""
+       "time": "+0,0"
       },
       {
        "name": "É. Jacquelin",
        "nat": "FRA",
-       "time": ""
+       "time": "+1:11,2"
+      }
+     ],
+     "page": "Biathlon-Weltcup in Oslo 2025/26",
+     "timed": true,
+     "germans": [
+      {
+       "rank": 9,
+       "name": "J. Strelow",
+       "nat": "GER",
+       "time": "+2:30,1"
+      },
+      {
+       "rank": 15,
+       "name": "P. Nawrath",
+       "nat": "GER",
+       "time": "+2:48,2"
+      },
+      {
+       "rank": 31,
+       "name": "P. Horn",
+       "nat": "GER",
+       "time": "+4:02,0"
       }
      ]
     }
@@ -84,11 +144,13 @@
     {
      "id": "2026-11-29-Sprint (10 km)",
      "name": "Sprint 10 km",
-     "start": "2026-11-29T11:00:00.000Z",
+     "start": "2026-11-29T12:00:00.000Z",
      "place": "Kontiolahti",
      "nat": "FIN",
      "type": "Weltcup",
-     "podium": []
+     "podium": [],
+     "page": "Biathlon-Weltcup in Kontiolahti 2026/27",
+     "timed": true
     },
     {
      "id": "2026-12-04-Sprint (10 km)",
@@ -97,7 +159,8 @@
      "place": "Hochfilzen",
      "nat": "AUT",
      "type": "Weltcup",
-     "podium": []
+     "podium": [],
+     "page": null
     },
     {
      "id": "2026-12-05-Verfolgung (12,5 km)",
@@ -106,7 +169,8 @@
      "place": "Hochfilzen",
      "nat": "AUT",
      "type": "Weltcup",
-     "podium": []
+     "podium": [],
+     "page": null
     }
    ]
   },
@@ -115,7 +179,7 @@
     {
      "id": "2026-03-22-Massenstart (12,5 km)",
      "name": "Massenstart 12,5 km",
-     "start": "2026-03-22T11:00:00.000Z",
+     "start": "2026-03-22T12:45:00.000Z",
      "place": "Oslo",
      "nat": "NOR",
      "type": "Weltcup",
@@ -123,24 +187,46 @@
       {
        "name": "L. Vittozzi",
        "nat": "ITA",
-       "time": ""
+       "time": "34:58,9"
       },
       {
        "name": "H. Öberg",
        "nat": "SWE",
-       "time": ""
+       "time": "+4,2"
       },
       {
        "name": "T. Voborníková",
        "nat": "CZE",
-       "time": ""
+       "time": "+17,2"
+      }
+     ],
+     "page": "Biathlon-Weltcup in Oslo 2025/26",
+     "timed": true,
+     "germans": [
+      {
+       "rank": 10,
+       "name": "J. Hettich-Walz",
+       "nat": "GER",
+       "time": "+50,0"
+      },
+      {
+       "rank": 12,
+       "name": "V. Voigt",
+       "nat": "GER",
+       "time": "+1:00,5"
+      },
+      {
+       "rank": 14,
+       "name": "J. Tannheimer",
+       "nat": "GER",
+       "time": "+1:12,0"
       }
      ]
     },
     {
      "id": "2026-03-21-Verfolgung (10 km)",
      "name": "Verfolgung 10 km",
-     "start": "2026-03-21T11:00:00.000Z",
+     "start": "2026-03-21T12:45:00.000Z",
      "place": "Oslo",
      "nat": "NOR",
      "type": "Weltcup",
@@ -148,24 +234,46 @@
       {
        "name": "H. Öberg",
        "nat": "SWE",
-       "time": ""
+       "time": "30:14,0"
       },
       {
        "name": "J. Simon",
        "nat": "FRA",
-       "time": ""
+       "time": "+0,5"
       },
       {
        "name": "E. Öberg",
        "nat": "SWE",
-       "time": ""
+       "time": "+23,2"
+      }
+     ],
+     "page": "Biathlon-Weltcup in Oslo 2025/26",
+     "timed": true,
+     "germans": [
+      {
+       "rank": 6,
+       "name": "V. Voigt",
+       "nat": "GER",
+       "time": "+1:12,0"
+      },
+      {
+       "rank": 10,
+       "name": "J. Tannheimer",
+       "nat": "GER",
+       "time": "+1:50,8"
+      },
+      {
+       "rank": 14,
+       "name": "S. Grotian",
+       "nat": "GER",
+       "time": "+1:57,8"
       }
      ]
     },
     {
      "id": "2026-03-19-Sprint (7,5 km)",
      "name": "Sprint 7,5 km",
-     "start": "2026-03-19T11:00:00.000Z",
+     "start": "2026-03-19T15:15:00.000Z",
      "place": "Oslo",
      "nat": "NOR",
      "type": "Weltcup",
@@ -173,17 +281,39 @@
       {
        "name": "H. Öberg",
        "nat": "SWE",
-       "time": ""
+       "time": "20:20,4"
       },
       {
        "name": "L. Vittozzi",
        "nat": "ITA",
-       "time": ""
+       "time": "+5,3"
       },
       {
        "name": "E. Öberg",
        "nat": "SWE",
-       "time": ""
+       "time": "+20,1"
+      }
+     ],
+     "page": "Biathlon-Weltcup in Oslo 2025/26",
+     "timed": true,
+     "germans": [
+      {
+       "rank": 16,
+       "name": "V. Voigt",
+       "nat": "GER",
+       "time": "+1:23,8"
+      },
+      {
+       "rank": 22,
+       "name": "J. Tannheimer",
+       "nat": "GER",
+       "time": "+1:32,1"
+      },
+      {
+       "rank": 23,
+       "name": "J. Hettich-Walz",
+       "nat": "GER",
+       "time": "+1:32,4"
       }
      ]
     }
@@ -192,20 +322,24 @@
     {
      "id": "2026-11-27-Einzel (15 km)",
      "name": "Einzel 15 km",
-     "start": "2026-11-27T11:00:00.000Z",
+     "start": "2026-11-27T15:10:00.000Z",
      "place": "Kontiolahti",
      "nat": "FIN",
      "type": "Weltcup",
-     "podium": []
+     "podium": [],
+     "page": "Biathlon-Weltcup in Kontiolahti 2026/27",
+     "timed": true
     },
     {
      "id": "2026-11-29-Sprint (7,5 km)",
      "name": "Sprint 7,5 km",
-     "start": "2026-11-29T11:00:00.000Z",
+     "start": "2026-11-29T15:15:00.000Z",
      "place": "Kontiolahti",
      "nat": "FIN",
      "type": "Weltcup",
-     "podium": []
+     "podium": [],
+     "page": "Biathlon-Weltcup in Kontiolahti 2026/27",
+     "timed": true
     },
     {
      "id": "2026-12-04-Sprint (7,5 km)",
@@ -214,7 +348,8 @@
      "place": "Hochfilzen",
      "nat": "AUT",
      "type": "Weltcup",
-     "podium": []
+     "podium": [],
+     "page": null
     }
    ]
   }
