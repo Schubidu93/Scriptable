@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-26T22:29:04.741Z",
+  "generated": "2026-11-27T15:24:10.096Z",
   "areas": [
     {
       "id": "vogt",
@@ -201,10 +201,10 @@
       "groomed": 0,
       "classic": null,
       "skating": null,
-      "snow": 1,
-      "updated": "2026-11-26T13:06",
+      "snow": 5,
+      "updated": "2026-11-27T11:29",
       "status": "closed",
-      "note": "Noch kein Langlauf möglich."
+      "note": "Loipen rund um Roggersdorf und Großhartpenning gespurt. Bedingt fahrbar."
     },
     {
       "id": "warngau",
@@ -230,8 +230,8 @@
       "groomed": 0,
       "classic": null,
       "skating": null,
-      "snow": 5,
-      "updated": "2026-11-26T15:49",
+      "snow": 10,
+      "updated": "2026-11-27T13:45",
       "status": "closed"
     },
     {
@@ -272,8 +272,8 @@
       "groomed": 0,
       "classic": null,
       "skating": null,
-      "snow": 5,
-      "updated": "2026-11-26T15:50",
+      "snow": 10,
+      "updated": "2026-11-27T13:44",
       "status": "closed"
     },
     {
@@ -287,9 +287,9 @@
       "classic": null,
       "skating": null,
       "snow": 15,
-      "updated": "2026-11-26T17:17",
+      "updated": "2026-11-27T09:44",
       "status": "closed",
-      "note": "Loipen:"
+      "note": "Loipen: nicht befahrbar"
     },
     {
       "id": "rottach",
@@ -301,8 +301,8 @@
       "groomed": 0,
       "classic": null,
       "skating": null,
-      "snow": 5,
-      "updated": "2026-11-26T15:50",
+      "snow": 10,
+      "updated": "2026-11-27T13:47",
       "status": "closed"
     },
     {
@@ -316,8 +316,8 @@
       "classic": null,
       "skating": null,
       "snow": 15,
-      "updated": "2026-04-01T08:52",
-      "status": "unknown",
+      "updated": "2026-11-27T09:48",
+      "status": "open",
       "note": "Langlaufloipe Hinterriss-Eng (Karwendelloipe) ab 28.03.26 wieder in Betrieb!"
     },
     {
@@ -330,8 +330,8 @@
       "groomed": 0,
       "classic": null,
       "skating": null,
-      "snow": 5,
-      "updated": "2026-11-26T15:49",
+      "snow": 10,
+      "updated": "2026-11-27T13:48",
       "status": "closed"
     },
     {
@@ -344,8 +344,8 @@
       "groomed": 0,
       "classic": null,
       "skating": null,
-      "snow": 5,
-      "updated": "2026-11-26T10:41",
+      "snow": 6,
+      "updated": "2026-11-27T11:35",
       "status": "closed"
     },
     {
@@ -358,8 +358,8 @@
       "groomed": 0,
       "classic": null,
       "skating": null,
-      "snow": 15,
-      "updated": "2026-11-26T13:18",
+      "snow": 10,
+      "updated": "2026-11-27T10:31",
       "status": "closed",
       "note": "Wir sind bereits in den Vorbereitungen in eine schöne und schneereiche Wintersaison :-)."
     }
