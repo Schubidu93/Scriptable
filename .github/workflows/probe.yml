@@ -6,22 +6,26 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: biathlonlab Tabelle
+      - name: biathlonlab Saisonliste
         run: |
           UA="Scriptable-Biathlon-Widget/1.0 (github.com/Schubidu93/Scriptable)"
-          curl -sSL -m 30 -A "$UA" -o q.html "https://biathlonlab.com/de/race/BT2627SWRLCP01SMIN"
+          curl -sSL -m 30 -A "$UA" -o r.html "https://biathlonlab.com/de/races"
           python3 - <<'PY'
           import re,html
-          t=open('q.html',encoding='utf-8').read()
-          tabs=re.findall(r"<table[\s\S]*?</table>",t)
-          for i,tb in enumerate(tabs):
-              rows=re.findall(r"<tr[\s\S]*?</tr>",tb)
-              print("Tabelle",i,"Zeilen",len(rows))
-              for r in rows[:16]:
-                  x=re.sub(r'\s+',' ',html.unescape(re.sub(r'<[^>]+>',' ',r))).strip()
-                  print(" |",x[:200])
-          print("GER-Vorkommen",len(re.findall(r'GER',t)))
-          for m in list(re.finditer(r'Horn',t))[:3]:
-              print("CTX",t[max(0,m.start()-700):m.start()+300].replace('\n',' '))
-          print("Zeit-Muster",re.findall(r'\+\d+:\d\d,\d',t)[:30])
+          t=open('r.html',encoding='utf-8').read()
+          for m in re.finditer(r'<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)</a>',t):
+              x=re.sub(r'\s+',' ',html.unescape(re.sub(r'<[^>]+>',' ',m.group(2)))).strip()
+              if re.match(r'^\d{4}/\d{2}$',x): print("SAISON",x,m.group(1))
+          PY
+          curl -sSL -m 30 -A "$UA" -o s.html "https://biathlonlab.com/de/races/2526" -w "2526: %{http_code}\n"
+          python3 - <<'PY'
+          import re,html
+          t=open('s.html',encoding='utf-8').read()
+          links=list(re.finditer(r'<a\b[^>]*href="(/de/race/[^"]+)"[^>]*>([\s\S]*?)</a>',t))
+          print("Links",len(links))
+          for m in links[:3]+links[-3:]:
+              x=re.sub(r'\s+',' ',html.unescape(re.sub(r'<[^>]+>',' ',m.group(2)))).strip()
+              print(m.group(1),"|",x)
+          i=links[-1].start()
+          print("UMFELD", re.sub(r'\s+',' ',html.unescape(re.sub(r'<[^>]+>',' | ',t[i-2500:i+600]))))
           PY
