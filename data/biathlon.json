@@ -1,9 +1,34 @@
 {
- "generated": "2026-11-18T01:51:15.170Z",
+ "generated": "2026-11-27T00:47:26.742Z",
  "source": "Wikipedia",
  "races": {
   "men": {
    "past": [
+    {
+     "id": "2026-11-26-Einzel (20 km)",
+     "name": "Einzel 20 km",
+     "start": "2026-11-26T11:00:00.000Z",
+     "place": "Kontiolahti",
+     "nat": "FIN",
+     "type": "Weltcup",
+     "podium": [
+      {
+       "name": "C. Wright",
+       "nat": "USA",
+       "time": ""
+      },
+      {
+       "name": "J. Strelow",
+       "nat": "GER",
+       "time": ""
+      },
+      {
+       "name": "V. Sjåstad Christiansen",
+       "nat": "NOR",
+       "time": ""
+      }
+     ]
+    },
     {
      "id": "2026-03-22-Massenstart (15 km)",
      "name": "Massenstart 15 km",
@@ -53,43 +78,9 @@
        "time": ""
       }
      ]
-    },
-    {
-     "id": "2026-03-20-Sprint (10 km)",
-     "name": "Sprint 10 km",
-     "start": "2026-03-20T11:00:00.000Z",
-     "place": "Oslo",
-     "nat": "NOR",
-     "type": "Weltcup",
-     "podium": [
-      {
-       "name": "S. Holm Lægreid",
-       "nat": "NOR",
-       "time": ""
-      },
-      {
-       "name": "É. Jacquelin",
-       "nat": "FRA",
-       "time": ""
-      },
-      {
-       "name": "É. Perrot",
-       "nat": "FRA",
-       "time": ""
-      }
-     ]
     }
    ],
    "upcoming": [
-    {
-     "id": "2026-11-26-Einzel (20 km)",
-     "name": "Einzel 20 km",
-     "start": "2026-11-26T11:00:00.000Z",
-     "place": "Kontiolahti",
-     "nat": "FIN",
-     "type": "Weltcup",
-     "podium": []
-    },
     {
      "id": "2026-11-29-Sprint (10 km)",
      "name": "Sprint 10 km",
@@ -103,6 +94,15 @@
      "id": "2026-12-04-Sprint (10 km)",
      "name": "Sprint 10 km",
      "start": "2026-12-04T11:00:00.000Z",
+     "place": "Hochfilzen",
+     "nat": "AUT",
+     "type": "Weltcup",
+     "podium": []
+    },
+    {
+     "id": "2026-12-05-Verfolgung (12,5 km)",
+     "name": "Verfolgung 12,5 km",
+     "start": "2026-12-05T11:00:00.000Z",
      "place": "Hochfilzen",
      "nat": "AUT",
      "type": "Weltcup",
