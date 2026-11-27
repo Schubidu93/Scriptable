@@ -125,6 +125,7 @@ function parseStandings(genderText) {
         bestGermans: rows.filter(r => r.nat === "GER").slice(0, GERMANS),
         nations: [],
         count: rows.length,
+        all: rows,
     };
 }
 
@@ -289,7 +290,8 @@ function labRace(html, id) {
     for (let m of html.matchAll(/<tr id="r-[^"]*">([\s\S]*?)<\/tr>/g)) {
         // "6 P. Horn GER 48:32,4 +2:02,6 2 …"
         let r = /^(\d+)\s+(.+?)\s+([A-Z]{3})\s+((?:\d+:)?\d{1,2}:\d{2},\d)\s*(\+(?:\d+:)?\d{1,2}(?::\d{2})?,\d)?/.exec(strip(m[1]));
-        if (r) rows.push({ rank: Number(r[1]), name: r[2], nat: r[3], time: r[5] || r[4] });
+        // Zeitgleich mit dem Sieger: kein Rückstand angegeben
+        if (r) rows.push({ rank: Number(r[1]), name: r[2], nat: r[3], time: r[5] || (rows.length ? "+0,0" : r[4]) });
     }
     if (rows.length < PODIUM) throw new Error(`${id}: nur ${rows.length} Ergebnisse`);
     let type = /Weltmeister|WM/.test(head[1]) ? "WM" : /Olymp/.test(head[1]) ? "Olympia" : "Weltcup";
@@ -325,6 +327,20 @@ async function labResults(cache, startYear) {
         }
     }
     return out;
+}
+
+// Biathlon Lab schreibt Namen ohne Sonderzeichen ("H. Oeberg", "S. Laegreid") – Schreibweise aus Wikipedia übernehmen
+const nameKey = n => {
+    let ascii = String(n).toLowerCase().replace(/ä|æ/g, "ae").replace(/ö|ø/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss")
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    let parts = ascii.replace(/[^a-z. -]/g, "").split(/\s+/);
+    return `${parts[0].charAt(0)} ${parts[parts.length - 1]}`;
+};
+function prettyNames(race, names) {
+    for (let p of race.podium.concat(race.germans || [])) {
+        let nice = names[`${p.nat} ${nameKey(p.name)}`];
+        if (nice) p.name = nice;
+    }
 }
 
 // Stationsland aus Wikipedia übernehmen (Biathlon Lab nennt nur den Ort)
@@ -367,7 +383,13 @@ async function main() {
         for (let r of past.concat(upcoming)) await enrich(r, gender);
         // Biathlon Lab hat die vollständigen Ergebnislisten meist schon kurz nach dem Rennen
         if (lab && lab[gender].length) {
+            let names = {};
+            for (let text of [previous, current]) {
+                for (let row of parseStandings(genderPart(text, gender)).all) names[`${row.nat} ${nameKey(row.name)}`] = row.name;
+            }
+            for (let w of done) for (let p of w.podium) names[`${p.nat} ${nameKey(p.name)}`] = p.name;
             for (let r of lab[gender]) {
+                prettyNames(r, names);
                 let wiki = done.concat(past).find(w => sameDay(w.start, r.start) && baseName(w.name) === baseName(r.name));
                 if (wiki) {
                     r.nat = wiki.nat;
@@ -385,11 +407,14 @@ async function main() {
         }
         races[gender] = { past, upcoming };
         cup[gender] = parseStandings(genderPart(current, gender));
+        delete cup[gender].all;
     }
     // Vor dem ersten Rennen: Endstand der Vorsaison
     if (!cup.men.count && !cup.women.count && previous) {
         cup = { season: `${String(startYear - 1).slice(2)}${String(startYear).slice(2)}`, final: true,
             men: parseStandings(genderPart(previous, "men")), women: parseStandings(genderPart(previous, "women")) };
+        delete cup.men.all;
+        delete cup.women.all;
     }
     let data = { generated: now.toISOString(), source: labUsed ? "Biathlon Lab" : "Wikipedia", cupSource: "Wikipedia", races, cup };
     for (let g of ["men", "women"]) {
