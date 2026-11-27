@@ -2,7 +2,7 @@
 // Podium, die nächsten Rennen bzw. Stationen und der Gesamtweltcup – data/biathlon.json für Biathlon.js.
 // Ersatz für die IBU-Schnittstelle, die seit November 2026 eine Anmeldung verlangt (401). Läuft stündlich.
 
-import { writeFile, mkdir } from "node:fs/promises";
+import { writeFile, mkdir, readFile } from "node:fs/promises";
 
 const UA = "Scriptable-Biathlon-Widget/1.0 (github.com/Schubidu93/Scriptable)";
 const PAST = 3, UPCOMING = 3, PODIUM = 3, GERMANS = 3;
@@ -218,6 +218,116 @@ async function enrich(race, gender) {
     return race;
 }
 
+
+// ---------- Biathlon Lab (biathlonlab.com): vollständige Ergebnislisten mit Zeit und Rückstand ----------
+// Inoffizielles Fanprojekt, Daten aus dem IBU Datacenter, robots.txt erlaubt das Crawlen. Nur beendete Rennen,
+// keine Termine. Beendete Rennen ändern sich nicht mehr: einmal geladene Ergebnisse werden aus data/biathlon.json
+// wiederverwendet, sodass pro Lauf meist nur die Rennliste abgerufen wird.
+
+const LAB = "https://biathlonlab.com";
+const LAB_MONTHS = { jan: 0, feb: 1, "mär": 2, mrz: 2, apr: 3, mai: 4, jun: 5, jul: 6, aug: 7, sep: 8, okt: 9, nov: 10, dez: 11 };
+const strip = h => String(h).replace(/<!--[\s\S]*?-->/g, "").replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"').replace(/&nbsp;|­/g, m => (m === "&nbsp;" ? " " : "")).replace(/\s+/g, " ").trim();
+
+async function labPage(path) {
+    let res = await fetch(LAB + path, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(30000) });
+    if (res.status !== 200) throw new Error(`Biathlon Lab ${path}: HTTP ${res.status}`);
+    return res.text();
+}
+
+// Rennliste einer Saison: [{ path, id }] (neueste zuerst) und Links zu anderen Saisons { "2025/26": path }
+function labRaceList(html) {
+    let races = [], seasons = {};
+    for (let m of html.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)) {
+        let text = strip(m[2]);
+        let race = /^\/de\/race\/([A-Z0-9]+)$/.exec(m[1]);
+        if (race && !races.some(r => r.id === race[1])) races.push({ path: m[1], id: race[1], day: labListDay(race[1], text) });
+        else if (/^\d{4}\/\d{2}$/.test(text) && m[1].startsWith("/de/")) seasons[text] = m[1];
+    }
+    // Neueste zuerst (Rennen ohne erkennbares Datum ans Ende)
+    races.sort((a, b) => (b.day || "").localeCompare(a.day || ""));
+    return { races, seasons };
+}
+
+// Datum aus dem Linktext ("… Kontiolahti 26. Nov. Einzel …"), Jahr aus der Saison in der Kennung (BT2627… → 2026/27)
+function labListDay(id, text) {
+    let m = [...text.matchAll(/(\d{1,2})\.\s*([A-Za-zä]{3,})\.?/g)].find(x => LAB_MONTHS[x[2].slice(0, 3).toLowerCase()] !== undefined);
+    let season = /^BT(\d{2})\d{2}/.exec(id);
+    if (!m || !season) return "";
+    let month = LAB_MONTHS[m[2].slice(0, 3).toLowerCase()];
+    let year = 2000 + Number(season[1]) + (month >= 6 ? 0 : 1);
+    return `${year}-${String(month + 1).padStart(2, "0")}-${String(Number(m[1])).padStart(2, "0")}`;
+}
+
+// Rennen aus der IBU-Kennung: BT2627SWRLCP01SMIN → Männer (SM), Frauen (SW); Staffeln/Mixed werden übersprungen
+function labGender(id) {
+    let m = /S([MW])(\w{2})$/.exec(id);
+    if (!m || /^(RL|RE)$/.test(m[2])) return null;
+    return m[1] === "M" ? "men" : "women";
+}
+
+// "Einzel der Männer über 20 km" → "Einzel 20 km", "Verkürztes Einzel der Frauen über 12,5 km" → "Kurzeinzel 12,5 km"
+function labDiscipline(title) {
+    let dist = /über\s+([\d,]+\s*km)/.exec(title);
+    let base = title.replace(/\s+der\s+(Männer|Frauen)[\s\S]*$/, "").replace(/verkürzte[sr]?\s+Einzel/i, "Kurzeinzel");
+    return discipline(dist ? `${base} (${dist[1]})` : base);
+}
+
+function labRace(html, id) {
+    let title = strip((/<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html) || [])[1] || "");
+    if (!title) title = strip((/<title>([\s\S]*?)<\/title>/.exec(html) || [])[1] || "").replace(/,.*$/, "");
+    let text = strip(html);
+    // "1. Weltcup · Kontiolahti · Do., 26. Nov. 2026 · Endergebnis"
+    let head = /(Weltcup|Weltmeisterschaft|WM|Olympi\w*)\s*·\s*([^·]+?)\s*·\s*\w+\.?,\s*(\d{1,2})\.\s*([A-Za-zäÄ]+)\.?\s+(\d{4})/.exec(text);
+    if (!head) throw new Error(`${id}: Kopfzeile nicht gefunden`);
+    let month = LAB_MONTHS[head[4].slice(0, 3).toLowerCase()];
+    let date = new Date(Date.UTC(Number(head[5]), month, Number(head[3]), 11));
+    let rows = [];
+    for (let m of html.matchAll(/<tr id="r-[^"]*">([\s\S]*?)<\/tr>/g)) {
+        // "6 P. Horn GER 48:32,4 +2:02,6 2 …"
+        let r = /^(\d+)\s+(.+?)\s+([A-Z]{3})\s+((?:\d+:)?\d{1,2}:\d{2},\d)\s*(\+(?:\d+:)?\d{1,2}(?::\d{2})?,\d)?/.exec(strip(m[1]));
+        if (r) rows.push({ rank: Number(r[1]), name: r[2], nat: r[3], time: r[5] || r[4] });
+    }
+    if (rows.length < PODIUM) throw new Error(`${id}: nur ${rows.length} Ergebnisse`);
+    let type = /Weltmeister|WM/.test(head[1]) ? "WM" : /Olymp/.test(head[1]) ? "Olympia" : "Weltcup";
+    return {
+        id: `lab-${id}`, name: labDiscipline(title), start: date.toISOString(), place: head[2].trim(), nat: "", type,
+        podium: rows.slice(0, PODIUM).map(r => ({ name: r.name, nat: r.nat, time: r.time })),
+        germans: rows.filter(r => r.nat === "GER" && r.rank > PODIUM).slice(0, GERMANS)
+            .map(r => ({ rank: r.rank, name: r.name, nat: r.nat, time: r.time })),
+        source: "lab",
+    };
+}
+
+// Die letzten PAST Einzelrennen je Geschlecht (bei Saisonbeginn auch aus der Vorsaison)
+async function labResults(cache, startYear) {
+    let out = { men: [], women: [] };
+    let list = labRaceList(await labPage("/de/races"));
+    let ids = list.races.map(r => r.id);
+    let prev = `${startYear - 1}/${String(startYear).slice(2)}`;
+    if (!list.seasons[prev]) prev = null;
+    let missing = g => ids.filter(id => labGender(id) === g).length < PAST;
+    if (prev && (missing("men") || missing("women"))) {
+        let older = labRaceList(await labPage(list.seasons[prev])).races.map(r => r.id);
+        ids = ids.concat(older.filter(id => !ids.includes(id)));
+    }
+    for (let gender of ["men", "women"]) {
+        for (let id of ids.filter(id => labGender(id) === gender).slice(0, PAST)) {
+            let race = cache[`lab-${id}`];
+            if (!race) {
+                race = labRace(await labPage(`/de/race/${id}`), id);
+                console.log(`  Biathlon Lab geladen: ${id} ${race.place} ${race.name}`);
+            }
+            out[gender].push(race);
+        }
+    }
+    return out;
+}
+
+// Stationsland aus Wikipedia übernehmen (Biathlon Lab nennt nur den Ort)
+const sameDay = (a, b) => a.slice(0, 10) === b.slice(0, 10);
+const baseName = n => n.replace(/\s+[\d,]+\s*km$/, "").replace(/×.*$/, "");
+
 async function main() {
     let now = new Date();
     let startYear = now.getUTCMonth() >= 6 ? now.getUTCFullYear() : now.getUTCFullYear() - 1;
@@ -225,6 +335,19 @@ async function main() {
     let title = y => `Biathlon-Weltcup ${y}/${String(y + 1).slice(2)}`;
     let current = await wikitext(title(startYear));
     let previous = await wikitext(title(startYear - 1)).catch(e => { console.log(e.message); return ""; });
+
+    // Bereits geladene Biathlon-Lab-Rennen wiederverwenden
+    let cache = {};
+    try {
+        let before = JSON.parse(await readFile("data/biathlon.json", "utf8"));
+        for (let g of ["men", "women"]) for (let r of before.races?.[g]?.past || []) if (r.source === "lab") cache[r.id] = r;
+    } catch (e) { /* noch keine Daten */ }
+    let lab = null, labUsed = false;
+    try {
+        lab = await labResults(cache, startYear);
+    } catch (e) {
+        console.log(`Biathlon Lab: ${e.message} – nur Wikipedia`);
+    }
 
     let races = {}, cup = { season, final: false };
     for (let gender of ["men", "women"]) {
@@ -239,6 +362,24 @@ async function main() {
         upcoming.sort((a, b) => a.start.localeCompare(b.start));
         upcoming = upcoming.slice(0, UPCOMING);
         for (let r of past.concat(upcoming)) await enrich(r, gender);
+        // Biathlon Lab hat die vollständigen Ergebnislisten meist schon kurz nach dem Rennen
+        if (lab && lab[gender].length) {
+            for (let r of lab[gender]) {
+                let wiki = done.concat(past).find(w => sameDay(w.start, r.start) && baseName(w.name) === baseName(r.name));
+                if (wiki) {
+                    r.nat = wiki.nat;
+                    if (wiki.timed) { r.start = wiki.start; r.timed = true; }
+                } else {
+                    let station = done.find(w => w.place === r.place && w.nat);
+                    if (station) r.nat = station.nat;
+                }
+            }
+            let rest = past.filter(w => !lab[gender].some(r => sameDay(w.start, r.start) && baseName(w.name) === baseName(r.name)));
+            // Rennen, die Biathlon Lab (noch) nicht hat – etwa Staffeln –, bleiben aus Wikipedia erhalten
+            past = lab[gender].concat(rest)
+                .sort((a, b) => b.start.localeCompare(a.start)).slice(0, PAST);
+            labUsed = true;
+        }
         races[gender] = { past, upcoming };
         cup[gender] = parseStandings(genderPart(current, gender));
     }
@@ -247,7 +388,7 @@ async function main() {
         cup = { season: `${String(startYear - 1).slice(2)}${String(startYear).slice(2)}`, final: true,
             men: parseStandings(genderPart(previous, "men")), women: parseStandings(genderPart(previous, "women")) };
     }
-    let data = { generated: now.toISOString(), source: "Wikipedia", races, cup };
+    let data = { generated: now.toISOString(), source: labUsed ? "Biathlon Lab" : "Wikipedia", cupSource: "Wikipedia", races, cup };
     for (let g of ["men", "women"]) {
         console.log(`${g}: ${races[g].past.length} Rennen, nächste: ${races[g].upcoming.map(r => `${r.place} ${r.name} ${r.start}`).join(" | ")}`);
         for (let r of races[g].past) {

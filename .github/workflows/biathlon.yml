@@ -1,6 +1,6 @@
 name: Biathlon
 
-# Stündlich den Biathlon-Weltcup aus der deutschen Wikipedia laden (data/biathlon.json für Biathlon.js) –
+# Stündlich Biathlon-Ergebnisse von Biathlon Lab und Termine/Weltcupstand aus der deutschen Wikipedia laden (data/biathlon.json) –
 # die IBU-Schnittstelle verlangt seit November 2026 eine Anmeldung
 on:
   schedule:
@@ -24,7 +24,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Wikipedia lesen
+      - name: Biathlon Lab und Wikipedia lesen
         run: node scripts/biathlon_wiki.mjs
       - name: Ergebnis speichern
         if: github.ref == 'refs/heads/main'

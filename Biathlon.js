@@ -267,7 +267,7 @@ async function loadFromGitHub() {
     let req = new Request(`${WIKI_DATA}?t=${Math.floor(Date.now() / 600000)}`);
     req.timeoutInterval = 10;
     let json = await req.loadJSON();
-    SOURCE = "Wikipedia";
+    SOURCE = (VIEW === "weltcup" ? json.cupSource : json.source) || "Wikipedia";
     if (VIEW === "weltcup") return json.cup;
     let data = json.races[WOMEN ? "women" : "men"];
     let revive = r => ({ ...r, start: new Date(r.start), end: r.end ? new Date(r.end) : undefined });
@@ -467,7 +467,7 @@ function addUpcomingRace(stack, race) {
         .minimumScaleFactor = 1;
     row.addSpacer(6);
     row.addSpacer();
-    addLabel(row, race.station ? formatRange(race.start, race.end) : SOURCE === "Wikipedia" && !race.timed ? formatDay(race.start) : formatStart(race.start),
+    addLabel(row, race.station ? formatRange(race.start, race.end) : SOURCE !== "IBU" && !race.timed ? formatDay(race.start) : formatStart(race.start),
         Font.mediumSystemFont(NUMBER_SIZE), WHITE, 0.6).minimumScaleFactor = 1;
 }
 
