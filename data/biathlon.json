@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-27T15:12:17.113Z",
+ "generated": "2026-11-27T19:38:10.919Z",
  "source": "Biathlon Lab",
  "cupSource": "Wikipedia",
  "races": {
@@ -178,6 +178,53 @@
   "women": {
    "past": [
     {
+     "id": "lab-BT2627SWRLCP01SWIN",
+     "name": "Einzel 15 km",
+     "start": "2026-11-27T15:10:00.000Z",
+     "place": "Kontiolahti",
+     "nat": "FIN",
+     "type": "Weltcup",
+     "podium": [
+      {
+       "name": "E. Öberg",
+       "nat": "SWE",
+       "time": "41:47,9"
+      },
+      {
+       "name": "S. Leinamo",
+       "nat": "FIN",
+       "time": "+22,7"
+      },
+      {
+       "name": "J. Simon",
+       "nat": "FRA",
+       "time": "+35,4"
+      }
+     ],
+     "germans": [
+      {
+       "rank": 7,
+       "name": "J. Tannheimer",
+       "nat": "GER",
+       "time": "+1:36,9"
+      },
+      {
+       "rank": 13,
+       "name": "V. Voigt",
+       "nat": "GER",
+       "time": "+2:31,2"
+      },
+      {
+       "rank": 21,
+       "name": "M. Fichtner",
+       "nat": "GER",
+       "time": "+3:22,5"
+      }
+     ],
+     "source": "lab",
+     "timed": true
+    },
+    {
      "id": "lab-BT2526SWRLCP09SWMS",
      "name": "Massenstart 12,5 km",
      "start": "2026-03-22T12:45:00.000Z",
@@ -270,67 +317,9 @@
      ],
      "source": "lab",
      "timed": true
-    },
-    {
-     "id": "lab-BT2526SWRLCP09SWSP",
-     "name": "Sprint 7,5 km",
-     "start": "2026-03-19T15:15:00.000Z",
-     "place": "Oslo",
-     "nat": "NOR",
-     "type": "Weltcup",
-     "podium": [
-      {
-       "name": "H. Öberg",
-       "nat": "SWE",
-       "time": "20:20,4"
-      },
-      {
-       "name": "L. Vittozzi",
-       "nat": "ITA",
-       "time": "+5,3"
-      },
-      {
-       "name": "E. Öberg",
-       "nat": "SWE",
-       "time": "+20,1"
-      }
-     ],
-     "germans": [
-      {
-       "rank": 16,
-       "name": "V. Voigt",
-       "nat": "GER",
-       "time": "+1:23,8"
-      },
-      {
-       "rank": 22,
-       "name": "J. Tannheimer",
-       "nat": "GER",
-       "time": "+1:32,1"
-      },
-      {
-       "rank": 23,
-       "name": "J. Hettich-Walz",
-       "nat": "GER",
-       "time": "+1:32,4"
-      }
-     ],
-     "source": "lab",
-     "timed": true
     }
    ],
    "upcoming": [
-    {
-     "id": "2026-11-27-Einzel (15 km)",
-     "name": "Einzel 15 km",
-     "start": "2026-11-27T15:10:00.000Z",
-     "place": "Kontiolahti",
-     "nat": "FIN",
-     "type": "Weltcup",
-     "podium": [],
-     "page": "Biathlon-Weltcup in Kontiolahti 2026/27",
-     "timed": true
-    },
     {
      "id": "2026-11-29-Sprint (7,5 km)",
      "name": "Sprint 7,5 km",
@@ -346,6 +335,16 @@
      "id": "2026-12-04-Sprint (7,5 km)",
      "name": "Sprint 7,5 km",
      "start": "2026-12-04T11:00:00.000Z",
+     "place": "Hochfilzen",
+     "nat": "AUT",
+     "type": "Weltcup",
+     "podium": [],
+     "page": null
+    },
+    {
+     "id": "2026-12-05-Verfolgung (10 km)",
+     "name": "Verfolgung 10 km",
+     "start": "2026-12-05T11:00:00.000Z",
      "place": "Hochfilzen",
      "nat": "AUT",
      "type": "Weltcup",
