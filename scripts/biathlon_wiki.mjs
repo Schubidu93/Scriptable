@@ -81,6 +81,8 @@ function parseRaces(genderText) {
     let races = [];
     for (let table of block.split(/\{\|\s*\{\{Wettkampfergebnis/).slice(1)) {
         let title = (/Titel=([^\n]*)/.exec(table) || [])[1] || "";
+        // Eigene Seite der Station ("Biathlon-Weltcup in Kontiolahti 2026/27") – dort stehen die Ergebnislisten mit Zeiten
+        let page = (/\[\[(Biathlon-[^\]|]+)\|/.exec(title) || [])[1] || null;
         let station = country(title) || { nat: "", name: "" };
         // "{{FRA|Ziel=Annecy}}-[[Le Grand-Bornand]]" → Le Grand-Bornand
         let after = /\}\}-\[\[(?:[^\]|]*\|)?([^\]]*)\]\]/.exec(title);
@@ -99,7 +101,7 @@ function parseRaces(genderText) {
                 return p && p.name ? { name: shortName(p.name), nat: p.nat, time: "" } : null;
             }).filter(Boolean);
             races.push({ id: `${date.toISOString().slice(0, 10)}-${cells[1]}`, name: discipline(cells[1]), start: date.toISOString(),
-                place: station.name, nat: station.nat, type, podium });
+                place: station.name, nat: station.nat, type, podium, page });
         }
     }
     return races;
@@ -160,6 +162,62 @@ function genderPart(text, gender) {
     return section(text, gender === "men" ? /^== Männer ==/m : /^== Frauen ==/m, /^== /m);
 }
 
+// ---------- Stationsseiten: Ergebnislisten mit Zeit und Rückstand, Startzeiten ----------
+// Aufbau: == Verlauf == → === Sprint === → ==== Frauen ==== → "Start: Donnerstag, 26. November 2026, 16:10 Uhr" →
+// Tabelle Platz | Sportler | Zeit ("46:29,8 min" bzw. "+1:20,1") | Schießfehler (Top 10 und deutschsprachige Athleten)
+
+const PAGES = {};
+async function stationPage(title) {
+    if (!(title in PAGES)) PAGES[title] = await wikitext(title).catch(e => { console.log(e.message); return ""; });
+    return PAGES[title];
+}
+
+const norm = s => String(s).toLowerCase().replace(/[^a-zäöüß]/g, "");
+
+// Abschnitt einer Disziplin und eines Geschlechts: { start: Date|null, rows: [{ rank, name, nat, time }] }
+function stationRace(text, name, gender) {
+    let base = norm(name.replace(/\s+\d.*$/, "").replace(/×.*$/, ""));
+    let verlauf = section(text, /^== Verlauf ==/m, /^== /m) || text;
+    let parts = verlauf.split(/^=== /m).slice(1);
+    let part = parts.find(p => norm(p.split("\n")[0].replace(/=+/g, "")) === base);
+    if (!part) return null;
+    let sub = part.split(/^==== /m).find(p => (gender === "men" ? /^Männer/ : /^Frauen/).test(p));
+    if (!sub) return null;
+    let st = /Start:\s*\w+,\s*(\d{1,2})\.\s*([A-Za-zÄÖÜäöü]+)\s+(\d{4}),\s*(\d{1,2}):(\d{2})/.exec(sub);
+    let start = null;
+    if (st && MONTHS[st[2].toLowerCase()] !== undefined) {
+        // Ortszeit (MEZ, im Winter UTC+1)
+        start = new Date(Date.UTC(Number(st[3]), MONTHS[st[2].toLowerCase()], Number(st[1]), Number(st[4]) - 1, Number(st[5])));
+    }
+    let rows = [];
+    for (let row of sub.split(/\n\|-/).slice(1)) {
+        let lines = row.split("\n").map(l => l.trim()).filter(l => l.startsWith("|") && !l.startsWith("|}"));
+        let cell = l => (l || "").replace(/^\|\s*(style="[^"]*"\s*\|)?\s*/, "").trim();
+        let rank = Number(cell(lines[0]));
+        let person = country(cell(lines[1]));
+        let time = cell(lines[2]).replace(/\s*min$/, "");
+        if (rank && person && person.name) rows.push({ rank, name: shortName(person.name), nat: person.nat, time });
+    }
+    return { start, rows };
+}
+
+// Rennen um Zeiten und die besten Deutschen außerhalb der Top 3 ergänzen; Termine um die Startzeit
+async function enrich(race, gender) {
+    if (!race.page) return race;
+    let info = stationRace(await stationPage(race.page), race.name, gender);
+    if (!info) return race;
+    if (info.start) {
+        race.start = info.start.toISOString();
+        race.timed = true;
+    }
+    if (info.rows.length >= PODIUM && !/Staffel|Mixed/.test(race.name)) {
+        race.podium = info.rows.slice(0, PODIUM).map(r => ({ name: r.name, nat: r.nat, time: r.time }));
+        race.germans = info.rows.filter(r => r.nat === "GER" && r.rank > PODIUM).slice(0, GERMANS)
+            .map(r => ({ rank: r.rank, name: r.name, nat: r.nat, time: r.time }));
+    }
+    return race;
+}
+
 async function main() {
     let now = new Date();
     let startYear = now.getUTCMonth() >= 6 ? now.getUTCFullYear() : now.getUTCFullYear() - 1;
@@ -179,7 +237,9 @@ async function main() {
         let planned = cur.filter(r => !r.podium.length && new Date(r.start) >= new Date(now.getTime() - 12 * 3600000));
         let upcoming = planned.length ? planned : parseStations(current, startYear).filter(s => new Date(s.end) >= now);
         upcoming.sort((a, b) => a.start.localeCompare(b.start));
-        races[gender] = { past, upcoming: upcoming.slice(0, UPCOMING) };
+        upcoming = upcoming.slice(0, UPCOMING);
+        for (let r of past.concat(upcoming)) await enrich(r, gender);
+        races[gender] = { past, upcoming };
         cup[gender] = parseStandings(genderPart(current, gender));
     }
     // Vor dem ersten Rennen: Endstand der Vorsaison
@@ -189,7 +249,11 @@ async function main() {
     }
     let data = { generated: now.toISOString(), source: "Wikipedia", races, cup };
     for (let g of ["men", "women"]) {
-        console.log(`${g}: ${races[g].past.length} Rennen, nächste: ${races[g].upcoming.map(r => `${r.place} ${r.name}`).join(" | ")}`);
+        console.log(`${g}: ${races[g].past.length} Rennen, nächste: ${races[g].upcoming.map(r => `${r.place} ${r.name} ${r.start}`).join(" | ")}`);
+        for (let r of races[g].past) {
+            console.log(`  ${r.start} ${r.place} ${r.name}: ${r.podium.map(p => `${p.name} ${p.time}`).join(", ")}`
+                + `${r.germans && r.germans.length ? " · Deutsche: " + r.germans.map(p => `${p.rank}. ${p.name} ${p.time}`).join(", ") : ""}`);
+        }
         console.log(`  Weltcup ${cup.season}${cup.final ? " (Endstand)" : ""}, ${cup[g].count} Athleten: ${cup[g].top.map(r => `${r.rank}. ${r.name} ${r.nat} ${r.score}`).join(", ")}`);
         console.log(`  Deutsche: ${cup[g].bestGermans.map(r => `${r.rank}. ${r.name} ${r.score}`).join(", ")}`);
     }
