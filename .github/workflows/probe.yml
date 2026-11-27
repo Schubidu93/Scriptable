@@ -6,14 +6,21 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: IBU-Schnittstelle
+      - name: Wikipedia Stationsseiten
         run: |
-          for u in "https://api.biathlonresults.com/modules/sportapi/api/Seasons" \
-                   "https://api.biathlonresults.com/modules/sportapi/api/Events?SeasonId=2627&Level=1" \
-                   "https://api.biathlonresults.com/modules/sportapi/api/CupResults?CupId=BT2627SWRLCP__SWTS" \
-                   "https://biathlonresults.com/modules/sportapi/api/Events?SeasonId=2627&Level=1" \
-                   "https://www.biathlonresults.com/modules/sportapi/api/Events?SeasonId=2627&Level=1"; do
-            echo "== $u"
-            curl -sS -m 30 -D - -o body.txt -A "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)" "$u" | grep -iE "^HTTP|^content-type|^www-authenticate" || true
-            head -c 400 body.txt; echo
+          UA="Scriptable-Biathlon-Widget/1.0 (github.com/Schubidu93/Scriptable)"
+          for t in "Biathlon-Weltcup_in_Oslo_2025/26" "Biathlon-Weltcup_in_Kontiolahti_2026/27"; do
+            echo "=================== $t"
+            curl -sS -A "$UA" "https://de.wikipedia.org/w/api.php?action=parse&page=$t&prop=wikitext&format=json&formatversion=2" -o w.json
+            python3 - <<'PY'
+          import json,re
+          d=json.load(open("w.json"))
+          if "error" in d: print(d["error"]); raise SystemExit
+          t=d["parse"]["wikitext"]
+          print("Länge",len(t))
+          print("Abschnitte:",re.findall(r"^=+[^=\n]+=+",t,re.M)[:40])
+          j=t.find("Sprint")
+          for h in re.finditer(r"^=+[^=\n]*(Sprint|Einzel)[^=\n]*=+",t,re.M):
+              print("#####",h.group(0)); print(t[h.start():h.start()+3500]); break
+          PY
           done
