@@ -237,11 +237,14 @@ async function labPage(path) {
 
 // Rennliste einer Saison: [{ path, id }] (neueste zuerst) und Links zu anderen Saisons { "2025/26": path }
 function labRaceList(html) {
-    let races = [], seasons = {};
+    let races = [], seasons = {}, last = 0;
     for (let m of html.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)) {
         let text = strip(m[2]);
+        // Das Datum steht vor dem Link ("20. März | Sprint der Männer über 10 km")
+        let before = strip(html.slice(last, m.index));
+        last = m.index + m[0].length;
         let race = /^\/de\/race\/([A-Z0-9]+)$/.exec(m[1]);
-        if (race && !races.some(r => r.id === race[1])) races.push({ path: m[1], id: race[1], day: labListDay(race[1], text) });
+        if (race && !races.some(r => r.id === race[1])) races.push({ path: m[1], id: race[1], day: labListDay(race[1], `${before} ${text}`) });
         else if (/^\d{4}\/\d{2}$/.test(text) && m[1].startsWith("/de/")) seasons[text] = m[1];
     }
     // Neueste zuerst (Rennen ohne erkennbares Datum ans Ende)
@@ -249,9 +252,9 @@ function labRaceList(html) {
     return { races, seasons };
 }
 
-// Datum aus dem Linktext ("… Kontiolahti 26. Nov. Einzel …"), Jahr aus der Saison in der Kennung (BT2627… → 2026/27)
+// Letztes Datum vor bzw. im Linktext ("… 26. Nov. Einzel …"), Jahr aus der Saison in der Kennung (BT2627… → 2026/27)
 function labListDay(id, text) {
-    let m = [...text.matchAll(/(\d{1,2})\.\s*([A-Za-zä]{3,})\.?/g)].find(x => LAB_MONTHS[x[2].slice(0, 3).toLowerCase()] !== undefined);
+    let m = [...text.matchAll(/(\d{1,2})\.\s*([A-Za-zä]{3,})\.?/g)].filter(x => LAB_MONTHS[x[2].slice(0, 3).toLowerCase()] !== undefined).pop();
     let season = /^BT(\d{2})\d{2}/.exec(id);
     if (!m || !season) return "";
     let month = LAB_MONTHS[m[2].slice(0, 3).toLowerCase()];
