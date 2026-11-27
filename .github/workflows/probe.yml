@@ -6,26 +6,22 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: biathlonlab Rennseite
+      - name: biathlonlab Tabelle
         run: |
           UA="Scriptable-Biathlon-Widget/1.0 (github.com/Schubidu93/Scriptable)"
-          for p in /de/about /de/imprint /de/races /de/race/BT2627SWRLCP01SMIN; do
-            echo "=================== $p"
-            curl -sSL -m 30 -A "$UA" -o q.html -w "HTTP %{http_code}\n" "https://biathlonlab.com$p"
-            python3 - "$p" <<'PY'
-          import re,html,sys
-          t=open('q.html',encoding='utf-8',errors='replace').read()
-          x=re.sub(r'\s+',' ',html.unescape(re.sub(r'<[^>]+>',' ',re.sub(r'<script[\s\S]*?</script>|<style[\s\S]*?</style>',' ',t))))
-          p=sys.argv[1]
-          if p in ('/de/about','/de/imprint'):
-              print(x[:3000])
-          elif p=='/de/races':
-              print("Rennlinks:",sorted(set(re.findall(r'href="(/de/race/[^"]+)"',t)))[:40])
-              print(x[:2500])
-          else:
-              print("Länge",len(t))
-              tabs=re.findall(r"<table[\s\S]*?</table>",t); print("Tabellen",len(tabs))
-              if tabs: print(tabs[0][:3000])
-              print(x[:2500])
+          curl -sSL -m 30 -A "$UA" -o q.html "https://biathlonlab.com/de/race/BT2627SWRLCP01SMIN"
+          python3 - <<'PY'
+          import re,html
+          t=open('q.html',encoding='utf-8').read()
+          tabs=re.findall(r"<table[\s\S]*?</table>",t)
+          for i,tb in enumerate(tabs):
+              rows=re.findall(r"<tr[\s\S]*?</tr>",tb)
+              print("Tabelle",i,"Zeilen",len(rows))
+              for r in rows[:16]:
+                  x=re.sub(r'\s+',' ',html.unescape(re.sub(r'<[^>]+>',' ',r))).strip()
+                  print(" |",x[:200])
+          print("GER-Vorkommen",len(re.findall(r'GER',t)))
+          for m in list(re.finditer(r'Horn',t))[:3]:
+              print("CTX",t[max(0,m.start()-700):m.start()+300].replace('\n',' '))
+          print("Zeit-Muster",re.findall(r'\+\d+:\d\d,\d',t)[:30])
           PY
-          done
