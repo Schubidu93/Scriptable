@@ -1,0 +1,41 @@
+name: Probe
+on:
+  push:
+    branches: [probe-*]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: biathlonlab
+        run: |
+          UA="Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"
+          echo "=== robots.txt"; curl -sSL -m 20 -A "$UA" https://biathlonlab.com/robots.txt | head -c 1500; echo
+          curl -sSL -m 30 -A "$UA" -o p.html -w "HTTP %{http_code} -> %{url_effective}\n" https://biathlonlab.com/de
+          python3 - <<'PY'
+          import re,html
+          t=open("p.html",encoding="utf-8",errors="replace").read()
+          print("Länge",len(t))
+          print("Title:",re.findall(r"<title>(.*?)</title>",t)[:1])
+          print("Links:",sorted(set(re.findall(r'href="(/[^"#]*)"',t)))[:60])
+          print("Skripte:",sorted(set(re.findall(r'src="([^"]+\.js[^"]*)"',t)))[:20])
+          print("API-URLs:",sorted(set(re.findall(r'https?://[^"\'\s<>]*(?:api|json|data|graphql)[^"\'\s<>]*',t)))[:30])
+          txt=html.unescape(re.sub(r"<[^>]+>"," ",re.sub(r"<script[\s\S]*?</script>|<style[\s\S]*?</style>"," ",t)))
+          txt=re.sub(r"\s+"," ",txt)
+          print("Text:",txt[:1500])
+          for kw in ["IBU","Daten","Quelle","biathlonresults","Impressum","Nutzungsbedingungen","AGB","Login","Anmelden","Premium","Abo"]:
+              for m in list(re.finditer(kw,txt))[:2]:
+                  print(f"[{kw}]",txt[max(0,m.start()-120):m.start()+200])
+          nd=re.search(r'<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)</script>',t)
+          print("NEXT_DATA:", nd.group(1)[:1500] if nd else "keins")
+          PY
+          for p in /de/impressum /de/agb /de/nutzungsbedingungen /de/datenschutz /impressum /terms; do
+            echo "=== $p"
+            curl -sSL -m 20 -A "$UA" -o q.html -w "HTTP %{http_code}\n" "https://biathlonlab.com$p"
+            python3 -c "
+          import re,html
+          t=open('q.html',encoding='utf-8',errors='replace').read()
+          x=re.sub(r'\s+',' ',html.unescape(re.sub(r'<[^>]+>',' ',re.sub(r'<script[\s\S]*?</script>|<style[\s\S]*?</style>',' ',t))))
+          for kw in ['IBU','Daten','automat','Scrap','Crawl','Vervielf','Quelle','kommerz','Nutzung']:
+              for m in list(re.finditer(kw,x))[:2]: print('['+kw+']',x[max(0,m.start()-150):m.start()+250])
+          "
+          done
