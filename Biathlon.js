@@ -440,6 +440,21 @@ function addPastRace(stack, race) {
         row.addSpacer();
         addLabel(row, p.time, Font.mediumMonospacedSystemFont(NUMBER_SIZE), WHITE, 0.6).minimumScaleFactor = 1;
     });
+    // Die besten Deutschen außerhalb der Top 3: Platz statt Medaille, Rückstand rechts
+    (race.germans || []).forEach(p => {
+        block.addSpacer(3);
+        let row = block.addStack();
+        row.centerAlignContent();
+        let rank = row.addStack();
+        rank.size = new Size(12, 0);
+        rank.centerAlignContent();
+        addLabel(rank, `${p.rank}`, Font.semiboldMonospacedSystemFont(9), WHITE, 0.6).minimumScaleFactor = 0.7;
+        row.addSpacer(5);
+        addLabel(row, withFlag(p.nat, p.name), Font.mediumSystemFont(NAME_SIZE), GERMAN).minimumScaleFactor = 1;
+        row.addSpacer(6);
+        row.addSpacer();
+        addLabel(row, p.time, Font.mediumMonospacedSystemFont(NUMBER_SIZE), WHITE, 0.6).minimumScaleFactor = 1;
+    });
 }
 
 function addUpcomingRace(stack, race) {
@@ -452,7 +467,7 @@ function addUpcomingRace(stack, race) {
         .minimumScaleFactor = 1;
     row.addSpacer(6);
     row.addSpacer();
-    addLabel(row, race.station ? formatRange(race.start, race.end) : race.id && SOURCE === "Wikipedia" ? formatDay(race.start) : formatStart(race.start),
+    addLabel(row, race.station ? formatRange(race.start, race.end) : SOURCE === "Wikipedia" && !race.timed ? formatDay(race.start) : formatStart(race.start),
         Font.mediumSystemFont(NUMBER_SIZE), WHITE, 0.6).minimumScaleFactor = 1;
 }
 
@@ -478,7 +493,9 @@ function buildRaces(widget, data, large) {
     addHeader(widget, `Biathlon ${WOMEN ? "Frauen" : "Männer"}`, SOURCE, data.stale);
     widget.addSpacer(6);
 
-    let past = data.past.slice(0, large ? CONFIG.past : 1);
+    // Mit den besten Deutschen je Rennen passen im großen Widget zwei Rennen (das letzte und das davor)
+    let withGermans = data.past.some(r => r.germans && r.germans.length);
+    let past = data.past.slice(0, large ? (withGermans ? 2 : CONFIG.past) : 1);
     if (!past.length) addLabel(widget, "Noch keine Ergebnisse", Font.mediumSystemFont(12), WHITE, 0.7);
     past.forEach((race, i) => {
         if (i > 0) widget.addSpacer(14);
