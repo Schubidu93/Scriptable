@@ -1,9 +1,9 @@
 {
-  "generated": "2026-11-27T22:42:57.016Z",
+  "generated": "2026-11-28T07:48:08.164Z",
   "region": "Deutschland",
   "days": 7,
-  "from": "2026-11-20",
-  "to": "2026-11-27",
+  "from": "2026-11-21",
+  "to": "2026-11-28",
   "women": [
     {
       "athlete": "https://worldathletics.org/athletes/germany/eleisa-haag-14523157",
@@ -16,7 +16,7 @@
       "date": "21 NOV 2026",
       "score": 1041,
       "event": "Halbmarathon",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7238229"
+      "url": "https://worldathletics.org/competition/calendar-results/results/7250050"
     },
     {
       "athlete": "https://worldathletics.org/athletes/germany/emma-simpson-15080689",
@@ -68,7 +68,7 @@
       "date": "21 NOV 2026",
       "score": 935,
       "event": "Halbmarathon",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7238229"
+      "url": "https://worldathletics.org/competition/calendar-results/results/7250050"
     }
   ],
   "men": [
@@ -109,7 +109,7 @@
       "date": "21 NOV 2026",
       "score": 797,
       "event": "Marathon",
-      "url": "https://worldathletics.org/competition/calendar-results/results/7238229"
+      "url": "https://worldathletics.org/competition/calendar-results/results/7250050"
     }
   ]
 }
