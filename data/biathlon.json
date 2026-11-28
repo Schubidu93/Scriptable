@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-27T19:38:10.919Z",
+ "generated": "2026-11-28T12:18:21.590Z",
  "source": "Biathlon Lab",
  "cupSource": "Wikipedia",
  "races": {
@@ -355,135 +355,135 @@
   }
  },
  "cup": {
-  "season": "2526",
-  "final": true,
+  "season": "2627",
+  "final": false,
   "men": {
    "top": [
     {
      "rank": 1,
-     "name": "É. Perrot",
-     "nat": "FRA",
-     "score": 1263
+     "name": "C. Wright",
+     "nat": "USA",
+     "score": 90
     },
     {
      "rank": 2,
-     "name": "S. Holm Lægreid",
-     "nat": "NOR",
-     "score": 984
+     "name": "J. Strelow",
+     "nat": "GER",
+     "score": 75
     },
     {
      "rank": 3,
-     "name": "J. Botn",
+     "name": "V. Sjåstad Christiansen",
      "nat": "NOR",
-     "score": 968
+     "score": 65
     }
    ],
    "germans": [
     {
-     "rank": 9,
-     "name": "P. Nawrath",
-     "nat": "GER",
-     "score": 716
-    },
-    {
-     "rank": 18,
+     "rank": 6,
      "name": "P. Horn",
      "nat": "GER",
-     "score": 381
+     "score": 45
     },
     {
-     "rank": 21,
-     "name": "J. Strelow",
+     "rank": 12,
+     "name": "F. Kaskel",
      "nat": "GER",
-     "score": 340
+     "score": 29
+    },
+    {
+     "rank": 14,
+     "name": "P. Nawrath",
+     "nat": "GER",
+     "score": 27
     }
    ],
    "bestGermans": [
     {
-     "rank": 9,
-     "name": "P. Nawrath",
-     "nat": "GER",
-     "score": 716
-    },
-    {
-     "rank": 18,
-     "name": "P. Horn",
-     "nat": "GER",
-     "score": 381
-    },
-    {
-     "rank": 21,
+     "rank": 2,
      "name": "J. Strelow",
      "nat": "GER",
-     "score": 340
+     "score": 75
+    },
+    {
+     "rank": 6,
+     "name": "P. Horn",
+     "nat": "GER",
+     "score": 45
+    },
+    {
+     "rank": 12,
+     "name": "F. Kaskel",
+     "nat": "GER",
+     "score": 29
     }
    ],
    "nations": [],
-   "count": 98
+   "count": 39
   },
   "women": {
    "top": [
     {
      "rank": 1,
-     "name": "L. Jeanmonnot",
-     "nat": "FRA",
-     "score": 1135
+     "name": "E. Öberg",
+     "nat": "SWE",
+     "score": 90
     },
     {
      "rank": 2,
-     "name": "H. Öberg",
-     "nat": "SWE",
-     "score": 958
+     "name": "S. Leinamo",
+     "nat": "FIN",
+     "score": 75
     },
     {
      "rank": 3,
-     "name": "L. Vittozzi",
-     "nat": "ITA",
-     "score": 935
+     "name": "J. Simon",
+     "nat": "FRA",
+     "score": 65
     }
    ],
    "germans": [
     {
-     "rank": 14,
+     "rank": 7,
+     "name": "J. Tannheimer",
+     "nat": "GER",
+     "score": 41
+    },
+    {
+     "rank": 13,
      "name": "V. Voigt",
      "nat": "GER",
-     "score": 433
+     "score": 28
     },
     {
-     "rank": 16,
-     "name": "F. Preuß",
+     "rank": 21,
+     "name": "M. Fichtner",
      "nat": "GER",
-     "score": 394
-    },
-    {
-     "rank": 17,
-     "name": "J. Hettich-Walz",
-     "nat": "GER",
-     "score": 360
+     "score": 20
     }
    ],
    "bestGermans": [
     {
-     "rank": 14,
+     "rank": 7,
+     "name": "J. Tannheimer",
+     "nat": "GER",
+     "score": 41
+    },
+    {
+     "rank": 13,
      "name": "V. Voigt",
      "nat": "GER",
-     "score": 433
+     "score": 28
     },
     {
-     "rank": 16,
-     "name": "F. Preuß",
+     "rank": 21,
+     "name": "M. Fichtner",
      "nat": "GER",
-     "score": 394
-    },
-    {
-     "rank": 17,
-     "name": "J. Hettich-Walz",
-     "nat": "GER",
-     "score": 360
+     "score": 20
     }
    ],
    "nations": [],
-   "count": 98
+   "count": 40
   }
  }
 }
